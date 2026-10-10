@@ -88,7 +88,7 @@ _LINE_W, _FILLED_W, _POCKET_W, _TRANS_W, _EDGE_W = 4.2, 1.4, 0.75, 1.5, 2.0
 _FIT_CUBE_W, _FIT_MEAN_W, _DEAD_W = 400.0, 80.0, 12.3
 _HARD_TYPES = (4, 6, 7, 10, 9)  # beam5, rect23, square3, corner5, L
 _HARD_W, _HARD_SAMPLES, _DFS_BUDGET = 500.0, 16, 400
-_BEAM, _FINAL = 40, 12
+_BEAM, _FINAL, _CANDIDATES = 40, 12, 24
 
 
 def _placements(pose):
@@ -222,11 +222,16 @@ class TrayBeamPolicy:
         remaining = tuple((idx, piece.index) for idx, piece in enumerate(game.pieces) if piece is not None)
         leaves = _leaves(bits, remaining)
         leaves.sort(key=lambda leaf: leaf[0], reverse=True)
+        candidates = sorted(
+            ((cheap - _fit_penalty(leaf_bits), leaf_bits, move) for cheap, leaf_bits, move in leaves[:_CANDIDATES]),
+            key=lambda candidate: candidate[0],
+            reverse=True,
+        )
         trays = _hard_trays(self.rng)
         best_score, best_move = None, None
-        for cheap, leaf_bits, move in leaves[:_FINAL]:
+        for value, leaf_bits, move in candidates[:_FINAL]:
             bad = sum(1 for tray in trays if not _playable(leaf_bits, tray, [_DFS_BUDGET]))
-            score = cheap - _fit_penalty(leaf_bits) - _HARD_W * bad / _HARD_SAMPLES
+            score = value - _HARD_W * bad / _HARD_SAMPLES
             if best_score is None or score > best_score:
                 best_score, best_move = score, move
         return best_move if best_move is not None else actions[0]
