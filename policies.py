@@ -8,6 +8,7 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
+from search_policy import SearchPolicy
 
 
 class RandomPolicy:
@@ -74,3 +75,8 @@ def _immediate_gain(game, action):
         if not any(any(row) for row in board.grid):
             gain += FULL_CLEAR_BONUS
     return gain
+
+
+def build(weights=None):
+    # Wagi z katalogu weights/ są ignorowane: SearchPolicy ma stałe parametry.
+    return SearchPolicy()
