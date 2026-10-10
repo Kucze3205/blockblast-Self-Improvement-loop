@@ -2,16 +2,25 @@
  "rodzic": "5.1",
  "rodzic_sha": "b07ca7eac3fe6da1029b9812e1e33e7d39475d61",
  "kolejnosc": 10,
- "sha": "b07ca7eac3fe6da1029b9812e1e33e7d39475d61",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "0e92a197e92327552642b0aa431f2a1580004ef2",
+ "stan": "ocena w toku",
+ "gist": "Zamień wymyślony liść beam po tacce na zmierzony z 2.1 i dodaj karę dopasowania",
+ "notatki": [
+  "Zamień wymyślony liść beam po tacce na zmierzony z 2.1 i dodaj karę dopasowania\n\nMechanizm:\n- liść wiązki = 4.2*linie - 1.4*zajęte - 0.75*izolowane - 1.5*przejścia - 2.0*puste na brzegu;\n  linie sumowane po całej tacce, jak w search_policy 2.1 (wcześniej tylko z ostatniego postawienia)\n- kandydaci finalni (FINAL 20 -> 12): wynik = liść - kara dopasowania - 400*ryzyko trudnych tacek;\n  kara = 400*(1-śr. żywych)^3 + 80*(1-śr. wszystkich) + 12.3*martwe typy (15 typów, 41 poz)\n- cechy liczone na bitach; test porównuje je z pętlą po komórkach (tests/test_beam_policy.py)\n- BEAM 12 i ryzyko trudnych tacek bez zmian\n\nDowód z historii:\n- 6/2.1 (s_sym 0.969) i 5/2.1 (0.983) mają te same wagi occ/iso/line/dead: 1.4/0.75/4.2/12.3;\n  6/2.1 ma też trans 1.5 i edge 2.0 oraz karę dopasowania 400/80/12.3\n- wagi liścia 3/2/0.5/0.3 były zgadnięte: 518e7d3 pisze \"zgadnięte\", a notatka 6/5.1\n  \"przeniesione z historii\" jest błędna i nie opiera się na żadnym pomiarze\n- ryzyko trudnych tacek zostaje z 5.1, czyli ten sam mechanizm co 5/4.3 (0.985)\n\nDlaczego to nie powtórka: 5.1 nie miał kary dopasowania ani liścia z pomiaru. Wiązka (12)\ni estymator ryzyka (wyczerpujące multizbiory, nie 16 próbek) nadal różnią się od 6/2.1.\n\nRyzyko:\n- wynik niezmierzony\n- testy: 19 z 20 przechodzi; błąd to brak tkinter (model.py importuje turtle), był przed zmianą\n- smoke (seedy 1-5, do 300 ruchów; nie jest to wynik): bez wyjątków i nielegalnych ruchów,\n  średnio 6.7 ms na ruch, najgorzej 84 ms; ok. 80% czasu to _fits w _risk bez budżetu DFS\n- jeśli ocena da \"za wolna\": najpierw budżet DFS jak w 2.1, potem BEAM w dół\n\nCo dalej:\n- zrobione: ten commit\n- następny krok: wynik oceny; jeśli poniżej 0.969, ablacja jednej zmiany naraz, najpierw kara dopasowania\n- czego nie powtarzać: strojenia wag liścia bez nowego pomiaru; podnoszenia BEAM bez wyniku czasu\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 48,
+  "usd": 3.3472,
+  "minuty": 13.7
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T19:46:38Z",
+   "koniec": "2026-10-10T20:00:20Z",
+   "tury": 48,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
