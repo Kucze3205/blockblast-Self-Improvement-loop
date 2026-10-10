@@ -2,16 +2,27 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 4,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "901fb8deb06d30e6219dacb4079f70810c7dd6f8",
+ "stan": "ocena w toku",
+ "gist": "Dodaj SearchPolicy: wiązka po tacce z ryzykiem trudnych tacek",
+ "notatki": [
+  "Dodaj SearchPolicy: wiązka po tacce z ryzykiem trudnych tacek\n\nMechanizm: policies.build zwraca SearchPolicy. Plan jednej tacki to wiązka 40 po kolejnościach i pozycjach klocków z czyszczeniem linii (bitboard: fit, place, clear_full). Liść wiązki _cheap = 4.2·linie tacki − 1.4·(zajęte pola + pola reszty tacki) − 0.75·kieszenie (puste pole z co najmniej trzema zablokowanymi bokami, granica się liczy). Spośród stanów wiązki 8 najlepszych (20 przy ≤22 wolnych polach) ocenia _penalty = −(12.3·martwe pozy + 400·miss³ + 80·miss + 400·ryzyko). Ryzyko: 5 trudnych typów o najniższym odsetku żywych póz (dobór per plansza), 35 multizbiorów trójek ważonych 1/3/6 z 125; każdy typ losuje 3 żywe pozy raz na tackę; trójkę sprawdza dokładny DFS po kolejnościach i pozycjach z czyszczeniem.\n\nDowód z historii: 2.1 w drzewie 5 (wiązka 40 po taniej ocenie, iso 0.75, line 4.2, dead 12.3), 3.3 (iso = puste pole z co najmniej trzema zablokowanymi sąsiadami), 4.2 (adaptacyjny FINAL 20/8, BEAM 40), 4.3 (losowania per slot, HARD_TYPES [3,4,7,6,10]; s_sym 0.985 to ich pomiar, nie mój).\n\nDlaczego to nie powtórka: zbiór trudnych typów dobierany per plansza zamiast stałego; losowanie z żywych póz (notatka 4.3 tego nie precyzuje; martwe pozy są już w DEAD_W, więc nie liczą się podwójnie); zajętość z resztą tacki, bo bez tego liście o różnych klockach nie są porównywalne; linie zsumowane po całej tacce, a nie tylko z ostatniego ruchu. BEAM 8 z wersji roboczej przywrócono do 40 zgodnie z 2.1 i 4.2.\n\nRyzyko: wynik nieznany, nic nie zmierzono. Smoke (3 partie po 300 ruchów, tylko czas i brak wyjątków): średnio 2,7 ms na ruch, maks. 24,5 ms. Wcześniejsza wersja w smoke kończyła partie po 34–64 ruchach; nie sprawdzono, czy poprawki to usunęły, więc możliwa regresja względem greedy. Ocena rozstrzyga.\n\nTesty: tests/test_search.py — ruchy planu odtwarzane w prawdziwej grze, determinizm, pełne pole, jedna wolna komórka. python3 -m unittest tests.test_bitboard tests.test_search: 7 OK.\n\nCo dalej: zrobione: 58dc7ae, 4c515ec, ten commit. Następny krok: po ocenie, jeśli s_sym < 0.983, osobna próba z HARD_TYPES z 2.1 [4,6,7,10,9], bez innych zmian. Nie powtarzać: samego poszerzania wiązki (beam 150 bez efektu wg 2.1), mid-rerank, hard=1000, strojenia wag na tym samym estymatorze.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj prymitywy bitboardowe: maski dopasowań, układanie i czyszczenie linii\n\nPlansza jako jedna liczba 64-bitowa, a dla każdej z 41 poz maska kotwic,\nw których klocek się mieści (AND przesunięć wolnych pól). Pozwala liczyć\nruchy i kontrolę tacki bez pętli po komórkach w wiązce.\n\nMechanizm: fit(pose, free) = AND_k (free >> k) & kotwice; place przez\nprzesunięcie maski klocka; clear_full zwraca planszę i liczbę linii.\nDowód: tests/test_bitboard.py porównuje z Board.can_place_piece,\nplace_piece i check_full_lines/clear_lines na losowych planszach (3 testy OK).\nRyzyko: nic nie zmienia w polityce; wynik niezmierzony.\n\nCo dalej:\n- zrobione: ten commit (bitboard.py, testy)\n- następny krok: wiązka po tacce (3 klocki) z oceną liścia, podpięta w build\n- czego nie powtarzać: porównań wyniku na własnych partiach\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj policies.build: zachłanna polityka jako punkt wyjścia\n\nOcena wywołuje policies.build(weights), a w stanie początkowym tej funkcji\nnie ma, więc każda partia kończy się wyjątkiem i wynikiem 0. Ten commit\ndodaje build zwracające GreedyPolicy (weights jest ignorowane), żeby węzeł\nmiał działający kontrakt reset/act.\n\nMechanizm: bez zmian względem GreedyPolicy z benchmarku.\nDowód: smoke 3 partie (seedy 1-3, limit 50 ruchów) bez wyjątków, 105 postawień.\nRyzyko: wynik niezmierzony, nie jest to ocena jakości.\n\nCo dalej:\n- zrobione: ten commit (build zwraca GreedyPolicy)\n- następny krok: wiązka po tacce na bitboardach z cechami liścia 2.1 z drzewa 5\n  (occ 1.4, kieszenie 0.75, krawędzie 1.5, dead 12.3, linie 4.2) i ryzykiem trudnych tacek\n- czego nie powtarzać: nie wstawiać GreedyPolicy jako wyniku końcowego\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 89,
+  "usd": 7.1522,
+  "minuty": 33.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T19:03:11Z",
+   "koniec": "2026-10-10T19:36:40Z",
+   "tury": 89,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
