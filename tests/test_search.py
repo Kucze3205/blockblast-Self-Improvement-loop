@@ -1,8 +1,8 @@
+import json
 import os
 import random
+import subprocess
 import sys
-
-import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -75,10 +75,21 @@ def test_default_policy_plays_legal_moves():
 
 
 def test_build_loads_weights_directory(tmp_path):
-    np.savez(tmp_path / "value.npz", w=np.zeros(FEATURE_COUNT), b=np.array(0.5))
+    (tmp_path / "value.json").write_text(json.dumps({"w": [0.0] * FEATURE_COUNT, "b": 0.5}))
     policy = build(str(tmp_path))
     assert policy.name == "search"
     assert policy._bias == 0.5
+
+
+def test_build_needs_no_numpy():
+    code = (
+        "import sys\n"
+        "sys.modules['numpy'] = None\n"
+        "sys.path.insert(0, sys.argv[1])\n"
+        "from policies import build\n"
+        "assert build(sys.argv[2]).name == 'search'\n"
+    )
+    subprocess.run([sys.executable, "-c", code, ROOT, os.path.join(ROOT, "weights")], check=True)
 
 
 def test_best_move_places_piece_when_full_tray_does_not_fit():

@@ -1,5 +1,6 @@
-"""Trenuje weights/value.npz: regresja grzbietowa czasu do przegranej, po rundach polityki."""
+"""Trenuje weights/value.json: regresja grzbietowa czasu do przegranej, po rundach polityki."""
 import argparse
+import json
 import os
 from multiprocessing import Pool
 
@@ -72,7 +73,8 @@ def main():
               f"R2 walidacja {r2(X_valid, y_valid, w, b):.3f}", flush=True)
 
         os.makedirs(args.out, exist_ok=True)
-        np.savez(os.path.join(args.out, "value.npz"), w=w, b=np.array(b))
+        with open(os.path.join(args.out, "value.json"), "w") as f:
+            json.dump({"w": w.tolist(), "b": b}, f)
         weights = args.out
 
 

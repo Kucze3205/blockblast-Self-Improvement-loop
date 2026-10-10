@@ -4,10 +4,9 @@ Polityki grające, których używa benchmark.
 Wszystkie są deterministyczne przy zadanym seedzie partii — benchmark mierzy,
 co polityka umie, a nie jak wypada w trakcie nauki (#8).
 """
+import json
 import os
 import random
-
-import numpy as np
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
@@ -111,7 +110,8 @@ class SearchPolicy:
 def build(weights):
     if weights is None:
         return SearchPolicy(DEFAULT_WEIGHTS, DEFAULT_BIAS, SEARCH_WIDTH)
-    data = np.load(os.path.join(weights, "value.npz"))
-    values = data["w"].tolist()
+    with open(os.path.join(weights, "value.json")) as f:
+        data = json.load(f)
+    values = data["w"]
     assert len(values) == FEATURE_COUNT, f"wagi maja {len(values)} cech, oczekiwano {FEATURE_COUNT}"
     return SearchPolicy(values, float(data["b"]), SEARCH_WIDTH)
