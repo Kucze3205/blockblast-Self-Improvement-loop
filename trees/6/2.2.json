@@ -2,16 +2,25 @@
  "rodzic": "2.1",
  "rodzic_sha": "56b3f3c2bc1e0533a30ef86b42f2e4419b0aa9b3",
  "kolejnosc": 7,
- "sha": "56b3f3c2bc1e0533a30ef86b42f2e4419b0aa9b3",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "1fb754ac01c0cdc19eef0ca96f161c26d9c20285",
+ "stan": "ocena w toku",
+ "gist": "Ryzyko trudnych tacek ważone multizbiorem zamiast 16 losowych tacek (węzeł 2.2)",
+ "notatki": [
+  "Ryzyko trudnych tacek ważone multizbiorem zamiast 16 losowych tacek (węzeł 2.2)\n\nMechanizm:\n- liść bez zmian względem 2.1 (wagi cech, kara za dopasowanie, LINE_REWARD 4.2, DEAD_W 12.3)\n- HARD_TYPES = (3, 4, 7, 6, 10): beam4, beam5, square3, rect23, corner5\n- 35 multizbiorów trójek z tych typów, każdy z wagą liczba permutacji / 125; suma wag = 1\n- na tackę losuję 3 niezależne pozy na każdy typ; k-te wystąpienie typu w multizbiorze bierze\n  k-tą pozę, więc dwie kopie tego samego typu nie dzielą pozy\n- act: ryzyko = suma wag tacek, których nie da się ułożyć; HARD_PENALTY 400 (w 2.1 było 500 przy bad/16)\n- policies.build bez zmian w kontrakcie; test wag w weights/ usunięty, bo weights/ nie jest zatwierdzane\n\nDowód z historii:\n- 5/4.3 (s_sym 0.985): ten sam estymator na liściu 5/2.1, czyli wagach odtworzonych w 6/2.1\n- 6/2.1 (0.969): ten sam liść, ryzyko z 16 tacek Monte Carlo, HARD_TYPES (4, 6, 7, 10, 9)\n- zmiana względem 2.1 dotyczy tylko estymatora ryzyka i zbioru typów\n- smoke lokalnie (seedy 1-3, do 300 ruchów; nie jest wynikiem): bez wyjątków; 11,8 ms na ruch\n  średnio, 46 ms maks.; ta sama ścieżka z MC: 6,5 ms na ruch\n- testy: python3 -m unittest tests.test_search_policy: 8 OK\n\nDlaczego to nie powtórka:\n- 6/4.1 (0.390) i 6/5.1 (0.180) też miały multizbiory, ale na innym liściu: 4.1 z dynamicznym\n  zbiorem typów i żywymi pozami, 5.1 z wagami cech 3/2/0.5/0.3 zamiast liścia 2.1\n- tu jest liść 2.1 z estymatorem 5/4.3, czego w drzewie 6 nie testowano\n\nRyzyko:\n- wynik nieznany; klucze oceny różnią się (drzewo 5: 7d9e14cfa2cf89a0, drzewo 6: fbf02cb52df323a5),\n  więc 0.985 i 0.969 nie są sparowane\n- koszt czasu ok. 1,8 raza względem MC; jeśli limit shardu jest ciasny, węzeł dostanie \"za wolna\"\n  (limitu nie odczytałem, konfiguracja nieczytelna)\n- lokalna dystrybucja jest trudniejsza (średnio 370 przy capie 500; oficjalnie ok. 94% partii\n  dochodzi do 500), więc lokalne liczby nie są pomiarem\n- jeśli wynik spadnie, sprawdzić najpierw estymator, potem HARD_TYPES; wagi nie strojone\n\nCo dalej:\n- zrobione: 56b3f3c (węzeł 2.1), ten commit (węzeł 2.2)\n- następny krok: ocena 2.2; jeśli s_sym poniżej 0.969 albo wynik za wolny, zmienić jedną rzecz\n  (HARD_PENALTY albo HARD_TYPES jak w 2.1)\n- czego nie powtarzać: lokalnego strojenia wag (tools/tune.py nie zaakceptował żadnej zmiany),\n  multizbiorów na liściu 4.1 i 5.1\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 92,
+  "usd": 6.769,
+  "minuty": 71.2
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T19:46:36Z",
+   "koniec": "2026-10-10T20:57:48Z",
+   "tury": 92,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
