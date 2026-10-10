@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "1d2938e30e1ed49b65f8678d898e9443bcfda909",
+ "stan": "ocena w toku",
+ "gist": "Ryzyko trudnych tacek: dokładna wartość po pozach zamiast próbkowania",
+ "notatki": [
+  "Ryzyko trudnych tacek: dokładna wartość po pozach zamiast próbkowania\n\nMechanizm: niegrywalność następnej tacki liczona dokładnie po wszystkich 11 pozach pięciu\ntrudnych typów. Multizbiory trzech póz (286), waga = liczba uporządkowań * iloczyn 1/(5*n_typu),\nsuma wag = 1 (test). Gra nie losuje już póz, więc plan nie zależy od seeda. Trójka bez żadnego\nklocka pasującego na planszy jest niegrywalna bez DFS. DFS z budżetem 400 bez zmian.\n\nDowód z historii: 5/4.2 -> 5/4.3 (0.9776 -> 0.9852, 54 -> 41 przegranych) przyniosło to, że\nkażdy typ dostał trzy niezależne pozy zamiast jednej. Problem jest estymacyjny: wspólne zdarzenia\nsą rzadkie, więc 16-24 próbki zwracają zero (5/2.2, 5/2.3). Wartość dokładna usuwa szum\npróbkowania zamiast go uśredniać.\n\nDlaczego to nie powtórka: 5/5.2 liczyło łączne ryzyko z pełnego rozkładu generatora, a 3/3.4\ndokładne multizbiory wszystkich 15 typów (0.9096, inne ustawienie). Tu zakres to tylko pięć\ntrudnych typów z pozami dokładnie, bez zmiany wag, zbioru typów i FINAL.\n\nRyzyko: czas wzrósł około trzykrotnie na plan tacki. Smoke, 2 partie bez wyjątków: około 15 ms\nna ruch, czyli rzędu 7 s na partię. To nie jest pomiar oceny, trzeba sprawdzić limit shardu.\nDwie partie to za mało, by cokolwiek mówić o wyniku. 3/3.4 pokazuje, że dokładność nie zawsze\npomaga, więc wynik może być gorszy od próbkowania.\n\nCo dalej:\n- zrobione: 67c8cbf (baza, węzeł 7/1.1), ten commit (węzeł 7/1.2)\n- następny krok: po ocenie, jeśli s_sym < 0.985, cofnąć do próbkowania jako osobną ablację,\n  bez łączenia z innymi zmianami; jeśli za wolna, zmniejszyć FINAL albo budżet DFS\n- czego nie powtarzać: dokładnych multizbiorów wszystkich 15 typów (3/3.4)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj policies.build: wiązka tacki na bitboardach z ryzykiem trudnych tacek\n\nMechanizm: SearchPolicy (search_policy.py) przeszukuje wiązką (BEAM 40) kolejności i pozycje\nklocków bieżącej tacki na bitboardach 64-bit, deduplikuje po planszy i zapamiętuje plan do końca\ntacki. Ranking wiązki: 4.2 za linię, -1.4 za zajęte pole, -0.75 za kieszeń, -1.5 za przejście,\n-2.0 za puste pole przy brzegu. Końcówki (FINAL: 20 gdy <=22 wolnych pól, inaczej 8) dostają\nkarę za dopasowanie typów (400*(1-średnia_żywych)^3 + 80*(1-średnia) + 12.3*martwe typy) oraz\nkarę 400 * ważone prawdopodobieństwo niegrywalnej trójki z 5 trudnych typów (multizbiór, waga\nperms/125, 3 niezależne pozy na typ na plan). Grywalność tacki: DFS z budżetem 400 węzłów.\n\nDowód z historii: 5/4.3 = 0.98517 (41 przegranych) to najlepszy zmierzony węzeł. Odtworzenie\nod zera 5/4.1 dało 0.944, więc sama wiązka bez cech 5/4.2 nie wystarcza. Cechy i ryzyko są\nz notatek 5/4.2 i 5/4.3, bo kodu tych węzłów nie ma w repo.\n\nDlaczego to nie powtórka: HEAD nie miał policies.build, więc ocena dawała 0. To odtworzenie\nbazy, nie nowy mechanizm. Nowość przyjdzie w następnym commicie.\n\nRyzyko: odtworzenie z notatek może być słabsze niż 0.985 (6/3.1, 6/4.1, 6/5.1 z błędami\nznaków dały 0.18-0.43). Niejednoznaczne definicje odczytane z notatek: średnia żywych liczona\npo typach, martwe typy to typy bez żadnej żywej pozy, przejścia liczone z ścianami jako\nzapełnionymi. Testy: bitboard względem prostej implementacji na listach, cechy liścia względem\nreferencji, DFS względem pełnego przeszukiwania, kontrakt build i determinizm. Smoke: 2 partie\npo 500 ruchów, bez wyjątków, około 2,5 s na partię (to nie jest pomiar oceny).\n\nCo dalej:\n- zrobione: ten commit (węzeł 7/1.1, odtworzenie 5/4.3)\n- następny krok: dokładne, a nie próbkowane, prawdopodobieństwo niegrywalnej trójki z pozami\n  trudnych typów\n- czego nie powtarzać: próbkowania 16-24 tacek (szum, 5/2.2, 5/2.3), mobilności (4/1.2)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 62,
+  "usd": 4.1831,
+  "minuty": 18.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T22:34:10Z",
+   "koniec": "2026-10-10T22:52:25Z",
+   "tury": 62,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
