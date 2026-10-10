@@ -2,16 +2,25 @@
  "rodzic": "1.3",
  "rodzic_sha": "b44274f26e673b01d80e2502081251cedaca42a4",
  "kolejnosc": 16,
- "sha": "b44274f26e673b01d80e2502081251cedaca42a4",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "b5cab7309a16781efded19b11056463e4a3f2ee7",
+ "stan": "ocena w toku",
+ "gist": "Ryzyko trudnych tacek ważone multizbiorem zamiast 16 losowych, jak w 2.2",
+ "notatki": [
+  "Ryzyko trudnych tacek ważone multizbiorem zamiast 16 losowych, jak w 2.2\n\nMechanizm (search_policy.py):\n- _hard_trays losuje na ruch 3 pozy na każdy z pięciu trudnych typów; 35 multizbiorów\n  typów (combinations_with_replacement) z wagą liczba permutacji / 125; k-te wystąpienie\n  typu w trójce bierze k-tą pozę tego typu, więc każde miejsce ma własną próbkę\n- kara HARD_PENALTY 500 * suma wag tacek bez miejsca (wcześniej 500 * odsetek z 16 tacek);\n  budżet DFS 150 bez zmian\n- liść, HARD_TYPES, BEAM 40, FINAL 12 i reset(game_seed) bez zmian względem 1.3\n\nDowód z historii:\n- 2.1 = 0.969 (75 przegranych) na 16 losowych tackach; 2.2 = 0.978 (56) to ten sam\n  liść z multizbiorem: sama zmiana estymatora dała +0.009\n- 5/4.3 = 0.985 (41) używa tego samego estymatora (35 multizbiorów, osobna poza na\n  miejsce, waga perms/125)\n- 1.2 = 0.960 (93) i 1.3 = 0.960 (95) miały 16 losowych tacek; notatka 1.3 wskazała\n  ten estymator jako następny krok, bo sam liść nie wyjaśnił różnicy z 2.2\n\nDlaczego to nie powtórka: w łańcuchu 1 estymator nigdy nie był multizbiorem. Zmienia się\ntylko estymator, liść z 1.3 zostaje, więc wynik można przypisać estymatorowi. 2.2 miał\nliść z łańcucha 2, nie z 1.3, więc ta kombinacja nie była mierzona.\n\nRyzyko: wynik niezmierzony. Ryzyko dotyczy tylko tacek z trzema trudnymi klockami\n(1/27 rozkładu: generator.py losuje typ 1/15, potem pozę), więc zysk może być mały.\nPozy: po 3 na typ na ruch, szum pozy zostaje. HARD_PENALTY 500 i TRAY_BUDGET 150 nie\nstrojone (w 2.2 kara była 400). Koszt: 35 sprawdzeń na kandydata zamiast 16.\n\nSprawdzenie (nie ocena): testy 29, jeden błąd tkinter (istniejący, model.py);\ntests/test_policy.py 12 OK, w tym nowe: suma wag = 1 i typy tacki zgodne z multizbiorem.\nSmoke: 3 partie po 300 ruchów, 0 nielegalnych, bez wyjątków; 9,7 ms na ruch lokalnie\n(1.3 miał 3,45 ms w swoim pomiarze). Wynik niezmierzony.\n\nCo dalej:\n- zrobione: 225430d (1.2), b44274f (1.3), ten commit (1.4)\n- następny krok: ocena 1.4. Jeśli przebije 0.960 wyraźnie, osobny węzeł z deduplikacją\n  wiązki po planszy (4.3 z tego drzewa). Jeśli nie, estymator nie tłumaczy różnicy z 2.2\n  i kolejna próba to człon mieszany z 2.3.\n- czego nie powtarzać: 16 losowych tacek (1.2, 1.3); strojenia HARD_PENALTY przed pomiarem\n  tego węzła.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 33,
+  "usd": 1.9762,
+  "minuty": 7.8
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T21:19:49Z",
+   "koniec": "2026-10-10T21:27:34Z",
+   "tury": 33,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
