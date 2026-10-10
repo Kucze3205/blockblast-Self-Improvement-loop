@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "168d78b56bae4dc15d1df7d6bb0d6c7d333880ba",
+ "stan": "ocena w toku",
+ "gist": "Dodaj policies.build: wiązka po tacce z liściem 2.1 i ryzykiem trudnych tacek",
+ "notatki": [
+  "Dodaj policies.build: wiązka po tacce z liściem 2.1 i ryzykiem trudnych tacek\n\nMechanizm:\n- policies.build(weights) zwraca SearchPolicy (search_policy.py); weights są ignorowane, bo nie ma wag do załadowania.\n- Wiązka 40 po każdym postawieniu klocka z tacki, deduplikacja po (plansza, zajęte sloty), ranking tani: 4.2 za linię, 1.4 za zajęte pole.\n- Liść: 1.4 za zajęte pole, 0.75 za izolowane puste, 1.5 za pary zajęte-puste, 2.0 za puste pole przy brzegu, 12.3 za martwy typ, dopasowanie typów 400*(1-śr)^3 + 80*(1-śr), 400 * ułamek trudnych tacek.\n- Ryzyko: 16 tacek z trzech trudnych typów [4,6,7,10,9], każdy klocek losowany osobno, sprawdzane dokładnie (dowolna kolejność, czyszczenie linii).\n- FINAL: 20 kandydatów, gdy wolnych pól <= 22, inaczej 8.\n\nDowód z historii:\n- Liść i ryzyko z 5/2.1 = 0.983 (wagi z notatki: occ 1.4, iso 0.75, line 4.2, dead 12.3; krawędzie i brzeg z notatki 5/4.2).\n- Adaptacyjne FINAL z 5/4.2; 5/2.1 miał stałe 12.\n- Deduplikacja wiązki po planszy z 6/4.3 = 0.980.\n\nDlaczego to nie powtórka: liść i ryzyko są z 5/2.1, ale razem z adaptacyjnym FINAL i deduplikacją, których 5/2.1 nie miał. Kod drzew 1-6 nie jest w repo (SHA z rekordów są nieosiągalne), więc to napisane od nowa z notatek. Odtworzenie 6/2.1 dało 0.969 zamiast 0.983, więc wynik może być niższy.\n\nRyzyko: definicje krawędzi, brzegu i izolacji odtworzone z notatek, nie z kodu; wagi nie strojone. Mechanikę sprawdzono względem silnika (test_search_policy: pozycje, czyszczenie linii, sprawdzanie tacki). Smoke: 3 partie (seedy 1-3, limit 200 ruchów) bez wyjątków, ok. 3.4 ms na ruch; partie kończyły się przed limitem, więc skala wag może być zła. Nie oceniane.\n\nCo dalej:\n- zrobione: caf8e72 (stan początkowy), ten commit (węzeł 7/2)\n- następny krok: ocena 7/2 względem 5/2.1 (0.983); jeśli spadnie, najpierw sprawdzić definicje krawędzi i brzegu, dopiero potem wagi\n- czego nie powtarzać: strojenia wag bez nowej hipotezy; multizbioru z 4.2 (5/4.3 już go miał)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 37,
+  "usd": 2.3765,
+  "minuty": 10.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T22:34:11Z",
+   "koniec": "2026-10-10T22:44:44Z",
+   "tury": 37,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
