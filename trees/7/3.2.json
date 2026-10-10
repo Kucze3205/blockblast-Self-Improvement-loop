@@ -2,16 +2,25 @@
  "rodzic": "3.1",
  "rodzic_sha": "b290af6a010a5aa1cd95fe190b29940a449ada5c",
  "kolejnosc": 8,
- "sha": "b290af6a010a5aa1cd95fe190b29940a449ada5c",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "c517385407f0958e07e076691342a97f132fd575",
+ "stan": "ocena w toku",
+ "gist": "Dodaj SearchPolicy: wiązka tacki i dokładne ryzyko następnej",
+ "notatki": [
+  "Dodaj SearchPolicy: wiązka tacki i dokładne ryzyko następnej\n\nMechanizm: wiązka (40) po trzech klockach tacki. Na każdym kroku liść to 4,2 za\nlinię minus 0,2 za obwód po czyszczeniu, z komórkami wyczyszczonymi w tej tacce\nwliczonymi jako wypełnione (ghost). Na końcu tacki 20 najlepszych ułożeń (gdy wolnych\npól do 22, inaczej 8) jest oceniane: minus 0,75 za zamknięte puste pola i minus 400\nrazy ryzyko następnej tacki. Ryzyko to suma wag 286 multizbiorów 3 klocków z 11 poz\n5 trudnych typów (3,4,6,7,10), których nie da się ułożyć na planszy. DFS ma budżet 400;\nwyczerpany budżet liczy się jako grywalne.\n\nDowód z historii:\n- chain 1 (.historia/7/1.patch): wiązka i dokładne ryzyko po pozach, zmierzone 0.949.\n  Jego liść to _cheap (dziury i przejścia krawędzi), nie obwód.\n- 2.1 i 4.1: ryzyko próbkowane, zmierzone 0.453 i 0.454.\n- 3.1.json (poprzednia próba tej gałęzi, 0.190): obwód liczony po czyszczeniu karał\n  samo czyszczenie linii; ryzyko świeżej tacki liczone po każdym postawieniu;\n  jednokrokowy lookahead nie widział, czy reszta tacki da się ułożyć razem; waga\n  mobilności przebijała wagę linii.\n\nDlaczego to nie powtórka: nie ma mobilności ani próbkowania. Ścieżka tacki i dokładne\nryzyko są z chain 1, a liść jest nowy (obwód z ghost, kara za zamknięte pola),\nmotywowany diagnozą 3.1. Liścia nie sprawdzono osobno.\n\nRyzyko: koszt ~14 ms na postawienie, chain 1 ~15 ms na tych samych ziarnach (11-13,\ndo 300 postawień na ziarno). Limit limit_shardu_s jest nieznany, bo config jest\nnieczytelny, ale chain 1 przeszedł ocenę przy podobnym koszcie. Wagi 4,2 / 0,2 / 0,75 /\n400 nie są strojone; wyniku nie mierzyłem.\n\nCo dalej:\n- zrobione: b290af6 (polityka jednego ruchu bez wiązki); ten commit: SearchPolicy\n  i tests/test_tray_search.py (6 testów OK; w pełnym zestawie jedyny błąd to\n  istniejący ModuleNotFoundError: tkinter).\n- następny krok: ocena zewnętrzna wyniku i czasu.\n- nie powtarzać: obwodu liczonego po czyszczeniu, próbkowanego ryzyka, mobilności\n  linii jako wagi dominującej.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 45,
+  "usd": 3.2481,
+  "minuty": 14.7
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T23:22:59Z",
+   "koniec": "2026-10-10T23:37:39Z",
+   "tury": 45,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
