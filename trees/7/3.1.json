@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 3,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "b290af6a010a5aa1cd95fe190b29940a449ada5c",
+ "stan": "ocena w toku",
+ "gist": "Dodaj policies.build: polityka jednego ruchu bez wiązki po tacce",
+ "notatki": [
+  "Dodaj policies.build: polityka jednego ruchu bez wiązki po tacce\n\nMechanizm:\n- każde postawienie z tacki jest oceniane po czyszczeniu linii: 0.76*linie - 0.2*obwód pustych pól - 0.5*puste pola odcięte od brzegu + 0.05*miejsca dla zostałych klocków; ruch, po którym żaden zostały klocek nie wchodzi, dostaje -1e6\n- 8 najlepszych kandydatów dostaje -20*q^3, gdzie q to prawdopodobieństwo, że losowy klocek generatora nie pasuje nigdzie (typ jednostajnie, poza jednostajnie w typie); q^3 to ryzyko martwej świeżej tacki, bo klocki są niezależne\n- build(weights) ignoruje wagi, nic się nie trenuje\n\nDowód z historii:\n- drzewa 1-6 to wiązka po tacce z ryzykiem trudnych tacek; najlepsze 5/4.3 (0.985) i 6/2.3 (0.982). Ich commity nie istnieją w tym klonie (jeden commit), więc kodu nie da się przywrócić, a odtwarzanie tej rodziny byłoby powtórką\n- pierwsza wersja używała cech wysokości i dziur z Tetrisa; to błąd koncepcyjny, bo Block Blast nie ma grawitacji, więc zastąpiono je obwodem i zalaniem od brzegu\n- sprawdzone: maska miejsc i czyszczenie linii względem Board (200 losowych plansz), obwód i zalanie względem pętli i BFS (300-400 plansz), suma wag rozkładu klocków 1.0\n\nDlaczego to nie powtórka:\n- brak wiązki po tacce, DFS i próbkowanych tacek; ocena jednego ruchu z mobilnością i ryzykiem świeżej tacki z rozkładu generatora\n\nRyzyko:\n- wynik niezmierzony; w partiach kontrolnych (seedy 1-3) gra kończy się po około 30 postawieniach, więc to prawdopodobnie znacznie słabiej niż drzewo 5\n- strażnik świeżej tacki działa na planszy po jednym ruchu, a nie po całej tacce, więc nie widzi uzupełnienia po trzecim klocku; to główna słabość mechanizmu\n- wagi (0.76, -0.2, -0.5, 0.05, 20, top 8) nie są dostrojone ani przetestowane\n- testy: 16 z 17; jedyny błąd to brak tkinter w model.py (turtle), istniał przed tą zmianą\n\nCo dalej:\n- zrobione: ten commit\n- następny krok: ocena przez ewaluator; jeśli wynik jest bardzo niski, trzeba sprowadzić commity drzew 5/6 do tego klonu i połączyć ich wiązkę po tacce z liśćmi tej polityki\n- czego nie powtarzać: cech wysokości i dziur (zakładają grawitację); strojenia wag na partiach kontrolnych bez oceny ewaluatora\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 86,
+  "usd": 4.3613,
+  "minuty": 19.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T22:34:12Z",
+   "koniec": "2026-10-10T22:53:36Z",
+   "tury": 86,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
