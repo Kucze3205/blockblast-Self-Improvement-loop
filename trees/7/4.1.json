@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 4,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "31efc7d621ef997c8d5f870305f01333323d6c01",
+ "stan": "ocena w toku",
+ "gist": "Szerokość wiązki 40 -> 120 i finał 20/8 po tacce",
+ "notatki": [
+  "Szerokość wiązki 40 -> 120 i finał 20/8 po tacce\n\nMechanizm: BEAM 40 -> 120 w przeszukaniu kolejności i pozycji klocków tacki. Finał: 20 kandydatów na ciasnej planszy (wolne pola <= 22), 8 na otwartej, jak w 6/4.4.\n\nDowód z historii: 6/5.2 -> 6/5.3 (BEAM 12 -> 40) dało 0.951 -> 0.974; 6/4.4 (FINAL 20/8) 0.981 wobec 6/4.3 0.980. Pomiar zgodności decyzji z wiązką 400 (nie wynik): wiązka 40 zgadza się w 68 z 72 próbkowanych ruchów, wiązka 120 w 71 z 72. Koszt samej wiązki: 1,8 ms przy 40, 3,9 ms przy 120.\n\nDlaczego to nie powtórka: 40 było najwyższą szerokością w historii, 120 nie było mierzone. Finał 20/8 mierzono tylko na bazie 6/4.3, tu na bazie z cdf20b1 (liść 5/2.1, dokładne P martwego, multizbiór z przeliczeniem linii).\n\nRyzyko: czas ruchu na 230 ruchach (seedy 11-13): średnio 26,8 ms, p95 46,5 ms, max 72 ms; poprzednio 25,6 ms średnio na 350 ruchach (inne seedy). Szersza wiązka może mocniej optymalizować niedoskonały liść, a to może zaszkodzić. Wynik nieznany, nic nie zmierzono. Zero wyjątków i zero nielegalnych ruchów w tych 230 ruchach.\n\nCo dalej:\n- zrobione: caf8e72 (baza gałęzi), cdf20b1 (wiązka po tacce i build), ten commit (BEAM 120, finał 20/8)\n- następny krok: po ocenie decyzja, czy zostać przy szerokości 120; luka łącznej grywalności tacek z dwoma trudnymi klockami zostaje otwarta\n- czego nie powtarzać: wybór kandydatów do kary po wartości z karą (6/3.3, 0.971), próbkowane łączne ryzyko z pełnego rozkładu (5/5.2, 0.977)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaje wiązkę po tacce na bitboardach jako policies.build\n\nMechanizm: tray_search.TraySearchPolicy przeszukuje wiązką (BEAM 40) kolejności i pozycje trzech klocków tacki na bitboardach. Liść: 1.4*zajęte + 0.75*izolowane + 4.2*wyczyszczone linie (wagi z 5/2.1). Kara: 66*P(następna tacka ma klocek bez miejsca), P liczone dokładnie z rozkładu generatora (jak 5/2.2). Twarda kara: 400*P(multizbiór trzech trudnych klocków nie gra się łącznie, z czyszczeniem linii), DFS po klockach z budżetem 200 (jak 6/2.2). Deduplikacja stanów po (plansza, użyte klocki) (jak 6/2.4). Finał: 16 kandydatów na ciasnej planszy (wolne pola <= 22), 8 na otwartej.\n\nDowód z historii: 5/2.1 0.983, 5/2.2 0.981, 5/4.2 0.978, 6/2.2 0.978, 6/2.4 0.981, 6/4.4 0.981 (FINAL 20/8). Ta kombinacja na jednej bazie nie była jeszcze mierzona.\n\nDlaczego to nie powtórka: w historii nie ma węzła z zestawem liść 5/2.1 + dokładne P martwego 5/2.2 + multizbiór 6/2.2 + deduplikacja 6/2.4. Pierwsza próba na gałęzi trees/7/4.\n\nDiagnoza (pomiar na kilku partiach, nie wynik): budżet DFS 200 daje ten sam wynik co dokładne przeszukanie na 19184 sprawdzeniach z 87 stanów, więc nie zawyża ryzyka. Dwie niekompletne wiązki pozostają niekompletne przy szerokości 400, czyli to martwe tacki, a nie obcięcie. Po remisach liścia finał bierze kandydatów w kolejności odkrycia (lewy-górny róg): 4 z ok. 58 próbkowanych decyzji zmienia się, gdy karę liczy się dla wszystkich kandydatów.\n\nRyzyko: czas ruchu ok. 26 ms średnio (3 partie, 350 ruchów). Tacka z dwoma trudnymi klockami i jednym średnim nie ma kary za łączną grywalność (luka 5/2.3), więc ruch prowadzący do niegrywalnej tacki nie jest karany. Wynik nieznany, nic nie zmierzono.\n\nCo dalej:\n- zrobione: caf8e72 (baza gałęzi), ten commit\n- następny krok: szerokość wiązki 40 -> 120 i finał 20/8 (zgodność decyzji z wiązką 400: 68/72 przy 40, 71/72 przy 120)\n- czego nie powtarzać: wybór kandydatów do kary po wartości z karą (6/3.3, 0.971), próbkowane łączne ryzyko z pełnego rozkładu (5/5.2, 0.977)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 93,
+  "usd": 9.2786,
+  "minuty": 46.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T22:34:16Z",
+   "koniec": "2026-10-10T23:20:21Z",
+   "tury": 93,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
