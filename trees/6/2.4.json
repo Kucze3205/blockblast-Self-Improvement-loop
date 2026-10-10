@@ -2,16 +2,25 @@
  "rodzic": "2.3",
  "rodzic_sha": "7d53d1046f0e3a08c2a24e8e20e4239ccf28bfd8",
  "kolejnosc": 17,
- "sha": "7d53d1046f0e3a08c2a24e8e20e4239ccf28bfd8",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "2aef4f619188469091f223c3b9fd80f6a06a7d0f",
+ "stan": "ocena w toku",
+ "gist": "Deduplikuj wiązkę i liście po planszy: permutacje tacki nie zajmują miejsc (węzeł 2.4)",
+ "notatki": [
+  "Deduplikuj wiązkę i liście po planszy: permutacje tacki nie zajmują miejsc (węzeł 2.4)\n\nMechanizm:\n- _leaves scala stany o tym samym kluczu (plansza, posortowane pozy pozostałych klocków, liczba wyczyszczonych linii); każdy stan niesie zbiór pierwszych ruchów, które do niego prowadzą, a zbiory przy scaleniu się sumują\n- act bierze min(zbiór ruchów) wybranego liścia; ocena liścia bez zmian: _cheap, kara za dopasowanie, HARD_PENALTY 400 z multizbiorami, MIX_PENALTY 100, FINAL 12, BEAM 40\n- testy: kompletność pierwszych ruchów przy nieograniczonej wiązce nadal zgodna z brute force (suma zbiorów po liściach); nowy test: trzy identyczne 1x1 na pustej planszy daje C(64,3) liści, czyli jeden na zbiór pól\n\nDowód z historii:\n- 4/4.3 (0.980) względem 4/4.2 (0.974): ten sam klucz deduplikacji na wiązce tacki (plansza, pozostałe klocki, linie), +0.006 w drzewie 6 na innej bazie\n- pomiar diagnostyczny tej gałęzi (seedy 1-3, 458 ruchów, limit 200 postawień; nie jest wynikiem): w top-12 średnio 7,9 unikalnych plansz przed zmianą, 11,5 po zmianie; 21% liści (410 wobec 322 na ruch) to były duplikaty; 0 złych ruchów\n\nDlaczego to nie powtórka:\n- w łańcuchu 2 nie było deduplikacji; węzły 2.1-2.3 zmieniały liść, estymator ryzyka i człon mieszany, a nie zbiór kandydatów\n- budżet bez zmian: BEAM, FINAL i liczba wywołań ryzyka na ruch takie same, zmienia się tylko to, które plansze trafiają do top-12\n\nRyzyko:\n- wynik nieznany; jeśli spadnie, sprawdzić najpierw przegrane, nie czas\n- koszt: czas samych liści 1,9 do 2,5 ms na ruch (zmierzone tylko dla liści, całości nie mierzono)\n- przy tej samej planszy zwracany jest najmniejszy z pierwszych ruchów (min zbioru); plansza i jej wartość są takie same, więc skutek ten sam\n\nCo dalej:\n- zrobione: 1fb754a (węzeł 2.2), 6c4b2fc (węzeł 2.3), 7d53d10 (korekta notatki), ten commit (węzeł 2.4)\n- następny krok: ocena 2.4 względem 2.3 (0.982, klucz fbf02cb52df323a5)\n- czego nie powtarzać: deduplikacji bez zbioru ruchów (psuje test kompletności pierwszych ruchów); beam 150 i wyższych FINAL/BEAM (już w notatce 2.1)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 47,
+  "usd": 2.4472,
+  "minuty": 10.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T21:19:51Z",
+   "koniec": "2026-10-10T21:30:28Z",
+   "tury": 47,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
