@@ -15,7 +15,8 @@ EPS = 0.002       # minimalna poprawa rekordu łańcucha, by liczyła się jako 
 GAP = 0.03        # łańcuch, którego rekord jest o tyle gorszy od najlepszego w drzewie, jest porzucany
 GAP_PER_ROUND = 0.01   # tyle luzu więcej na każdą pozostałą rundę
 NEAR = 0.01       # łańcuch z rekordem w tej odległości od najlepszego nie jest zamykany za zastój
-STOP_GAIN = 0.003 # minimalny wzrost rekordu drzewa w ostatniej warstwie, by kontynuować
+STOP_GAIN = 0.003 # minimalny wzrost rekordu drzewa w ostatnich dwóch warstwach, by kontynuować
+STOP_DEPTH = 3    # od tej głębokości sprawdzamy, czy drzewo jeszcze się opłaca
 
 
 def _stalled(nodes):
@@ -27,13 +28,12 @@ def _stalled(nodes):
 
 
 def _gain_dried_up(obs):
-    """Czy ostatnia warstwa głębokości nie podniosła rekordu drzewa o STOP_GAIN.
-
-    Każda runda kosztuje czas (beta * godziny), a w głębi drzewa zyski są małe,
-    więc jedna runda bez postępu oznacza, że dalsze otwieranie się zwykle nie zwróci."""
+    """Czy ostatnie dwie warstwy głębokości nie podniosły rekordu drzewa o STOP_GAIN."""
     depth = max(o["glebokosc"] for o in obs)
-    old = [o["s_v"] for o in obs if o["glebokosc"] < depth]
-    new = [o["s_v"] for o in obs if o["glebokosc"] >= depth]
+    if depth < STOP_DEPTH:
+        return False
+    old = [o["s_v"] for o in obs if o["glebokosc"] < depth - 1]
+    new = [o["s_v"] for o in obs if o["glebokosc"] >= depth - 1]
     if not old or not new:
         return False
     return max(new) - max(old) < STOP_GAIN
