@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 import bitboard as bb
 from game import Game
-from search import SearchPolicy, plan_tray
+from search import SearchPolicy, _cheap, plan_tray
 
 
 def _tray(game):
@@ -56,6 +56,12 @@ class TestSearch(unittest.TestCase):
     def test_nearly_full_board_fills_a_free_cell(self):
         occ = bb.FULL & ~((1 << 0) | (1 << 9))
         self.assertIn(plan_tray(occ, [(0, _single())], random.Random(1)), ([(0, 0)], [(0, 9)]))
+
+    def test_leaf_scores_position_not_only_piece_size(self):
+        single = _single()
+        corner = _cheap(*bb.clear_full(bb.place(0, single, 0)))
+        centre = _cheap(*bb.clear_full(bb.place(0, single, 3 * bb.W + 3)))
+        self.assertNotEqual(corner, centre)
 
     def test_full_board_gives_empty_plan(self):
         self.assertEqual(plan_tray(bb.FULL, [(0, _single())], random.Random(1)), [])
