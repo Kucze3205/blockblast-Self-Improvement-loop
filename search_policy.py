@@ -25,14 +25,16 @@ CROWDED_FREE = 22
 DFS_BUDGET = 400
 HARD_TYPES = (3, 4, 7, 6, 10)
 HARD_W = 400.0
-FIT_W = 400.0
-FIT_MEAN_W = 80.0
-DEAD_W = 12.3
-LINE_W = 4.2
-OCC_W = 1.4
-POCKET_W = 0.75
-TRANS_W = 1.5
-BORDER_W = 2.0
+DEFAULT_WEIGHTS = {
+    "LINE_W": 4.2,
+    "OCC_W": 1.4,
+    "POCKET_W": 0.75,
+    "TRANS_W": 1.5,
+    "BORDER_W": 2.0,
+    "FIT_W": 400.0,
+    "FIT_MEAN_W": 80.0,
+    "DEAD_W": 12.3,
+}
 
 
 def _placements(shape):
@@ -91,7 +93,7 @@ def _clear(board):
     return board & ~cleared, lines
 
 
-def _cheap(b):
+def _cheap(b, w=DEFAULT_WEIGHTS):
     e = FULL & ~b
     bl = ((b << 1) & FULL & ~COL0) | COL0
     br = ((b >> 1) & ~COL7) | COL7
@@ -105,20 +107,20 @@ def _cheap(b):
         + _pc(e & ROW0) + _pc(e & ROW7)
     )
     occ = 64 - _pc(e)
-    return -OCC_W * occ - POCKET_W * pockets - TRANS_W * trans - BORDER_W * _pc(e & RING)
+    return -w["OCC_W"] * occ - w["POCKET_W"] * pockets - w["TRANS_W"] * trans - w["BORDER_W"] * _pc(e & RING)
 
 
 def _alive(b):
     return [any(not (b & m) for _, _, m in group) for group in POSES]
 
 
-def _fit_penalty(alive):
+def _fit_penalty(alive, w=DEFAULT_WEIGHTS):
     fracs = [sum(alive[p] for p in group) / len(group) for group in PIECE_TYPES]
     alive_fracs = [f for f in fracs if f > 0]
     mean_alive = sum(alive_fracs) / len(alive_fracs) if alive_fracs else 0.0
     mean_all = sum(fracs) / len(fracs)
     dead = len(fracs) - len(alive_fracs)
-    return FIT_W * (1 - mean_alive) ** 3 + FIT_MEAN_W * (1 - mean_all) + DEAD_W * dead
+    return w["FIT_W"] * (1 - mean_alive) ** 3 + w["FIT_MEAN_W"] * (1 - mean_all) + w["DEAD_W"] * dead
 
 
 class _Budget(Exception):
@@ -165,13 +167,16 @@ def _hard_risk(b, alive):
     return risk
 
 
-def _final_value(b, rank):
+def _final_value(b, rank, w):
     alive = _alive(b)
-    return rank - _fit_penalty(alive) - HARD_W * _hard_risk(b, alive)
+    return rank - _fit_penalty(alive, w) - HARD_W * _hard_risk(b, alive)
 
 
 class SearchPolicy:
     name = "search"
+
+    def __init__(self, weights=None):
+        self.w = {**DEFAULT_WEIGHTS, **(weights or {})}
 
     def reset(self, game_seed):
         self.queue = []
@@ -187,6 +192,7 @@ class SearchPolicy:
         return actions[0]
 
     def _plan(self, board, slots):
+        w = self.w
         full = (1 << len(slots)) - 1
         states = {(board, 0): (0.0, 0, ())}
         for _ in slots:
@@ -201,7 +207,7 @@ class SearchPolicy:
                             continue
                         nb, lines = _clear(b | m)
                         nacc = acc + lines
-                        rank = LINE_W * nacc + _cheap(nb)
+                        rank = w["LINE_W"] * nacc + _cheap(nb, w)
                         key = (nb, used | bit)
                         cur = nxt.get(key)
                         if cur is None or rank > cur[0]:
@@ -216,5 +222,5 @@ class SearchPolicy:
         free = 64 - _pc(board)
         count = FINAL_CROWDED if free <= CROWDED_FREE else FINAL_OPEN
         finals = sorted(complete, key=lambda c: -c[1][0])[:count]
-        best = max(finals, key=lambda c: _final_value(c[0], c[1][0]))
+        best = max(finals, key=lambda c: _final_value(c[0], c[1][0], w))
         return best[1][2]

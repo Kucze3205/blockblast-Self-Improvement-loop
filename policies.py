@@ -4,6 +4,8 @@ Polityki grające, których używa benchmark.
 Wszystkie są deterministyczne przy zadanym seedzie partii — benchmark mierzy,
 co polityka umie, a nie jak wypada w trakcie nauki (#8).
 """
+import json
+import os
 import random
 
 from board import Board
@@ -78,4 +80,7 @@ def _immediate_gain(game, action):
 
 
 def build(weights):
-    return SearchPolicy()
+    if weights is None:
+        return SearchPolicy()
+    with open(os.path.join(weights, "leaf.json")) as f:
+        return SearchPolicy(json.load(f))
