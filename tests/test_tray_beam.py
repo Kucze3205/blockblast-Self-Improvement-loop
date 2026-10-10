@@ -141,6 +141,15 @@ class TrayBeamTest(unittest.TestCase):
                             expected.add((idx, x, y))
                 self.assertEqual(expected, found)
 
+    def test_hard_trays_are_weighted_multisets(self):
+        trays = pol._hard_trays(random.Random(7))
+        self.assertEqual(35, len(trays))
+        self.assertAlmostEqual(1.0, sum(weight for weight, _ in trays))
+        hard = {pose for t in pol._HARD_TYPES for pose in PIECE_TYPES[t]}
+        for _, tray in trays:
+            self.assertEqual(3, len(tray))
+            self.assertTrue(set(tray) <= hard)
+
     def test_build_contract_and_determinism(self):
         def play(seed, moves):
             policy = pol.build(None)

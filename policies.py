@@ -4,6 +4,7 @@ Polityki grające, których używa benchmark.
 Wszystkie są deterministyczne przy zadanym seedzie partii — benchmark mierzy,
 co polityka umie, a nie jak wypada w trakcie nauki (#8).
 """
+import itertools
 import random
 
 from board import Board
@@ -86,9 +87,13 @@ _NOT_ROW7 = _FULL & ~_ROW[7]
 _RING = _ROW[0] | _ROW[7] | _COL[0] | _COL[7]
 _LINE_W, _FILLED_W, _POCKET_W, _TRANS_W, _EDGE_W = 4.2, 1.4, 0.75, 1.5, 2.0
 _FIT_CUBE_W, _FIT_MEAN_W, _DEAD_W = 400.0, 80.0, 12.3
-_HARD_TYPES = (4, 6, 7, 10, 9)  # beam5, rect23, square3, corner5, L
-_HARD_W, _HARD_SAMPLES, _DFS_BUDGET = 500.0, 16, 400
-_BEAM, _FINAL, _CANDIDATES = 40, 12, 24
+_HARD_TYPES = (3, 4, 7, 6, 10)  # beam4, beam5, square3, rect23, corner5
+_HARD_MULTISETS = [
+    (types, len(set(itertools.permutations(types))) / len(_HARD_TYPES) ** 3)
+    for types in itertools.combinations_with_replacement(_HARD_TYPES, 3)
+]
+_HARD_PENALTY, _DFS_BUDGET = 400.0, 400
+_BEAM, _FINAL = 40, 12
 
 
 def _placements(pose):
@@ -202,10 +207,16 @@ def _leaves(bits, remaining):
 
 
 def _hard_trays(rng):
-    return [
-        tuple(rng.choice(PIECE_TYPES[rng.choice(_HARD_TYPES)]) for _ in range(3))
-        for _ in range(_HARD_SAMPLES)
-    ]
+    draws = {t: [rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in _HARD_TYPES}
+    trays = []
+    for types, weight in _HARD_MULTISETS:
+        used = dict.fromkeys(_HARD_TYPES, 0)
+        tray = []
+        for t in types:
+            tray.append(draws[t][used[t]])  # k-te wystąpienie typu bierze jego k-tą pozę
+            used[t] += 1
+        trays.append((weight, tuple(tray)))
+    return trays
 
 
 class TrayBeamPolicy:
@@ -222,16 +233,11 @@ class TrayBeamPolicy:
         remaining = tuple((idx, piece.index) for idx, piece in enumerate(game.pieces) if piece is not None)
         leaves = _leaves(bits, remaining)
         leaves.sort(key=lambda leaf: leaf[0], reverse=True)
-        candidates = sorted(
-            ((cheap - _fit_penalty(leaf_bits), leaf_bits, move) for cheap, leaf_bits, move in leaves[:_CANDIDATES]),
-            key=lambda candidate: candidate[0],
-            reverse=True,
-        )
         trays = _hard_trays(self.rng)
         best_score, best_move = None, None
-        for value, leaf_bits, move in candidates[:_FINAL]:
-            bad = sum(1 for tray in trays if not _playable(leaf_bits, tray, [_DFS_BUDGET]))
-            score = value - _HARD_W * bad / _HARD_SAMPLES
+        for cheap, leaf_bits, move in leaves[:_FINAL]:
+            risk = sum(weight for weight, tray in trays if not _playable(leaf_bits, tray, [_DFS_BUDGET]))
+            score = cheap - _fit_penalty(leaf_bits) - _HARD_PENALTY * risk
             if best_score is None or score > best_score:
                 best_score, best_move = score, move
         return best_move if best_move is not None else actions[0]
