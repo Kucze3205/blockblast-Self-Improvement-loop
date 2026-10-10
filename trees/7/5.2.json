@@ -2,16 +2,25 @@
  "rodzic": "5.1",
  "rodzic_sha": "acc95eef7f737ee6780bbdb1075b292a1e9fc672",
  "kolejnosc": 10,
- "sha": "acc95eef7f737ee6780bbdb1075b292a1e9fc672",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "3f7b23988859f4f37a1b0e0dc6e5097f669e5d6c",
+ "stan": "ocena w toku",
+ "gist": "Usuń numpy z ścieżki ewaluacji: policies.build czyta wagi z JSON",
+ "notatki": [
+  "Usuń numpy z ścieżki ewaluacji: policies.build czyta wagi z JSON\n\nMechanizm: policies.py importował numpy na poziomie modułu i ładował wagi przez np.load. Ewaluator nie ma numpy, więc import policies padał na ModuleNotFoundError i każda partia kończyła się zerem. Wagi są teraz w weights/value.json (te same 12 cech i wyraz wolny, skonwertowane z value.npz bez zmiany wartości). train_value.py nadal używa numpy do regresji, ale zapisuje JSON. Test sprawdza import policies i build('weights') z zablokowanym numpy w osobnym procesie.\n\nDowód: .historia/7/5.1.json: 1200 z 1200 partii z \"blad\": \"ModuleNotFoundError: No module named 'numpy'\", s_sym 0.0. Węzły 1.1, 2.1, 3.1, 4.1 z tego samego korzenia mają blad null, a ich patche nie dodają numpy do policies.py. numpy wszedł w 57c445b. Lokalnie: import policies z zablokowanym numpy padał przed zmianą, po zmianie przechodzi. pytest tests/: 24 passed. Smoke: 3 partie, 157 ruchów, wszystkie legalne, ok. 3,3 ms na ruch.\n\nDlaczego to nie powtórka: to poprawka błędu implementacji z 57c445b, nie nowa idea. Wagi, cechy i szerokość wiązki bez zmian.\n\nRyzyko: wynik gry nie jest zmierzony. Wagi mają niskie R² (0,011 w rundzie 1), więc ewaluator może dać słaby wynik. Katalogi .github i scripts są w tym sandboksie zamaskowane (/dev/null), więc nie widać config.json ewaluatora ani jego listy pakietów.\n\nCo dalej: zrobione acc95ee (trening wag, wynik 0 z tego błędu), 6cb97dd, 57c445b, 338f207; ten commit to poprawka błędu. Następny krok: zmierzyć węzeł ewaluatorem. Nie powtarzać: importu numpy w ścieżce ewaluacji (policies.py, search.py) ani zakładania, że ewaluator ma pakiety spoza stdlib.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 47,
+  "usd": 1.5724,
+  "minuty": 5.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T23:23:06Z",
+   "koniec": "2026-10-10T23:28:13Z",
+   "tury": 47,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
