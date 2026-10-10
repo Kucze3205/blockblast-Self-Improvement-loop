@@ -1,247 +1,232 @@
 """
-Polityka przeżycia: wiązka po tacce na bitboardach + szacunek ryzyka następnej tacki.
+Polityka przeżycia: wiązka po tacce na bitboardach (bit = y * 8 + x).
 
-Plansza to 64-bitowa liczba (bit y*8+x). Cel to nieprzegrywanie, więc punkty się nie liczą:
-wiązka układa całą tackę (3 klocki, dowolna kolejność). Liście porządkuje najpierw liczba
-niegrywalnych tacek z trudnych typów w próbie, potem wartość następnej tacki, na końcu koszt planszy.
+Plan trzech postawień liczony raz na tackę. Liść ocenia logistyczna regresja na skutkach
+(log-szansa przegranej w najbliższych tackach), dopasowana offline do partii polityki bazowej.
+Bez wag w katalogu weights/ liść to ręczna suma ważona.
 """
+import json
+import os
 import random
 
 from pieces import PIECE_POOL, PIECE_TYPES
 
-FULL = (1 << 64) - 1
-COL0 = 0x0101010101010101
-COL7 = COL0 << 7
-BEAM = 30
-FINAL = 12
-RISK_SAMPLES = 16
-TRANS_W = 1.0
-ISO_W = 8.0
-FREE_W = 1.5
-MOB_W = 15.0
-SMALL_W = 6.0
-MID = 80
-NEXT_K = 6
-NEXT_BAD = 100.0
-NEXT_BEAM = 5
-HARD_TYPES = (4, 6, 7, 10, 9)  # beam5, rect23, square3, corner5, L
+HARD_TYPES = [4, 6, 7, 10, 9]  # beam5, rect23, square3, corner5, L
+
+_FULL = (1 << 64) - 1
+_ROWS = [0xFF << (8 * r) for r in range(8)]
+_COLS = [sum(1 << (8 * r + c) for r in range(8)) for c in range(8)]
+_NOT_A = 0xFEFEFEFEFEFEFEFE  # bez kolumny 0
+_NOT_H = 0x7F7F7F7F7F7F7F7F  # bez kolumny 7
+_LEFT_WALL = 0x0101010101010101
+_RIGHT_WALL = 0x8080808080808080
+_TOP_WALL = 0xFF
+_BOTTOM_WALL = 0xFF << 56
+
+P = {"occ": 1.4, "iso": 0.75, "edge": 1.5, "wall": 2.0, "line": 4.2,
+     "risk": 400.0, "fit": 80.0, "dead": 12.3,
+     "beam": 40, "final": 12,
+     "hard": 500.0, "nhard": 16}
+
+BASE_FEATURES = ("hard", "risk", "meanfit", "dead", "cheap", "lines")
+FEATURES = BASE_FEATURES
 
 
-def _build_tables():
-    places = []
-    for p in PIECE_POOL:
-        h, w = len(p.shape), len(p.shape[0])
-        lst = []
+def _pose_masks():
+    out = []
+    for piece in PIECE_POOL:
+        h, w = len(piece.shape), len(piece.shape[0])
+        cells = [(r, c) for r in range(h) for c in range(w) if piece.shape[r][c]]
+        masks = []
         for y in range(8 - h + 1):
             for x in range(8 - w + 1):
                 m = 0
-                for dy, row in enumerate(p.shape):
-                    for dx, c in enumerate(row):
-                        if c:
-                            m |= 1 << ((y + dy) * 8 + x + dx)
-                lst.append((m, x, y))
-        places.append(lst)
-    return places
+                for r, c in cells:
+                    m |= 1 << ((y + r) * 8 + x + c)
+                masks.append((x, y, m))
+        out.append(masks)
+    return out
 
 
-_PLACES = _build_tables()
-_MASKS = [[m for m, _, _ in lst] for lst in _PLACES]
+_MASKS = _pose_masks()
 
 
-def _clear(b):
-    t = b & (b >> 1)
-    t &= t >> 2
-    t &= t >> 4
-    rows = t & COL0
-    c = b & (b >> 8)
-    c &= c >> 16
-    c &= c >> 32
-    c &= 255
-    if not rows and not c:
-        return b
-    return b & ~((rows * 255) | (c * COL0))
+def _clear(board):
+    """Zwraca (plansza po czyszczeniu, liczba linii)."""
+    kill = 0
+    lines = 0
+    for m in _ROWS:
+        if board & m == m:
+            kill |= m
+            lines += 1
+    for m in _COLS:
+        if board & m == m:
+            kill |= m
+            lines += 1
+    return board & ~kill, lines
 
 
-def _cheap(b):
-    free = 64 - b.bit_count()
-    trans = ((b ^ (b >> 1)) & ~COL7).bit_count() + ((b ^ (b >> 8)) & 0x00FFFFFFFFFFFFFF).bit_count()
-    e = ~b & FULL
-    nb = (((e << 1) & ~COL0) | ((e >> 1) & ~COL7) | (e << 8) | (e >> 8)) & FULL
-    iso = (e & ~nb).bit_count()
-    return TRANS_W * trans + ISO_W * iso - FREE_W * free
+def _popcount(x):
+    return bin(x).count("1")
 
 
-def _small_regions(b):
-    """Puste pola w obszarach mniejszych niż 3 pola (trudne do zagospodarowania)."""
-    e = ~b & FULL
-    total = 0
-    while e:
-        reg = e & -e
-        while True:
-            n = (reg | ((reg << 1) & ~COL0) | ((reg >> 1) & ~COL7) | (reg << 8) | (reg >> 8)) & e
-            if n == reg:
-                break
-            reg = n
-        sz = reg.bit_count()
-        if sz < 3:
-            total += sz
-        e &= ~reg
-    return total
+def _cheap(board):
+    """Tania ocena planszy: mało zajętych pól i mało zamkniętych dziur."""
+    empty = ~board & _FULL
+    a = ((board << 1) & _NOT_A) | _LEFT_WALL
+    b = ((board >> 1) & _NOT_H) | _RIGHT_WALL
+    c = (board << 8) | _TOP_WALL
+    d = (board >> 8) | _BOTTOM_WALL
+    three = (a & b & c) | (a & b & d) | (a & c & d) | (b & c & d)
+    edges = _popcount((board ^ (board >> 1)) & _NOT_H) + _popcount(board ^ (board >> 8))
+    walls = _popcount(empty & (_LEFT_WALL | _RIGHT_WALL | _TOP_WALL | _BOTTOM_WALL))
+    return (-P["occ"] * _popcount(board) - P["iso"] * _popcount(three & empty)
+            - P["edge"] * edges - P["wall"] * walls)
 
 
-def _playable(b, pcs):
-    """Czy da się postawić wszystkie klocki z krotki pcs (indeksy poz) w jakiejś kolejności."""
-    if not pcs:
+def _playable(board, poses):
+    """Czy tackę (krotka póz) da się wyłożyć w całości, w dowolnej kolejności."""
+    if not poses:
         return True
     seen = set()
-    for i, p in enumerate(pcs):
-        if p in seen:
+    for k, pose in enumerate(poses):
+        if pose in seen:
             continue
-        seen.add(p)
-        rest = pcs[:i] + pcs[i + 1:]
-        for m in _MASKS[p]:
-            if not (b & m) and _playable(_clear(b | m), rest):
+        seen.add(pose)
+        rest = poses[:k] + poses[k + 1:]
+        for _x, _y, m in _MASKS[pose]:
+            if not board & m and _playable(_clear(board | m)[0], rest):
                 return True
     return False
 
 
-def _tray_value(b, pcs):
-    """Najlepszy tani koszt planszy po ułożeniu tacki pcs (wąska wiązka); niski = dobrze."""
-    level = {(b, 7): 0}
-    for depth in range(3):
-        nxt = {}
-        for (bd, rem) in level:
-            for s in range(3):
-                if not rem & (1 << s):
-                    continue
-                for m in _MASKS[pcs[s]]:
-                    if bd & m:
-                        continue
-                    nb = _clear(bd | m)
-                    key = (nb, rem & ~(1 << s))
-                    if key not in nxt:
-                        nxt[key] = _cheap(nb)
-        if not nxt:
-            return NEXT_BAD
-        level = dict(sorted(nxt.items(), key=lambda kv: kv[1])[:NEXT_BEAM])
-    return min(level.values())
+def _fit_stats(board):
+    """(średnia po typach z odsetka pasujących póz, liczba typów bez żadnego miejsca)."""
+    tot = 0.0
+    dead_types = 0
+    for poses in PIECE_TYPES:
+        fit = 0
+        for pi in poses:
+            for _x, _y, m in _MASKS[pi]:
+                if not board & m:
+                    fit += 1
+                    break
+        if fit == 0:
+            dead_types += 1
+        tot += fit / len(poses)
+    return tot / len(PIECE_TYPES), dead_types
 
 
-def _pose_shifts():
-    out = []
-    for p in PIECE_POOL:
-        h, w = len(p.shape), len(p.shape[0])
-        valid = 0
-        for y in range(8 - h + 1):
-            for x in range(8 - w + 1):
-                valid |= 1 << (y * 8 + x)
-        shifts = [dy * 8 + dx for dy, row in enumerate(p.shape) for dx, c in enumerate(row) if c]
-        out.append((shifts, valid))
-    return out
+def board_bits(game):
+    b = 0
+    for y, row in enumerate(game.board.grid):
+        for x, v in enumerate(row):
+            if v:
+                b |= 1 << (y * 8 + x)
+    return b
 
 
-_POSE_SHIFTS = _pose_shifts()
+class _Value:
+    def __init__(self, d):
+        self.mu, self.sd, self.w, self.b = d["mu"], d["sd"], d["w"], d["b"]
+
+    def __call__(self, base):
+        z = self.b
+        for x, m, s, w in zip(base, self.mu, self.sd, self.w):
+            z += w * (x - m) / s
+        return z
 
 
-def _mobility(b):
-    """Suma po pozach 1/(1+liczba położeń): duża, gdy któraś poza prawie nie ma miejsca."""
-    e = ~b & FULL
-    total = 0.0
-    for shifts, valid in _POSE_SHIFTS:
-        m = valid
-        for s in shifts:
-            m &= e >> s
-        total += 1.0 / (1 + m.bit_count())
-    return total
+def load_value(weights):
+    if weights is None:
+        return None
+    path = os.path.join(weights, "value.json")
+    if not os.path.isfile(path):
+        return None
+    with open(path) as f:
+        d = json.load(f)
+    if d.get("features") != list(FEATURES):
+        return None
+    return _Value(d)
 
 
 class SearchPolicy:
     name = "search"
 
-    def reset(self, game_seed):
-        self.rng = random.Random(f"risk:{game_seed}")
+    def __init__(self, value=None):
+        self.value = value
         self.plan = []
+        self.rng = random.Random(0)
 
-    @staticmethod
-    def _board_bits(game):
-        b = 0
-        for y, row in enumerate(game.board.grid):
-            for x, c in enumerate(row):
-                if c:
-                    b |= 1 << (y * 8 + x)
-        return b
+    def reset(self, game_seed):
+        self.plan = []
+        self.rng = random.Random(game_seed)
 
-    def _risk_trays(self):
-        rng = self.rng
-        trays = []
-        for _ in range(RISK_SAMPLES):
-            tray = []
-            for _ in range(3):
-                poses = PIECE_TYPES[rng.choice(HARD_TYPES)]
-                tray.append(poses[rng.randrange(len(poses))])
-            trays.append(tuple(tray))
-        return trays
+    def _hard_trays(self):
+        n = int(P["nhard"])
+        types = [PIECE_TYPES[t] for t in HARD_TYPES]
+        return [
+            tuple(self.rng.choice(self.rng.choice(types)) for _ in range(3)) for _ in range(n)
+        ]
 
-    def _risk(self, b, trays):
-        bad, nxt = 0, 0.0
-        for i, tr in enumerate(trays):
-            if not _playable(b, tr):
-                bad += 1
-                if i < NEXT_K:
-                    nxt += NEXT_BAD
-            elif i < NEXT_K:
-                nxt += _tray_value(b, tr)
-        return bad, nxt / NEXT_K
+    def _leaf(self, board, lines):
+        mean_fit, dead_types = _fit_stats(board)
+        risk = (1.0 - mean_fit) ** 3
+        hard = sum(not _playable(board, t) for t in self._trays) / len(self._trays)
+        cheap = _cheap(board)
+        if self.value is not None:
+            return -self.value([hard, risk, mean_fit, dead_types, cheap, lines])
+        return (
+            -P["hard"] * hard
+            + cheap
+            + P["line"] * lines
+            - P["risk"] * risk
+            - P["fit"] * (1.0 - mean_fit)
+            - P["dead"] * dead_types
+        )
 
-    def _search(self, b, poses):
-        level = {(b, 7): (0.0, ())}
-        leaves = []
-        for depth in range(3):
+    def _search(self, board, poses):
+        """poses: lista (idx_w_tacce, pose). Zwraca najlepszy ciąg (idx, x, y) lub None."""
+        self._trays = self._hard_trays()
+        states = [(board, 0, tuple(range(len(poses))), ())]
+        for depth in range(len(poses)):
             nxt = {}
-            for (bd, rem), (_, path) in level.items():
-                moved = False
-                for s in range(3):
-                    if not rem & (1 << s) or poses[s] is None:
-                        continue
-                    for m, x, y in _PLACES[poses[s]]:
+            for bd, lines, rem, seq in states:
+                for k in rem:
+                    idx, pose = poses[k]
+                    rest = tuple(r for r in rem if r != k)
+                    for x, y, m in _MASKS[pose]:
                         if bd & m:
                             continue
-                        moved = True
-                        nb = _clear(bd | m)
-                        key = (nb, rem & ~(1 << s))
-                        if key not in nxt:
-                            nxt[key] = (_cheap(nb), path + ((s, x, y),))
-                if not moved and rem:
-                    leaves.append((1e6 * (3 - depth), bd, path))
+                        nb, ln = _clear(bd | m)
+                        key = (nb, rest)
+                        sc = _cheap(nb) + P["line"] * (lines + ln)
+                        cur = nxt.get(key)
+                        if cur is None or sc > cur[0]:
+                            nxt[key] = (sc, nb, lines + ln, rest, seq + ((idx, x, y),))
             if not nxt:
-                level = {}
-                break
-            items = sorted(nxt.items(), key=lambda kv: kv[1][0])
-            level = dict(items[:BEAM] if depth < 2 else items)
-        leaves.extend((cost, bd, path) for (bd, _), (cost, path) in level.items())
-        leaves.sort(key=lambda t: t[0])
-        if not leaves or leaves[0][0] >= 1e6:
-            return leaves[0][2] if leaves else None
-        mid = []
-        for cost, bd, path in leaves[:MID]:
-            if cost < 1e6:
-                mid.append((cost + MOB_W * _mobility(bd) + SMALL_W * _small_regions(bd), bd, path))
-        mid.sort(key=lambda t: t[0])
-        trays = self._risk_trays()
-        best, best_cost = None, None
-        for cost, bd, path in mid[:FINAL]:
-            c = (*self._risk(bd, trays), cost)
-            if best_cost is None or c < best_cost:
-                best, best_cost = path, c
+                return max(states, key=lambda s: len(s[3]))[3] or None
+            ranked = sorted(nxt.values(), key=lambda v: -v[0])
+            keep = int(P["final"] if depth == len(poses) - 1 else P["beam"])
+            states = [(v[1], v[2], v[3], v[4]) for v in ranked[:keep]]
+        best, best_s = None, None
+        for bd, lines, _rem, seq in states:
+            s = self._leaf(bd, lines)
+            if best_s is None or s > best_s:
+                best, best_s = seq, s
         return best
 
     def act(self, game, actions):
         if self.plan and self.plan[0] in actions:
             return self.plan.pop(0)
-        self.plan = []
-        poses = [p.index if p else None for p in game.pieces]
-        path = self._search(self._board_bits(game), poses)
-        if path and tuple(path[0]) in actions:
-            self.plan = [tuple(a) for a in path[1:]]
-            return tuple(path[0])
-        return actions[0]
+        poses = [(i, p.index) for i, p in enumerate(game.pieces) if p is not None]
+        seq = self._search(board_bits(game), poses)
+        if not seq or seq[0] not in actions:
+            self.plan = []
+            return actions[0]
+        self.plan = list(seq[1:])
+        return seq[0]
+
+
+def build(weights=None):
+    return SearchPolicy(load_value(weights))

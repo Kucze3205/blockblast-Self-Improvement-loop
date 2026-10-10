@@ -59,9 +59,9 @@ class ModelPolicy:
 
 
 def build(weights=None):
-    """Polityka oceniana przez ewaluator; wagi nie są używane (przeszukiwanie bez sieci)."""
-    from survival import SearchPolicy
-    return SearchPolicy()
+    """Polityka oceniana przez ewaluator; wagi z katalogu weights/ włączają wartość długiego horyzontu."""
+    from survival import build as build_survival
+    return build_survival(weights)
 
 
 def _immediate_gain(game, action):
