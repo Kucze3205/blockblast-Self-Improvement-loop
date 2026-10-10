@@ -2,16 +2,25 @@
  "rodzic": "3.1",
  "rodzic_sha": "6d4a1f6a315c0c9979d0bc75199593df138fe235",
  "kolejnosc": 8,
- "sha": "6d4a1f6a315c0c9979d0bc75199593df138fe235",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "89c6368f6ae596b66d7f1c22852cafe593b992d9",
+ "stan": "ocena w toku",
+ "gist": "Odtwórz bazę 2.1 w policies.build: cechy liścia i ryzyko trudnych tacek",
+ "notatki": [
+  "Odtwórz bazę 2.1 w policies.build: cechy liścia i ryzyko trudnych tacek\n\nMechanizm:\n- Liść tani: 4.2*linie - 1.4*zajęte - 0.75*kieszenie - 1.5*przejścia - 2.0*puste przy brzegu.\n  Kieszeń to puste pole z co najmniej trzema zajętymi sąsiadami; ściana nie liczy się jako zajęta.\n- Wiązka po zostających klockach tacki: 40 stanów na poziomie pośrednim, na końcu wszystkie\n  pełne kolejności trzech klocków.\n- Dla 12 najlepszych liści odejmowana jest kara za dopasowanie typów\n  400*(1-średnia żywych)^3 + 80*(1-średnia wszystkich) + 12.3*martwe typy oraz\n  500 * ułamek z 16 losowych tacek z trudnych typów (beam5, rect23, square3, corner5, L),\n  których nie da się wyłożyć. DFS z budżetem 400 węzłów; wyczerpany budżet liczy się jako wykładalny.\n- Tacki losowane co ruch z rng ustawionego w reset(seed); build(weights) bez zmian.\n\nDowód z historii:\n- 3.1 tej gałęzi (0.427): cechy liścia były moją rekonstrukcją (izolowane = pole z czterema\n  zajętymi bokami, dziury, wysokość), bez przejść i brzegu; wagi 2.0, 0.6, 400, 1.0 ustawione\n  ręcznie; brak sprawdzania trudnych tacek; wiązka 8/16.\n- 6/2.1 (0.969) i 5/2.1 (0.983) mają tę samą bazę; 5/3.3: kieszeń = pole z co najmniej trzema\n  zajętymi sąsiadami, przejścia 1.5.\n\nDlaczego to nie powtórka: nie nowy mechanizm, tylko odtworzenie bazy 2.1 na tej gałęzi,\nczyli poprawka błędu z 3.1 (cechy, brak ryzyka trudnych tacek, wąska wiązka). Wynik może\npowtórzyć 6/2.1; wartość próby to pomiar, czy odtworzenie na tej gałęzi daje to samo.\n\nRyzyko:\n- Wynik niezmierzony; ocena rozstrzyga.\n- Wagę 2.0 przy brzegu potwierdza tylko 5/4.2 (według 6/2.1), w 5/2.1 nie jest potwierdzona.\n- Testy: tests/test_tray_beam.py 7/7 (bitboardy i cechy zgodne z Board i referencją, wykładalność\n  zgodna z brute force, wiązka znajduje wszystkie wykładalne pierwsze ruchy, kontrakt i determinizm);\n  tests/test_engine.py 17/17.\n- Smoke (seedy 1-3, limit 300, tylko czas i brak wyjątków, to nie jest wynik): 895 ruchów,\n  0 złych ruchów, średnio 6.3 ms na ruch, maks. 22.5 ms. Przy większym czasie ocena może\n  przekroczyć limit shardu; wtedy najpierw zmniejszyć BEAM.\n\nCo dalej:\n- zrobione: 6794afc (poprawka importu), 6d4a1f6 (policies.build z błędnymi cechami), ten commit\n- następny krok: ocena tego commitu; jeśli s_sym wyjdzie blisko 0.969, osobna próba z nową\n  kombinacją: osobna poza na każde miejsce tacki i ważenie multizbiorów trudnych trójek (5/4.3)\n- czego nie powtarzać: beam 150, wyższe FINAL/BEAM, hard=1000, martwe typy na poziomie pozy,\n  occ 1.0 / iso 6.0, strojenia wag bez nowego pomiaru\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 28,
+  "usd": 2.0603,
+  "minuty": 9.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T19:46:35Z",
+   "koniec": "2026-10-10T19:55:50Z",
+   "tury": 28,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
