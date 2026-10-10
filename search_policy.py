@@ -1,3 +1,4 @@
+import itertools
 import random
 
 from pieces import PIECE_POOL, PIECE_TYPES
@@ -20,7 +21,10 @@ W_DEAD_PIECE = 12.3
 BEAM = 40
 FINAL = 12
 HARD_TYPES = (4, 6, 7, 10, 9)  # typy z pieces.CANONICAL_TYPES: beam5, rect23, square3, corner5, L
-SAMPLES = 16
+HARD_MULTISETS = [
+    (types, len(set(itertools.permutations(types))) / len(HARD_TYPES) ** 3)
+    for types in itertools.combinations_with_replacement(HARD_TYPES, 3)
+]
 HARD_PENALTY = 500.0
 TRAY_BUDGET = 150
 
@@ -111,13 +115,17 @@ def _fits_all(board, pieces, budget):
     return False
 
 
-def _sample_hard_tray(rng):
-    return [rng.choice(PIECE_TYPES[rng.choice(HARD_TYPES)]) for _ in range(3)]
+def _hard_trays(rng):
+    draws = {t: [rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
+    trays = []
+    for types, weight in HARD_MULTISETS:
+        slots = {t: iter(draws[t]) for t in HARD_TYPES}
+        trays.append((weight, [next(slots[t]) for t in types]))
+    return trays
 
 
 def _hard_penalty(board, trays):
-    bad = sum(1 for tray in trays if not _fits_all(board, tray, [TRAY_BUDGET]))
-    return HARD_PENALTY * bad / len(trays)
+    return HARD_PENALTY * sum(weight for weight, tray in trays if not _fits_all(board, tray, [TRAY_BUDGET]))
 
 
 def _expand(score, board, remaining, first):
@@ -152,5 +160,5 @@ class SearchPolicy:
             if not level:
                 return fallback
         level.sort(key=lambda c: c[0], reverse=True)
-        trays = [_sample_hard_tray(self.rng) for _ in range(SAMPLES)]
+        trays = _hard_trays(self.rng)
         return max(level[:FINAL], key=lambda c: c[0] - _hard_penalty(c[1], trays))[3]

@@ -6,15 +6,16 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from game import Game
-from pieces import PIECE_TYPES
+from pieces import PIECE_POOL, PIECE_TYPES
 from search_policy import (
     FULL,
+    HARD_MULTISETS,
     HARD_PENALTY,
     SearchPolicy,
     W_EDGE,
     _fits_all,
     _hard_penalty,
-    _sample_hard_tray,
+    _hard_trays,
     place,
     pockets,
     shape_cost,
@@ -27,9 +28,8 @@ def grid_from(rows):
     return [list(row) for row in rows]
 
 
-def sampled_trays(seed, count=16):
-    rng = random.Random(seed)
-    return [_sample_hard_tray(rng) for _ in range(count)]
+def sampled_trays(seed):
+    return _hard_trays(random.Random(seed))
 
 
 class BitboardHelpersTest(unittest.TestCase):
@@ -64,7 +64,14 @@ class TrayPlayabilityTest(unittest.TestCase):
         self.assertEqual(_hard_penalty(0, sampled_trays(1)), 0.0)
 
     def test_full_board_takes_no_tray(self):
-        self.assertEqual(_hard_penalty(FULL, sampled_trays(1)), HARD_PENALTY)
+        self.assertAlmostEqual(_hard_penalty(FULL, sampled_trays(1)), HARD_PENALTY)
+
+    def test_hard_multisets_form_a_distribution(self):
+        self.assertAlmostEqual(1.0, sum(weight for _, weight in HARD_MULTISETS))
+
+    def test_sampled_trays_follow_their_multisets(self):
+        for (types, _), (_, tray) in zip(HARD_MULTISETS, sampled_trays(2)):
+            self.assertEqual(list(types), [PIECE_POOL[pose].type_index for pose in tray])
 
     def test_isolated_free_cells_take_no_beam2(self):
         rows = [[1 if (x + y) % 2 == 0 else 0 for x in range(8)] for y in range(8)]
