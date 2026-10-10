@@ -14,7 +14,7 @@ NOT_COL0 = FULL & ~COL[0]
 NOT_COL7 = FULL & ~COL[7]
 
 HARD_TYPES = (3, 4, 7, 6, 10)  # beam4, beam5, square3, rect23, corner5
-BEAM = 40
+BEAM = 120
 W_OCC, W_ISO, W_LINE = 1.4, 0.75, 4.2
 W_DEAD = 66.0  # 12.3 za w pełni martwy typ = 66 * P(tacka ma martwy klocek)
 W_HARD = 400.0
@@ -173,7 +173,7 @@ class TraySearchPolicy:
             slot, anchor = states[0][4]
             return (slot, anchor % 8, anchor // 8)
 
-        width = 16 if 64 - occ.bit_count() <= 22 else 8
+        width = 20 if 64 - occ.bit_count() <= 22 else 8
         best_value, best_first = None, None
         for score, _lines, o2, _used, first in states[:width]:
             value = score - W_DEAD * _dead_tray_prob(o2) - W_HARD * _hard_risk(o2)
