@@ -2,16 +2,25 @@
  "rodzic": "1.2",
  "rodzic_sha": "230fdb1c9b0b71870cf696e8e11bfcc6fc95b171",
  "kolejnosc": 10,
- "sha": "230fdb1c9b0b71870cf696e8e11bfcc6fc95b171",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "c4cb1cf31be9c7adbc3609ed57db00efc5c37b6b",
+ "stan": "ocena w toku",
+ "gist": "Liść jako logistyczna regresja na skutkach przegranej w 10 tackach zamiast ręcznych wag",
+ "notatki": [
+  "Liść jako logistyczna regresja na skutkach przegranej w 10 tackach zamiast ręcznych wag\n\nMechanizm: liść to suma składników 2.1 (ryzyko trudnych tacek, średnie dopasowanie,\ntypy bez miejsca, cheap, linie), ale wagi dopasowane logistyczną regresją do skutków:\nP(przegrana w najbliższych 10 tackach). Dane: 400 partii polityki bazowej (seedy 5000+,\nlimit 400 tacek), 87 450 stanów przy tacce, 3,6% dodatnich, podział po seedzie (co piąty\nseed to test). Wagi w weights/value.json (git add -f). Bez pliku albo przy niezgodnych\ncechach liść wraca do ręcznej sumy 2.1.\n\nDowód z historii: 2.1 0,983 (ręczne wagi z lokalnego strojenia), 1.2 0,955 (liść\nleksykograficzny), 5.1 0,983 (termin pary bez zysku), 2.2 0,981 (dokładne\nprawdopodobieństwo braku miejsca), 4.2 0,978 (ryzyko trudnych tacek ważone multizbiorem).\nProxy offline, nie wynik: AUC na teście, liść ręczny 0,718, logistyczna na składnikach\n0,728; przy H=20 0,630 wobec 0,637. Cechy strukturalne (dziury, regiony, wysokości,\nwiersze) nie dały zysku: stos 0,729, MLP na składnikach 0,727, MLP ze strukturą 0,718\n(przeuczenie). Dlatego zostały usunięte z liścia.\n\nDlaczego to nie powtórka: wagi uczone na skutkach metodą największej wiarygodności,\na nie ręcznie ani lokalnym przeszukiwaniem (tune.py z 2.1). Składniki są te same co\nw 2.1, nowa jest etykieta z przyszłości. Nie dodaję nowej informacji, tylko inaczej\nważę istniejącą.\n\nRyzyko: AUC to proxy, nie wynik. Różnica +0,010 to około 2-3 błędy standardowe przy\nokoło 630 dodatnich w teście, więc na granicy szumu. Etykiety pochodzą z polityki 2.1\ni z lokalnej gry, która jest surowsza niż ocena (312 z 400 partii kończy się przegraną\nprzed capem). Lokalnie 3,2 ms/ruch (poprzedni tip 7,4). Wynik nie został zmierzony.\n\nCo dalej: zrobione 230fdb1 (1.2), 32978f6 (1.1), 0d86402 (4.1). Następny krok: ocena\noficjalna tego commitu. Przy wyniku poniżej 0,983 porównać z 2.1 w tym samym kodzie,\nzmieniając tylko źródło wag. Nie powtarzać: LINE_W>0, w6/w8, fit_w, rollouty\nshape-only, poszerzanie wiązki, rerank w połowie, hard=1000, termin pary z budżetem 150,\ncechy strukturalne jako dodatkowe wejście do liścia bez nowych danych.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 129,
+  "usd": 10.9411,
+  "minuty": 81.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T16:58:18Z",
+   "koniec": "2026-10-10T18:19:42Z",
+   "tury": 129,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
