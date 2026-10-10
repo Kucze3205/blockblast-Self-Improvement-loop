@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 3,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "6d4a1f6a315c0c9979d0bc75199593df138fe235",
+ "stan": "ocena w toku",
+ "gist": "Dodaje policies.build: wiązka po tacce z dokładnym ryzykiem świeżej tacki",
+ "notatki": [
+  "Dodaje policies.build: wiązka po tacce z dokładnym ryzykiem świeżej tacki\n\nMechanizm:\n- Plansza jako 64-bitowe maski (bit y*8+x). Dopasowanie klocka przez AND przesunięć wolnych pól; czyszczenie wierszy i kolumn maską.\n- Wiązka po zostających klockach tacki: poziomy pośrednie zachowują 8 dzieci, ostatni poziom 16. Dziecko odpada, gdy żaden zostający klocek się nie mieści (to dokładny warunek przegranej po postawieniu).\n- Liść: 4.2*linie - 1.4*zajęte - 0.75*izolowane wolne - 2.0*dziury - 0.6*wysokość.\n- Wartość końcowa, na ostatnim poziomie: liść - 12.3*martwe typy - 400*q^3 + 1.0*mobilność. q to dokładne prawdopodobieństwo, że losowy klocek (typ 1/15, potem poza 1/n) się nie mieści; q^3 to prawdopodobieństwo martwej świeżej tacki. Mobilność to oczekiwana liczba kotwic losowego klocka.\n\nDowód z historii:\n- Wagi 4.2, 1.4, 0.75, 12.3 przepisane z notatki 5/2.1 (\"occ 1.4, iso 0.75, line 4.2, dead 12.3\", strojone lokalnie). Definicji cech w tamtej notatce nie ma, więc definicje są moją rekonstrukcją. Wagi 2.0, 0.6, 400 i 1.0 ustawiłem ręcznie; nie są zmierzone.\n- Najbliższa próba to 2.1 w drzewie 2 (s_sym 0.680): wiązka po tacce, kara za martwe typy, średni fit póz, bez lookaheadu na następną tackę (wg jej notatki).\n- Najlepszy wynik historii to 5/4.3 (0.985) z ryzykiem trudnych tacek. Tego ryzyka tu nie ma. Zyski z trudnych tacek widać też w 2.3 (0.908, waga 150 -> 400) i 1.4 (0.901).\n\nDlaczego to nie powtórka:\n- To nie jest nowy mechanizm, tylko bliska odmiana 2.1. Różnice: dokładne q^3 z pełnego rozkładu 15 typów, dziury i wysokość w liściu, mobilność jako oczekiwana liczba kotwic, przycinanie po wykonalności.\n\nRyzyko:\n- Wynik niezmierzony. Mierzy go ocena, nie ta notatka.\n- Dym: 5 partii (seedy 1-5, limit 300 postawień), bez wyjątków i bez nielegalnych ruchów. Zgony po 35, 35, 62, 92 i 218 postawieniach. Dym 2.1 miał 84-500 (inne seedy i limit), więc to nie jest porównanie, tylko sygnał.\n- Znany błąd projektu: ranking dzieci na poziomach pośrednich bierze tylko _cheap (sort po pierwszym elemencie krotki). Kara za martwe typy, q^3 i mobilność działają dopiero na 16 planszach końcowego poziomu. Wybór 8 dzieci z pierwszego poziomu nie widzi więc miejsca na duże klocki. Pasuje to do zgonów przy rozdrobnionej planszy (seedy 4 i 5).\n- Czas: około 0.73 ms na ruch przy wiązce 8/16 (pomiar dymu).\n\nCo dalej:\n- zrobione: 6794afc (poprawka importu), ta zmiana (policies.build, wynik niezmierzony)\n- następny krok: ranking poziomów pośrednich pełną wartością liścia (kara za martwe typy, mobilność) z kontrolą czasu na ruch; alternatywnie łączne ryzyko trudnych tacek z 5/4.3\n- czego nie powtarzać: samego q^3 bez rankingu poziomów pośrednich; strojenia wag bez pomiaru\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Usuń osierocony import turtle z model.py, który blokował import agenta\n\nLinia `from turtle import done` nie była używana: w dalszym kodzie `done` to parametr\nfunkcji. turtle wymaga tkinter, którego nie ma w środowisku, więc import modelu padał.\n\nDowód z historii: w notatce 5/4.3 jedyny błąd testu (16 z 17) to ten import, a poza tym\nbył przed zmianą. Lokalnie po usunięciu pytest daje 17 z 17.\n\nDlaczego to nie próba polityki: zmiana dotyczy wyłącznie importu, nie zachowania gry.\nRyzyko: brak w ścieżce wykonania, bo nazwa `done` jest zawsze lokalna.\n\nCo dalej:\n- zrobione: ten commit (poprawka importu)\n- następny krok: policies.build w policies.py\n- czego nie powtarzać: importów GUI w modułach agenta\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 86,
+  "usd": 6.9149,
+  "minuty": 33.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T19:03:10Z",
+   "koniec": "2026-10-10T19:36:31Z",
+   "tury": 86,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
