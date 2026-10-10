@@ -2,16 +2,25 @@
  "rodzic": "4.2",
  "rodzic_sha": "b1793a5636a7cde8eef49167ad0f2c30414ebf83",
  "kolejnosc": 14,
- "sha": "b1793a5636a7cde8eef49167ad0f2c30414ebf83",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "365dd5cb4929a0bfafdf8d27ae2c9e912daf904a",
+ "stan": "ocena w toku",
+ "gist": "Deduplikuj wiązkę tacki po planszy, żeby permutacje nie zajmowały miejsc",
+ "notatki": [
+  "Deduplikuj wiązkę tacki po planszy, żeby permutacje nie zajmowały miejsc\n\nMechanizm: plan_tray po każdym poziomie zostawia BEAM liści o unikalnym kluczu (plansza, pozostałe klocki, liczba linii). Reszta bez zmian: _cheap, kara za dopasowanie i ryzyko multizbiorów, HARD_TYPES (4,6,7,10,9), HARD_PENALTY 500, FINAL 12, BEAM 40, jak w 4.2.\n\nDowód: pomiar diagnostyczny przed zmianą (seedy 1-3, 265 tacek, bez wyniku): na głębokości 2 i 3 wiązki 42,5 % i 52,0 % miejsc to duplikaty tej samej planszy. Dwa porządki tych samych klocków dają identyczną planszę i ten sam liść, więc około połowy kandydatów do kary to duplikaty.\n\nDlaczego to nie powtórka: w gistach drzew 1-6 nie ma deduplikacji wiązki. Były zmiany szerokości (40, 100, 150), FINAL, ryzyka i mid-rerank. Samo poszerzanie wiązki (150 w 2.1) nie pomogło, a tu nie rośnie wiązka, tylko liczba różnych kandydatów przy tym samym BEAM 40.\n\nRyzyko: efekt może być mały, skoro poszerzanie nie pomogło. Wynik nieznany, nic nie zmierzono. Testy: tests.test_bitboard i tests.test_search, 9 OK (w tym test_beam_keeps_distinct_boards). Smoke (3 partie, seedy 1-3, do 300 ruchów, tylko wyjątki i czas): 900 ruchów, 0 błędnych, średnio 4,6 ms na ruch.\n\nCo dalej:\n- zrobione: b1793a5 (4.2, oceniony, s_sym 0.974), ten commit (4.3)\n- następny krok: po ocenie, jeśli s_sym < 0.974, cofnąć dedup i wrócić do 4.2; jeśli > 0.978 (lepiej niż 2.2), sprawdzić adaptacyjne FINAL na liczbie różnych kandydatów\n- czego nie powtarzać: samego poszerzania wiązki bez deduplikacji; zmian HARD_TYPES razem z dedup, bo to mieszałoby dwa efekty\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 33,
+  "usd": 1.6385,
+  "minuty": 8.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T21:00:02Z",
+   "koniec": "2026-10-10T21:07:59Z",
+   "tury": 33,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
