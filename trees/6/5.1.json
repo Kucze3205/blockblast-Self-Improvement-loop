@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 5,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "b07ca7eac3fe6da1029b9812e1e33e7d39475d61",
+ "stan": "ocena w toku",
+ "gist": "Dodaj ryzyko niegrywalnej tacki do polityki beam po tacce",
+ "notatki": [
+  "Dodaj ryzyko niegrywalnej tacki do polityki beam po tacce\n\nMechanizm:\n- po beamie bierze się 20 najlepszych pełnych planów (FINAL) i przeszeregowuje je:\n  wynik = ocena liścia - hard * ryzyko, gdzie hard = 400\n- ryzyko = suma wag trójek z pięciu trudnych typów (HARD_TYPES: beam4, beam5, rect23,\n  square3, corner5); waga trójki = liczba permutacji / 125; 35 multizbiorów\n- na każdą tackę losuję 3 niezależne pozy na typ; trójka (a,a,b) używa dwóch różnych\n  losowań typu a; sprawdzenie układalności = DFS po kolejności klocków z czyszczeniem linii\n- reset(seed) ustawia rng = Random(seed), więc partie są deterministyczne\n\nDowód z historii:\n- poprzedni węzeł (518e7d3) przegrywał, gdy ostatni klocek tacki nie miał miejsca;\n  ryzyko trudnych tacek to mechanizm, który w drzewie 5 (4.3, s_sym 0.985) dał zysk,\n  a w drzewach 2 i 4 działał z wagą 400\n- smoke (seedy 1-4, limit 150 ruchów; nie jest to wynik): brak wyjątków, 214 ruchów,\n  średnio 5.6 ms na ruch, najgorzej 42.5 ms\n\nDlaczego to nie powtórka: zmienia się ocena kandydatów po tacce, a nie tylko wagi liścia.\n\nRyzyko: hard = 400 i wagi liścia (3/2/0.5/0.3) są przeniesione z historii, nie strojone\ntutaj. Przy ~540k ruchów oceny koszt ~5.6 ms na ruch może zbliżyć się do limitu shardu\n(zobacz kolumnę ocena [min]); jeśli wyjdzie za wolno, najpierw zmniejszyć FINAL.\n\nCo dalej:\n- zrobione: 518e7d3 (beam bez ryzyka), ten commit (ryzyko trudnych tacek)\n- następny krok: wynik oceny tego węzła; jeśli s_sym poniżej 0.98, sprawdzić, czy wina\n  leży w wadze hard czy w zbiorze HARD_TYPES, zanim zmieni się cokolwiek innego\n- czego nie powtarzać: strojenia hard przy tej samej ocenie liścia bez nowego pomiaru\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj policies.build: beam po tacce na bitboardach bez ryzyka następnej tacki\n\nMechanizm:\n- build(weights) zwraca BeamPolicy z reset(seed) i act(game, actions); weights to katalog,\n  z którego opcjonalnie czytany jest params.json; bez pliku używane są domyślne parametry\n- plan dla całej tacki: beam 12 po kolejnych klockach, plansza jako int 64-bitowy,\n  ocena liścia = 3*linie - 2*dziury - 0.5*bump - 0.3*max_wysokość\n- plan liczony raz na tackę i wykonywany krok po kroku; przeliczany tylko wtedy,\n  gdy pierwszy ruch planu nie jest legalny\n\nDowód z historii:\n- drzewa 1-5 zaczynały od dodania policies.build z beamem po tacce; najlepszy wynik\n  (5/4.3, s_sym 0.985) dał dopiero ryzyko trudnych tacek, którego tu jeszcze nie ma\n- smoke (seedy 1-3, limit 60 ruchów; nie jest to wynik): brak wyjątków, średnio 0.6 ms\n  na ruch, najgorzej 5.5 ms. Seed 1 skończył się, gdy na tacce został sam rect23 bez miejsca\n\nDlaczego to nie powtórka: pierwszy węzeł drzewa 6, rodzic korzeń caf8e72. W korzeniu\nbrak policies.build, więc ocena kończy się wyjątkiem (wg skilla: wynik 0).\n\nRyzyko: wagi 3/2/0.5/0.3 są zgadnięte, nie strojone. Oczekuję niskiego s_sym, bo\nocena nie widzi, czy pozostałe klocki tacki zmieszczą się po ruchu.\n\nCo dalej:\n- zrobione: ten commit\n- następny krok: ryzyko niegrywalnej tacki w ocenie liścia (trudne typy, trójki\n  ważone multizbiorem 1/3/6 z 125, po 3 pozy na typ)\n- czego nie powtarzać: samego beamu bez ryzyka następnej tacki; strojenia wag przed\n  dodaniem tego ryzyka\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 41,
+  "usd": 2.0635,
+  "minuty": 9.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T19:03:11Z",
+   "koniec": "2026-10-10T19:12:17Z",
+   "tury": 41,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
