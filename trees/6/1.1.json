@@ -2,16 +2,27 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "b8abfa437a1f19e687cc7ed041003b16483f5263",
+ "stan": "ocena w toku",
+ "gist": "Korekta notatki 23ec6ee: 6.1 to wariant rodziny wiązki, nie nowy mechanizm",
+ "notatki": [
+  "Korekta notatki 23ec6ee: 6.1 to wariant rodziny wiązki, nie nowy mechanizm\n\nKod bez zmian (pusty commit). Notatka 23ec6ee twierdziła, że 6.1 nie jest ani 3.3, ani 4.2. To było błędne.\n\nDowód z historii (.historia/5):\n- 3.3 (0.968): te same cechy kształtu, ale przejścia 3.0 zamiast 1.5; risk_w 1000 bez zmian (6.1: W_RISK 100, skala niesprawdzona)\n- 4.2 (0.978): BEAM 40 (6.1: 12); cechy 2.1 plus człon \"puste pola przy brzegu\" 2.0, którego 6.1 nie ma; ryzyko trudnych tacek z innym wzorem (wagi 400 i 80)\n- 4.3 (0.985, najwyżej w drzewie 5): osobne ryzyko dla każdej pozy w tacce\n\nDlaczego to nie nowy mechanizm: 6.1 to cechy 2.1 w wiązce po tacce, czyli element mierzony już w 3.3 i 4.2, z mniejszą wiązką i bez członu brzegowego.\n\nRyzyko: wynik niezmierzony. Wiązka z cechami 2.1 bez osobnego ryzyka pozy mierzyła się w 0.968-0.978, poniżej 4.3; ten commit tego nie zmienia.\n\nCo dalej:\n- zrobione: 23ec6ee (SearchPolicy i testy), 3c1dfcd (policies.build), ten commit (korekta notatki)\n- następny krok: pomiar oceną na trees/6/1; jeśli wynik słabszy, osobno sprawdzić wiązkę 40 i człon brzegowy\n- czego nie powtarzać: nazywania wariantu nowym mechanizmem bez porównania z najbliższym węzłem; kopiowania 4.3\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Podpina SearchPolicy pod ocenę przez policies.build\n\nMechanizm: ocena wywołuje policies.build(weights) i używa obiektu z reset(seed) i act(game, actions). Bez tej funkcji agent nie daje wyniku (wyjątek w build daje 0 wg kontraktu skilla). Wagi z katalogu weights/ są ignorowane, bo SearchPolicy ma stałe parametry z search_policy.py. Istniejące polityki (random, greedy, model) bez zmian.\n\nDowód z historii: 5/4.1 (0.944) to pierwszy węzeł drzewa 5, który dodał build; ten commit go nie kopiuje, tylko wiąże istniejącą SearchPolicy z commitu 23ec6ee.\n\nDlaczego to nie powtórka: żadnej zmiany mechanizmu w tym commicie. To poprawka konkretnego błędu: bez build ocena nie uruchamia agenta.\n\nRyzyko: wynik niezmierzony. Nie sprawdzono limitu czasu oceny (config .github/evaluator nieczytelny w tym środowisku); koszt polityki to średnio 0.84 ms, maksymalnie 3.5 ms na ruch. Sprawdzone: import policies, build(None), 20 legalnych ruchów przez kontrakt reset/act. Pełny zestaw testów: 23 z 24 przechodzi; jedyny błąd (test_agent_accepts_epsilon_zero) to brak tkinter w środowisku przez turtle w model.py, niezwiązany z tym commitem.\n\nCo dalej:\n- zrobione: 23ec6ee (SearchPolicy i testy)\n- następny krok: pomiar oceną na tej gałęzi; dopiero po wyniku decyzja o kolejnej zmianie mechanizmu\n- czego nie powtarzać: dokładania członów bez pomiaru oceny; wnioskowania o wyniku z partii debugowych\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaje SearchPolicy: wiązka po tacce z cechami kształtu 2.1 i ryzykiem tacki\n\nMechanizm (search_policy.py):\n- wiązka po wszystkich klockach tacki: BEAM=12 na głębokościach 1-2, potem FINAL=24 najlepszych liści\n- koszt liścia: 4.2 za linię minus (1.4 za zajęte pole + 0.75 za pole n3 + 1.5 za przejście pełne/puste, ściany liczą się jako zajęte) minus 12.3 za każdy klocek bez miejsca po postawieniu minus 100*(1-(1-d)^3), gdzie d to suma prawdopodobieństw póz bez miejsca na planszy (ryzyko następnej tacki)\n- ruch: pierwszy krok najlepszego liścia po odjęciu ryzyka\n\nDowód z historii (.historia/5):\n- 2.1 = 0.983 (47 przegranych): occ 1.4, iso 0.75, trans 1.5, line 4.2, dead 12.3. Notatka 3.3 mówi, że iso z 2.1 to n3 (puste pole z co najmniej trzema zablokowanymi sąsiadami), a trans 1.5 pochodzi z 2.1\n- 3.3 = 0.968 (79 przegranych): te same cechy z trans 3.0 i zamkniętymi 0.0, w wiązce z sortowaniem 3.2\n- 4.1 = 0.944 (wiązka z ryzykiem, bez cech 2.1), 4.2 = 0.978 (cechy 2.1 i ryzyko), 4.3 = 0.985 (najlepszy; próbkowanie póz, nie odtworzone tutaj)\n\nDlaczego to nie powtórka: nie jest to 3.3 ani 4.2. Wagi wracają do 2.1, a ryzyko liczone jest dokładnie z prawdopodobieństw póz (idea 2.2) w strukturze wiązki po tacce. Poprawka błędu: przy BEAM=4 najlepsza ścieżka wypadała z wiązki. W debugowej partii 2 (wariant z izolowanymi polami i karą 12.3) ruch wybrany przez wiązkę miał rangę 14 wg wyczerpującego wyboru (luka 17.6) i gra kończyła się po 17 ruchach; przy BEAM=12 ta sama partia dochodziła do limitu 60 ruchów. Koszt: średnio 0.84 ms, maksymalnie 3.5 ms na ruch.\n\nRyzyko: wynik niezmierzony. Partie debugowe (limit 600, seedy 1-3) dały 80/194/257 ruchów; poprzedni wariant (kara 50, BEAM=4) dał 35/194/557. Trzy partie nie wystarczają do wyboru. Nie zmierzone: skala ryzyka 100 względem notatek (risk_w 1000 w 3.1) i kara 12.3 w tej strukturze. Testy: 7/7 OK. Niezmienniki względem silnika bez rozbieżności (6 losowych partii, 3 z polityką).\n\nCo dalej:\n- zrobione: caf8e72 (stan początkowy)\n- następny krok: osobny commit z policies.build (bez niego ocena daje 0), potem pomiar oceną\n- czego nie powtarzać: traktowania iso jako pola z czterema zablokowanymi sąsiadami (to nie jest iso z 2.1); strojenia wag na partiach debugowych\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 136,
+  "usd": 8.577,
+  "minuty": 35.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T19:03:05Z",
+   "koniec": "2026-10-10T19:38:22Z",
+   "tury": 136,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
