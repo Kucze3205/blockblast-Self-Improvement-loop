@@ -2,16 +2,25 @@
  "rodzic": "5.2",
  "rodzic_sha": "0e92a197e92327552642b0aa431f2a1580004ef2",
  "kolejnosc": 15,
- "sha": "0e92a197e92327552642b0aa431f2a1580004ef2",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "d25c209b35debbf94ea52829870c400153645133",
+ "stan": "ocena w toku",
+ "gist": "Przywróć BEAM 40: wiązka 12 z bazy po tacce była błędem",
+ "notatki": [
+  "Przywróć BEAM 40: wiązka 12 z bazy po tacce była błędem\n\nMechanizm:\n- jedyna zmiana: policies.BEAM 12 -> 40; liść 2.1, kara za dopasowanie 400/80/12.3, FINAL 12, ryzyko trudnych tacek (400, multizbiory) i DFS bez budżetu zostają jak w 5.2\n- BEAM to liczba stanów (częściowych ułożeń tacki) zachowywanych po każdym klocku; liść rankinguje je na każdym poziomie, kara i ryzyko działają tylko na 12 finałach; przy BEAM 12 finały pochodzą z 12 najlepszych stanów po dwóch klockach, więc kara ma mniej do wyboru\n\nDowód z historii:\n- węzły 2.1 (0.969), 2.2 (0.978), 3.2 (0.974) i 4.2 (0.974) mają BEAM 40 w kodzie swoich łańcuchów; 1.2 (0.960) też\n- 5.2 (0.951) ma BEAM 12 z 518e7d3, wartości z pierwszej wersji beam po tacce, nigdy nie porównanej z 40 na liściu 2.1\n- 3.1 (0.427) miał wiązkę 8/16; 3.2 przywróciło BEAM 40 jako część poprawki\n- diagnostyka mechanizmu, nie wynik (ziarna 1-3, do 300 ruchów): BEAM 12 - 2 z 281 tacek z niepełnym planem i 2 przegrane partie; BEAM 40 - 0 z 300 i 0 przegranych; próba jest mała\n- koszt czasu z tej samej diagnostyki: 6.7 ms na ruch przy 12, 7.5 ms przy 40; węzły z BEAM 40 w indeksie oceniono w 0.7-1.3 min\n\nDlaczego to nie powtórka:\n- kombinacji 5.2 z BEAM 40 nie oceniono; 2.2 ma budżet DFS 400, a 4.2 karę 500 i L zamiast beam4\n- zmiana jest jedna, więc wynik rozstrzyga o wiązce, nie o zbiorze typów\n\nRyzyko:\n- wynik niezmierzony; ocena rozstrzyga\n- podobne konfiguracje dają 0.969 i 0.974, więc różnice poniżej około 0.005 nie są wnioskiem\n- testy: tests/test_beam_policy.py 3/3; tests/test_engine.py 16/17, jedyny błąd to brak tkinter w model.py (był przed zmianą)\n\nCo dalej:\n- zrobione: 0e92a19 (węzeł 5.2), ten commit (BEAM 40)\n- następny krok: wynik oceny. Od 0.974 w górę: nowy mechanizm w ryzyku następnej tacki, nie strojenie. Poniżej 0.969: BEAM nie wystarczył; ablacja zbioru typów (L zamiast beam4), potem kara 500. Między tymi wartościami nie wyciągać wniosku.\n- czego nie powtarzać: BEAM 12 w tej gałęzi; strojenia wag liścia bez nowego pomiaru\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 32,
+  "usd": 1.7639,
+  "minuty": 7.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T21:00:01Z",
+   "koniec": "2026-10-10T21:07:08Z",
+   "tury": 32,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
