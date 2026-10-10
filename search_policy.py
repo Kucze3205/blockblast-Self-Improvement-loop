@@ -151,7 +151,7 @@ class SearchPolicy:
         trays = self._hard_trays()
         mixed = self._mixed_trays()
         best_score, best_move = None, None
-        for cheap, leaf_bits, move in leaves[:FINAL]:
+        for cheap, leaf_bits, moves in leaves[:FINAL]:
             risk = self._risk(leaf_bits, trays)
             mix_risk = self._risk(leaf_bits, mixed)
             score = (
@@ -161,7 +161,7 @@ class SearchPolicy:
                 - self.w["MIX_PENALTY"] * mix_risk
             )
             if best_score is None or score > best_score:
-                best_score, best_move = score, move
+                best_score, best_move = score, min(moves)
         return best_move if best_move is not None else actions[0]
 
     def _risk(self, bits, trays):
@@ -198,22 +198,25 @@ class SearchPolicy:
         return [(1 / MIX_SAMPLES, tray) for tray in trays]
 
     def _leaves(self, bits, remaining):
-        frontier = [(bits, remaining, None, 0)]
+        frontier = [(bits, remaining, frozenset(), 0)]
         while True:
-            children = []
-            for b, rem, first, lines in frontier:
+            children = {}
+            for b, rem, moves, lines in frontier:
                 for k, (idx, pose) in enumerate(rem):
                     rest = rem[:k] + rem[k + 1:]
                     for mask, x, y in PLACEMENTS[pose]:
                         if not (b & mask):
                             nb, cleared = clear_lines(b | mask)
                             total = lines + cleared
-                            children.append(
-                                (_cheap(nb, total, self.w), nb, rest, total, first or (idx, x, y))
-                            )
+                            key = (nb, tuple(sorted(p for _, p in rest)), total)
+                            first = moves or frozenset({(idx, x, y)})
+                            if key in children:
+                                children[key][4].update(first)
+                            else:
+                                children[key] = [_cheap(nb, total, self.w), nb, rest, total, set(first)]
             if not children:
                 return []
-            if not children[0][2]:
-                return [(score, nb, move) for score, nb, _, _, move in children]
-            children.sort(key=lambda child: child[0], reverse=True)
-            frontier = [(nb, rest, move, total) for _, nb, rest, total, move in children[:BEAM]]
+            if len(frontier[0][1]) == 1:
+                return [(score, nb, moves) for score, nb, _, _, moves in children.values()]
+            ranked = sorted(children.values(), key=lambda child: child[0], reverse=True)
+            frontier = [(nb, rest, moves, total) for _, nb, rest, total, moves in ranked[:BEAM]]

@@ -1,5 +1,6 @@
 """Testy polityki wiązkowej: bitboardy zgodne z Board, wykładalność tacki zgodna z brute force."""
 import json
+import math
 import os
 import random
 import sys
@@ -139,7 +140,7 @@ class SearchPolicyTest(unittest.TestCase):
             for _ in range(60):
                 bits = sp.to_bits(random_grid(rng, rng.uniform(0.1, 0.6)))
                 remaining = tuple((i, rng.choice(PIECE_POOL).index) for i in range(3))
-                found = {move for _, _, move in policy._leaves(bits, remaining)}
+                found = set().union(*(moves for _, _, moves in policy._leaves(bits, remaining)))
                 expected = set()
                 for idx, pose in remaining:
                     rest = tuple(p for i, p in remaining if i != idx)
@@ -147,6 +148,12 @@ class SearchPolicyTest(unittest.TestCase):
                         if not (bits & mask) and sp.playable(sp.clear_lines(bits | mask)[0], rest, [big]):
                             expected.add((idx, x, y))
                 self.assertEqual(expected, found)
+
+    def test_leaves_merge_move_orders_into_one_board(self):
+        pose = PIECE_TYPES[0][0]
+        with unittest.mock.patch.object(sp, "BEAM", 10 ** 6):
+            leaves = sp.SearchPolicy()._leaves(0, ((0, pose), (1, pose), (2, pose)))
+        self.assertEqual(len(leaves), math.comb(64, 3))
 
     def test_mixed_trays_have_one_or_two_hard_pieces(self):
         policy = sp.SearchPolicy()
