@@ -2,7 +2,8 @@
 Polityka przeszukująca tackę: wiązka po postawieniach klocków tacki na bitboardach,
 ocena końcowej planszy (cechy liścia, dopasowanie typów, ryzyko trudnych tacek).
 """
-import random
+import math
+from collections import Counter
 from itertools import combinations_with_replacement
 
 from pieces import PIECE_POOL, PIECE_TYPES
@@ -49,9 +50,17 @@ def _placements(shape):
 
 
 POSES = [_placements(piece.shape) for piece in PIECE_POOL]
+HARD_POSES = [p for t in HARD_TYPES for p in PIECE_TYPES[t]]
+HARD_POSE_WEIGHT = {p: 1 / (len(HARD_TYPES) * len(PIECE_TYPES[t])) for t in HARD_TYPES for p in PIECE_TYPES[t]}
+
+
+def _orderings(ms):
+    return math.factorial(3) // math.prod(math.factorial(c) for c in Counter(ms).values())
+
+
 HARD_MULTISETS = [
-    (ms, {3: 6, 2: 3, 1: 1}[len(set(ms))] / 125)
-    for ms in combinations_with_replacement(HARD_TYPES, 3)
+    (ms, _orderings(ms) * math.prod(HARD_POSE_WEIGHT[p] for p in ms))
+    for ms in combinations_with_replacement(HARD_POSES, 3)
 ]
 
 
@@ -99,8 +108,11 @@ def _cheap(b):
     return -OCC_W * occ - POCKET_W * pockets - TRANS_W * trans - BORDER_W * _pc(e & RING)
 
 
-def _fit_penalty(b):
-    alive = [any(not (b & m) for _, _, m in POSES[p]) for p in range(len(POSES))]
+def _alive(b):
+    return [any(not (b & m) for _, _, m in group) for group in POSES]
+
+
+def _fit_penalty(alive):
     fracs = [sum(alive[p] for p in group) / len(group) for group in PIECE_TYPES]
     alive_fracs = [f for f in fracs if f > 0]
     mean_alive = sum(alive_fracs) / len(alive_fracs) if alive_fracs else 0.0
@@ -145,28 +157,23 @@ def _tray_ok(board, poses):
         return True
 
 
-def _hard_risk(b, samples):
+def _hard_risk(b, alive):
     risk = 0.0
     for ms, weight in HARD_MULTISETS:
-        seen = {}
-        poses = []
-        for t in ms:
-            k = seen.get(t, 0)
-            seen[t] = k + 1
-            poses.append(samples[t][k])
-        if not _tray_ok(b, poses):
+        if not (any(alive[p] for p in ms) and _tray_ok(b, ms)):
             risk += weight
     return risk
+
+
+def _final_value(b, rank):
+    alive = _alive(b)
+    return rank - _fit_penalty(alive) - HARD_W * _hard_risk(b, alive)
 
 
 class SearchPolicy:
     name = "search"
 
-    def __init__(self, seed=0):
-        self._seed = seed
-
     def reset(self, game_seed):
-        self.rng = random.Random(f"{self._seed}:{game_seed}")
         self.queue = []
 
     def act(self, game, actions):
@@ -180,7 +187,6 @@ class SearchPolicy:
         return actions[0]
 
     def _plan(self, board, slots):
-        samples = {t: [self.rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
         full = (1 << len(slots)) - 1
         states = {(board, 0): (0.0, 0, ())}
         for _ in slots:
@@ -210,8 +216,5 @@ class SearchPolicy:
         free = 64 - _pc(board)
         count = FINAL_CROWDED if free <= CROWDED_FREE else FINAL_OPEN
         finals = sorted(complete, key=lambda c: -c[1][0])[:count]
-        best = max(
-            finals,
-            key=lambda c: c[1][0] - _fit_penalty(c[0]) - HARD_W * _hard_risk(c[0], samples),
-        )
+        best = max(finals, key=lambda c: _final_value(c[0], c[1][0]))
         return best[1][2]
