@@ -16,11 +16,18 @@ from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 FULL = (1 << 64) - 1
 ROWS = [0xFF << (8 * r) for r in range(8)]
 COLS = [0x0101010101010101 << c for c in range(8)]
+NOT_COL0 = FULL & ~COLS[0]
+NOT_COL7 = FULL & ~COLS[7]
+NOT_ROW7 = FULL & ~ROWS[7]
+RING = ROWS[0] | ROWS[7] | COLS[0] | COLS[7]
 BEAM = 12
-FINAL = 20
+FINAL = 12
 HARD_TYPES = (3, 4, 6, 7, 10)
 HARD_DRAWS = 3
-DEFAULT_PARAMS = {"lines": 3.0, "holes": 2.0, "bump": 0.5, "height": 0.3, "hard": 400.0}
+DEFAULT_PARAMS = {
+    "lines": 4.2, "occ": 1.4, "iso": 0.75, "trans": 1.5, "edge": 2.0,
+    "fit_cube": 400.0, "fit_mean": 80.0, "dead": 12.3, "hard": 400.0,
+}
 
 _MASKS = {}
 HARD_MULTISETS = [
@@ -101,11 +108,11 @@ class BeamPolicy:
 
     def _plan_tray(self, bits, pieces):
         draws = self._draw_hard_poses()
-        beam = [(bits, tuple(i for i, p in enumerate(pieces) if p is not None), ())]
+        beam = [(bits, tuple(i for i, p in enumerate(pieces) if p is not None), (), 0)]
         best = ()
         while True:
             nxt = []
-            for board, rem, acts in beam:
+            for board, rem, acts, cleared in beam:
                 for idx in rem:
                     mask, h, w = _shape_mask(pieces[idx].shape)
                     left = tuple(j for j in rem if j != idx)
@@ -115,17 +122,19 @@ class BeamPolicy:
                             if board & m:
                                 continue
                             after, lines = _clear(board | m)
-                            nxt.append((self._leaf(after, lines), after, left, acts + ((idx, x, y),)))
+                            total = cleared + lines
+                            nxt.append((self._leaf(after, total), after, left, total, acts + ((idx, x, y),)))
             if not nxt:
                 break
             nxt.sort(key=lambda t: t[0], reverse=True)
             if not nxt[0][2]:
                 finals = nxt[:FINAL]
-                _, _, _, acts = max(
-                    finals, key=lambda t: t[0] - self.params["hard"] * self._risk(t[1], draws)
+                _, _, _, _, acts = max(
+                    finals,
+                    key=lambda t: t[0] - self._fit_penalty(t[1]) - self.params["hard"] * self._risk(t[1], draws),
                 )
                 return list(acts)
-            beam = [(b, r, a) for _, b, r, a in nxt[:BEAM]]
+            beam = [(b, r, a, c) for _, b, r, c, a in nxt[:BEAM]]
             best = beam[0][2]
         return list(best)
 
@@ -150,14 +159,22 @@ class BeamPolicy:
 
     def _leaf(self, bits, lines):
         p = self.params
-        empty = ~bits & FULL
-        holes = (empty & ((bits << 8) & FULL)).bit_count()
-        heights = []
-        for c in range(Board.WIDTH):
-            col = bits & COLS[c]
-            heights.append(0 if not col else 8 - ((col & -col).bit_length() - 1) // 8)
-        bump = sum(abs(heights[c] - heights[c + 1]) for c in range(Board.WIDTH - 1))
-        return p["lines"] * lines - p["holes"] * holes - p["bump"] * bump - p["height"] * max(heights)
+        occ, iso, trans, edge = _features(bits)
+        return p["lines"] * lines - p["occ"] * occ - p["iso"] * iso - p["trans"] * trans - p["edge"] * edge
+
+    def _fit_penalty(self, bits):
+        p = self.params
+        shares = []
+        dead = 0
+        for poses in PIECE_TYPES:
+            fitting = sum(1 for pose in poses if any(not (bits & m) for m in POSE_MASKS[pose]))
+            shares.append(fitting / len(poses))
+            if fitting == 0:
+                dead += 1
+        mean_all = sum(shares) / len(shares)
+        alive = [share for share in shares if share > 0]
+        mean_alive = sum(alive) / len(alive) if alive else 0.0
+        return p["fit_cube"] * (1 - mean_alive) ** 3 + p["fit_mean"] * (1 - mean_all) + p["dead"] * dead
 
 
 def build(weights=None):
@@ -202,6 +219,22 @@ def _shape_mask(shape):
                     bits |= 1 << (dy * 8 + dx)
         _MASKS[key] = (bits, len(shape), len(shape[0]))
     return _MASKS[key]
+
+
+def _features(bits):
+    left = (bits << 1) & NOT_COL0
+    right = (bits >> 1) & NOT_COL7
+    up = (bits << 8) & FULL
+    down = bits >> 8
+    pockets = (left & right & up) | (left & right & down) | (left & up & down) | (right & up & down)
+    trans = ((bits ^ (bits >> 1)) & NOT_COL7).bit_count() + ((bits ^ (bits >> 8)) & NOT_ROW7).bit_count()
+    return bits.bit_count(), (pockets & ~bits).bit_count(), trans, (RING & ~bits).bit_count()
+
+
+POSE_MASKS = [
+    [mask << (y * 8 + x) for y in range(Board.HEIGHT - h + 1) for x in range(Board.WIDTH - w + 1)]
+    for mask, h, w in (_shape_mask(piece.shape) for piece in PIECE_POOL)
+]
 
 
 def _clear(bits):
