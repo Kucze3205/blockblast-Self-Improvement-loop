@@ -2,16 +2,25 @@
  "rodzic": "1.1",
  "rodzic_sha": "b8abfa437a1f19e687cc7ed041003b16483f5263",
  "kolejnosc": 6,
- "sha": "b8abfa437a1f19e687cc7ed041003b16483f5263",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "225430db32ad4c4c44fb1ec50c47d5df8d3029eb",
+ "stan": "ocena w toku",
+ "gist": "Ryzyko trudnych tacek łącznie (DFS) zamiast marginalnego, jak w 5/2.1",
+ "notatki": [
+  "Ryzyko trudnych tacek łącznie (DFS) zamiast marginalnego, jak w 5/2.1\n\nMechanizm:\n- w 12 najlepszych liściach wiązki (FINAL) losuję raz na ruch 16 tacek; każdy z 3 klocków\n  niezależnie z pięciu trudnych typów (beam5, rect23, square3, corner5, L), wagi jak w 5/2.1\n- tacka jest niewyłożalna, gdy DFS po wszystkich kolejnościach z czyszczeniem linii nie\n  znajdzie ułożenia (budżet 150 węzłów); kara HARD_PENALTY 500 * odsetek niewyłożalnych\n- te same 16 tacek dla wszystkich kandydatów w ruchu; RNG z reset(game_seed)\n- usunięte: marginalne 1-(1-d)^3 (W_RISK, dead_probability, tray_risk, POSE_PROB)\n- BEAM 40, FINAL 12 jak w 5/2.1; cechy liścia bez zmian\n\nDowód z historii:\n- 5/2.1 = 0.983 (47 przegranych): ta sama lista cech, ryzyko z 16 próbkowanych tacek,\n  FINAL stałe 12, wiązka 40; notatka 5/2.1 mówi, że ryzyko trudnych tacek dawało największy\n  skok w drzewach 2 i 4\n- 6/1.1 = 0.933 miał tylko marginalną wersję tego członu, bez sprawdzenia tacki jako całości\n- 5/5.2: budżet 150 zmienia wynik w 1 z 5904 próbek, więc 150 wystarcza\n\nDlaczego to nie powtórka: 1.1 miał marginalne ryzyko i wiązkę 12/24. Tu ryzyko jest\nłączne (przegrana to zdarzenie wspólne dla trzech klocków) i BEAM/FINAL jak w 5/2.1.\nNie dodaję członu dopasowania ani krawędzi 2.0 z 5/4.2, żeby wynik dał się przypisać\ntej zmianie. Kod pisany od nowa, nie z łatki 6/2.patch.\n\nRyzyko: wynik niezmierzony. Wagi i zbiór typów z 5/2.1, ale wartości budżetu i próbkowania\nper ruch są z notatek, nie z kodu 5/2.1, którego nie ma w historii. Smoke (seedy 1-3, limit\n300 ruchów; to nie wynik): brak nielegalnych ruchów, średnio 5,0 ms na ruch, maks. 22 ms.\nTesty: 9 OK. Konwencja ścian w przejściach (ściany liczone jako zajęte) bez zmian; nie wiadomo,\nczy 5/2.1 tak liczyło.\n\nCo dalej:\n- zrobione: 23ec6ee (SearchPolicy), 3c1dfcd (build), b8abfa4 (korekta notatki), ten commit\n- następny krok: ocena 1.2; jeśli s_sym < 0.983, osobno sprawdzić konwencję ścian w przejściach\n  względem 5/2.1, bez zmian w ryzyku\n- czego nie powtarzać: marginalnego ryzyka 1-(1-d)^3; samego poszerzania wiązki (beam 150\n  bez efektu wg 5/2.1)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 35,
+  "usd": 3.0985,
+  "minuty": 14.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T19:46:30Z",
+   "koniec": "2026-10-10T20:00:38Z",
+   "tury": 35,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
