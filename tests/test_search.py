@@ -11,7 +11,7 @@ from board import Board  # noqa: E402
 from game import Game  # noqa: E402
 from pieces import PIECE_POOL  # noqa: E402
 from policies import build  # noqa: E402
-from search import FEATURE_COUNT, PLACEMENTS, clear, features, occupancy  # noqa: E402
+from search import FEATURE_COUNT, PLACEMENTS, best_move, clear, features, occupancy  # noqa: E402
 
 
 def _random_board(rng):
@@ -79,3 +79,13 @@ def test_build_loads_weights_directory(tmp_path):
     policy = build(str(tmp_path))
     assert policy.name == "search"
     assert policy._bias == 0.5
+
+
+def test_best_move_places_piece_when_full_tray_does_not_fit():
+    grid = [[(x + y) % 2 == 0 for x in range(8)] for y in range(8)]
+    single = next(i for i, p in enumerate(PIECE_POOL) if sum(map(sum, p.shape)) == 1)
+    square = next(i for i, p in enumerate(PIECE_POOL)
+                  if len(p.shape) == 2 and len(p.shape[0]) == 2 and sum(map(sum, p.shape)) == 4)
+    move = best_move(occupancy(grid), [(0, square), (1, single)], lambda occ: 0.0, 12)
+    assert move is not None and move[0] == 1
+    assert (move[1] + move[2]) % 2 == 1

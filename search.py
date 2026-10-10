@@ -108,12 +108,7 @@ FEATURE_COUNT = 12
 
 
 def best_move(occ, pieces, value, width):
-    """Wybiera pierwszy ruch najlepszej wiązki po wszystkich klockach tacki.
-
-    pieces: lista (slot, pose) pozostałych klocków tacki.
-    value: funkcja occ -> ocena (wyższa lepsza).
-    Zwraca (slot, x, y) albo None, gdy żadna kolejność nie mieści całej tacki.
-    """
+    """Pierwszy ruch najlepszej ścieżki; ścieżka może nie mieścić całej tacki."""
     n = len(pieces)
     beam = [(0.0, occ, 0, None)]
     for _ in range(n):
@@ -134,7 +129,7 @@ def best_move(occ, pieces, value, width):
                     move = first if first is not None else (slot, x, y)
                     children[key] = (value(nboard), nboard, nused, move)
         if not children:
-            return None
+            break
         ranked = sorted(children.values(), key=lambda s: s[0], reverse=True)
         beam = ranked[:width]
     return beam[0][3]
