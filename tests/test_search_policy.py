@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import search_policy as sp
 from board import Board
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, PIECE_TYPES
 import policies
 
 
@@ -45,23 +45,42 @@ def brute_playable(grid, pieces):
 
 
 def reference_features(grid):
-    def empty(y, x):
-        return 0 <= y < 8 and 0 <= x < 8 and grid[y][x] == 0
+    def filled(y, x):
+        return 0 <= y < 8 and 0 <= x < 8 and grid[y][x] == 1
 
     occ = sum(sum(row) for row in grid)
-    iso = holes = sq = 0
+    iso = trans = edge = 0
     for y in range(8):
         for x in range(8):
             if grid[y][x] == 0:
-                if not any(empty(y + dy, x + dx) for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                blocked = sum(filled(y + dy, x + dx) for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+                if blocked >= 3:
                     iso += 1
-                if any(grid[yy][x] for yy in range(y)):
-                    holes += 1
-    for y in range(6):
-        for x in range(6):
-            if all(grid[y + dy][x + dx] == 0 for dy in range(3) for dx in range(3)):
-                sq += 1
-    return occ, iso, holes, sq
+                if y in (0, 7) or x in (0, 7):
+                    edge += 1
+            if x < 7 and grid[y][x] != grid[y][x + 1]:
+                trans += 1
+            if y < 7 and grid[y][x] != grid[y + 1][x]:
+                trans += 1
+    return occ, iso, trans, edge
+
+
+def reference_fit(grid):
+    board = board_from(grid)
+    shares = []
+    dead = 0
+    for poses in PIECE_TYPES:
+        fitting = 0
+        for pose in poses:
+            if any(board.can_place_piece(PIECE_POOL[pose], x, y) for y in range(8) for x in range(8)):
+                fitting += 1
+        shares.append(fitting / len(poses))
+        if fitting == 0:
+            dead += 1
+    alive = [share for share in shares if share > 0]
+    mean_alive = sum(alive) / len(alive) if alive else 0.0
+    mean_all = sum(shares) / len(shares)
+    return sp.FIT_CUBE_W * (1 - mean_alive) ** 3 + sp.FIT_MEAN_W * (1 - mean_all) + sp.DEAD_W * dead
 
 
 class SearchPolicyTest(unittest.TestCase):
@@ -83,13 +102,21 @@ class SearchPolicyTest(unittest.TestCase):
             board = board_from(grid)
             rows, cols = board.check_full_lines()
             board.clear_lines(rows, cols)
-            self.assertEqual(sp.to_bits(board.grid), sp.clear_lines(sp.to_bits(grid)))
+            bits, cleared = sp.clear_lines(sp.to_bits(grid))
+            self.assertEqual(sp.to_bits(board.grid), bits)
+            self.assertEqual(len(rows) + len(cols), cleared)
 
     def test_features_match_reference(self):
         rng = random.Random(3)
         for _ in range(200):
             grid = random_grid(rng, rng.uniform(0.0, 0.8))
             self.assertEqual(reference_features(grid), sp.features(sp.to_bits(grid)))
+
+    def test_fit_penalty_matches_reference(self):
+        rng = random.Random(6)
+        for _ in range(100):
+            grid = random_grid(rng, rng.uniform(0.0, 0.8))
+            self.assertAlmostEqual(reference_fit(grid), sp._fit_penalty(sp.to_bits(grid)))
 
     def test_playable_matches_brute_force(self):
         rng = random.Random(4)
@@ -113,7 +140,7 @@ class SearchPolicyTest(unittest.TestCase):
                 for idx, pose in remaining:
                     rest = tuple(p for i, p in remaining if i != idx)
                     for mask, x, y in sp.PLACEMENTS[pose]:
-                        if not (bits & mask) and sp.playable(sp.clear_lines(bits | mask), rest, [big]):
+                        if not (bits & mask) and sp.playable(sp.clear_lines(bits | mask)[0], rest, [big]):
                             expected.add((idx, x, y))
                 self.assertEqual(expected, found)
 
