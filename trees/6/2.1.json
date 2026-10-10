@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "56b3f3c2bc1e0533a30ef86b42f2e4419b0aa9b3",
+ "stan": "ocena w toku",
+ "gist": "Odtwórz liść 2.1 w SearchPolicy zamiast wymyślonych cech i wag",
+ "notatki": [
+  "Odtwórz liść 2.1 w SearchPolicy zamiast wymyślonych cech i wag\n\nMechanizm: policies.build(weights) zwraca SearchPolicy. Wiązka po klockach tacki (BEAM=40;\npełne kolejności trzech klocków są liśćmi). Liść oceniany tanio:\n4,2*linie - 1,4*zajęte - 0,75*kieszenie - 1,5*przejścia - 2,0*puste przy brzegu.\nDla 12 najlepszych liści (FINAL=12) odejmowana jest kara za dopasowanie typów,\n400*(1-średnia żywych)^3 + 80*(1-średnia wszystkich) + 12,3*martwe typy, oraz\n500 * ułamek z 16 losowych tacek z trudnych typów (beam5, prostokąt 2x3, kwadrat 3x3,\ncorner5, L), których nie da się wyłożyć. Budżet DFS: 400 węzłów; wyczerpany budżet\nliczy się jako wykładalny.\n\nOdtworzone z notatek:\n- 5/2.1.json: occ 1,4; iso 0,75; linie 4,2; martwe 12,3; trudne typy; 16 próbek; DFS; kara 500.\n- 5/3.3.json: iso to pusta komórka z co najmniej 3 zajętymi sąsiadami; przejścia 1,5 w 2.1.\n- 5/4.2.json: kara za dopasowanie; FINAL stały 12 dla 2.1.\n- 5/4.1.json: trudne tacki losowane co ruch.\n- Krawędź 2,0 pochodzi z 5/4.2, który twierdzi, że zestaw cech jest jak w 2.1. Dla 2.1 niepotwierdzone.\n\nWnioski, bo notatki ich nie podają:\n- znak linii: nagroda za czyszczenie (wzorzec \"premia za czyszczenie linii\" z 1/4.1);\n- ściana nie liczy się jako zajęta w kieszeniach i przejściach; puste przy brzegu to puste\n  komórki na obwodzie;\n- udział typu = ułamek jego póz z co najmniej jednym legalnym położeniem; pusty zbiór żywych\n  ma średnią 0;\n- trudny slot: najpierw jednostajnie typ z 5, potem jednostajnie poza tego typu;\n- budżet DFS 400.\n\nPoprzednia notatka (cf80693) była błędna: twierdziła, że wagi są nieznane i nastawione ręcznie.\nWagi 2.1 są w 5/2.1. Cechy i wagi z tamtego commitu (izolowane, dziury przez wypełnienie kolumn,\nkwadraty 3x3, SQ_CAP, FINAL 20) były wymyślone i są usunięte.\n\nDlaczego to nie powtórka: to odtworzenie bazy 2.1, nie nowy mechanizm.\n\nTesty: tests/test_search_policy.py 7/7 zielonych (bitboardy zgodne z Board, czyszczenie linii,\ncechy i kara za dopasowanie zgodne z referencją, wykładalność zgodna z brute force, wiązka bez\nlimitu znajduje wszystkie wykładalne pierwsze ruchy, kontrakt build i determinizm).\ntests/test_engine.py: 16/17; jedyny błąd to brak tkinter w model.py, poza tą zmianą.\n\nSmoke (6 partii, seedy 0-5, limit 300 postawień): bez wyjątku i bez złego ruchu; 1506 ruchów,\n4,35 ms na ruch; dwie partie skończyły się przed limitem (64 i 242 postawienia); 8 wyczerpań\nbudżetu DFS. To nie jest wynik i nie strojono na przeżyciu.\n\nFallback: act zwraca actions[0] tylko wtedy, gdy nie ma pełnego ułożenia tacki. Zdarzyło się\n3 razy na 1506 ruchów. Szersza wiązka (bez limitu) też go nie znajduje, więc to stany bez\nwyjścia: gra kończy się w nich najwyżej po dwóch kolejnych postawieniach.\n\nRyzyko: wynik nieznany, nie zmierzony; ocena rozstrzyga. Część parametrów to wnioski (wyżej)\ni może być błędna. Czas: przy 1200 partiach i 500 ruchach na partię około 44 min jednowątkowo\n(szacunek z 4,35 ms). Limit czasu nieznany: w work/ nie ma .github/evaluator/config.json.\n\nCo dalej: ocena zewnętrzna tego commitu. Węzeł 2 tylko, jeśli czas okaże się problemem:\nprzyspieszenie zachowujące wybór ruchu (np. deduplikacja stanów w wiązce), sprawdzone\nporównaniem z obecną wersją na losowych stanach. Nie powtarzać prób z .historia/INDEKS.md,\nw tym: beam 150, wyższe FINAL/BEAM, hard=1000, martwe typy na poziomie pozy (2.2),\nocc 1,0 / iso 6,0.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Przywróć policies.build: wiązka po tacce na bitboardach z karą za trudne tacki\n\nMechanizm: policies.build(weights) zwraca SearchPolicy (search_policy.py). Wiązka BEAM=40\nrozwija klocki tacki na 64-bitowych planszach; liść oceniany jako\n-occ - 4*iso - 4*holes + min(sq, 8). Dla 20 najlepszych liści kara 500 * ułamek z 16\nlosowych tacek z trudnych typów (beam5, prostokąt 2x3, kwadrat 3x3, corner5, L), których\nnie da się wyłożyć. DFS ma budżet 400 węzłów; wyczerpany budżet liczy się jako wykładalny.\n\nDowód z historii: 5/5.1.json (przywrócenie policies.build na bazie wiązki łańcucha 2;\nbez tego ocena daje 0), 5/3.2.json i 5/3.3.json (cechy occ/iso z 2.1), 5/4.3.json\n(losowanie każdego miejsca tacki niezależnie).\n\nDlaczego to nie powtórka: to odtworzenie bazy, nie nowa próba. Wagi są nastawione ręcznie,\nbo tools/tune.py z 2.1 nie ma w repo. Nie są zmierzone.\n\nTesty: tests/test_search_policy.py, 6/6 zielonych: bitboardy zgodne z Board, czyszczenie\nlinii, cechy zgodne z referencją, wykładalność zgodna z brute force, wiązka bez limitu\nznajduje wszystkie wykładalne pierwsze ruchy, kontrakt build i determinizm.\ntest_engine: 16/17; jedyny błąd to brak tkinter w model.py, poza tą zmianą.\n\nRyzyko: wynik nieznany. Smoke (3 partie, bez wyjątku): 419 ruchów łącznie, średnio ok. 140\nna partię, 6,5 ms na ruch, 17 wyczerpań DFS. To nie jest wynik, ale partie kończą się\nwcześnie, więc odtworzona baza może być słabsza od 2.1. Czas: przy ~500 ruchach na partię\ni 1200 partiach szacunkowo ~65 min; limit nieznany, bo config ewaluacji jest niedostępny.\n\nCo dalej: węzeł 2. Najpierw zmierzyć, jak często wiązka nie zwraca żadnego kompletnego\nułożenia tacki (wtedy act wybiera actions[0]). Potem poprawka tego wyboru albo tablica\ntranspozycji, zależnie od wyniku. Nie powtarzać listy z 5/5.1.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 114,
+  "usd": 9.6691,
+  "minuty": 41.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T19:03:08Z",
+   "koniec": "2026-10-10T19:44:40Z",
+   "tury": 114,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
