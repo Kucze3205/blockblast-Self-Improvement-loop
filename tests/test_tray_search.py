@@ -16,11 +16,18 @@ from tray_search import (
     HARD_MULTISETS,
     HARD_TYPES,
     SLOT_P,
+    W_BORDER,
+    W_ISO,
+    W_LINE,
+    W_OCC,
+    W_TRANS,
     _dead_tray_prob,
     _fit,
     _joint_playable,
+    _leaf,
     _pockets,
     _settle,
+    _transitions,
     occupancy,
 )
 
@@ -91,6 +98,31 @@ class TestBitboardPrimitives(unittest.TestCase):
                     if all(not (0 <= a < 8 and 0 <= b < 8) or grid[a][b] for a, b in neighbours):
                         pockets += 1
             self.assertEqual(_pockets(occupancy(grid)), pockets)
+
+    def test_leaf_matches_bruteforce(self):
+        rng = random.Random(6)
+        for _ in range(40):
+            grid = random_grid(rng, rng.random() * 0.7)
+            sequences = [[1] + row + [1] for row in grid]
+            sequences += [[1] + [grid[r][c] for r in range(8)] + [1] for c in range(8)]
+            trans = sum(seq[i] != seq[i + 1] for seq in sequences for i in range(9))
+            border = sum(
+                1
+                for r in range(8)
+                for c in range(8)
+                if not grid[r][c] and (r in (0, 7) or c in (0, 7))
+            )
+            occ = occupancy(grid)
+            occupied = sum(map(sum, grid))
+            self.assertEqual(_transitions(occ), trans)
+            expect = (
+                W_LINE * 2
+                - W_OCC * occupied
+                - W_ISO * _pockets(occ)
+                - W_TRANS * trans
+                - W_BORDER * border
+            )
+            self.assertAlmostEqual(_leaf(occ, 2), expect)
 
     def test_hard_multisets_cover_hard_mass(self):
         total = sum(weight for weight, _ in HARD_MULTISETS)

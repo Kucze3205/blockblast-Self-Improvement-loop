@@ -12,10 +12,13 @@ ROW = [0xFF << (8 * r) for r in range(8)]
 COL = [sum(1 << (8 * r + c) for r in range(8)) for c in range(8)]
 NOT_COL0 = FULL & ~COL[0]
 NOT_COL7 = FULL & ~COL[7]
+RING = ROW[0] | ROW[7] | COL[0] | COL[7]
+ROWS_0_6 = FULL & ~ROW[7]
 
 HARD_TYPES = (3, 4, 7, 6, 10)  # beam4, beam5, square3, rect23, corner5
 BEAM = 120
 W_OCC, W_ISO, W_LINE = 1.4, 0.75, 4.2
+W_TRANS, W_BORDER = 1.5, 2.0
 W_DEAD = 66.0  # 12.3 za w pełni martwy typ = 66 * P(tacka ma martwy klocek)
 W_HARD = 400.0
 JOINT_BUDGET = 200
@@ -88,8 +91,27 @@ def _pockets(occ):
     return (free & ~near).bit_count()
 
 
+def _transitions(occ):
+    empty = FULL & ~occ
+    return (
+        ((occ ^ (occ >> 1)) & ~COL[7]).bit_count()
+        + (empty & COL[0]).bit_count()
+        + (empty & COL[7]).bit_count()
+        + ((occ ^ (occ >> 8)) & ROWS_0_6).bit_count()
+        + (empty & ROW[0]).bit_count()
+        + (empty & ROW[7]).bit_count()
+    )
+
+
 def _leaf(occ, lines):
-    return W_LINE * lines - W_OCC * occ.bit_count() - W_ISO * _pockets(occ)
+    border = (FULL & ~occ & RING).bit_count()
+    return (
+        W_LINE * lines
+        - W_OCC * occ.bit_count()
+        - W_ISO * _pockets(occ)
+        - W_TRANS * _transitions(occ)
+        - W_BORDER * border
+    )
 
 
 def _dead_tray_prob(occ):
