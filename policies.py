@@ -4,6 +4,8 @@ Polityki grające, których używa benchmark.
 Wszystkie są deterministyczne przy zadanym seedzie partii — benchmark mierzy,
 co polityka umie, a nie jak wypada w trakcie nauki (#8).
 """
+import json
+import os
 import random
 
 from board import Board
@@ -12,7 +14,10 @@ from search_policy import SearchPolicy
 
 
 def build(weights=None):
-    return SearchPolicy()
+    if weights is None:
+        return SearchPolicy()
+    with open(os.path.join(weights, "search.json"), encoding="utf-8") as fh:
+        return SearchPolicy(json.load(fh))
 
 
 class RandomPolicy:

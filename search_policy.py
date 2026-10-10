@@ -1,4 +1,5 @@
 """Wiązka po klockach tacki na bitboardach z karą za trudne tacki."""
+import itertools
 import random
 
 from pieces import PIECE_POOL, PIECE_TYPES
@@ -12,20 +13,25 @@ NOT_COL7 = FULL & ~COLS[W - 1]
 NOT_ROW7 = FULL & ~ROWS[W - 1]
 RING = ROWS[0] | ROWS[W - 1] | COLS[0] | COLS[W - 1]
 
-HARD_TYPES = (4, 6, 7, 10, 9)  # beam5, rect23, square3, corner5, L
+HARD_TYPES = (3, 4, 7, 6, 10)  # beam4, beam5, square3, rect23, corner5
 BEAM = 40
 FINAL = 12
-SAMPLES = 16
-HARD_PENALTY = 500
 TRAY_BUDGET = 400
-OCC_W = 1.4
-ISO_W = 0.75
-TRANS_W = 1.5
-EDGE_W = 2.0
-LINE_REWARD = 4.2
-FIT_CUBE_W = 400
-FIT_MEAN_W = 80
-DEAD_W = 12.3
+HARD_MULTISETS = [
+    (types, len(set(itertools.permutations(types))) / len(HARD_TYPES) ** 3)
+    for types in itertools.combinations_with_replacement(HARD_TYPES, 3)
+]
+DEFAULT_WEIGHTS = {
+    "OCC_W": 1.4,
+    "ISO_W": 0.75,
+    "TRANS_W": 1.5,
+    "EDGE_W": 2.0,
+    "LINE_REWARD": 4.2,
+    "FIT_CUBE_W": 400.0,
+    "FIT_MEAN_W": 80.0,
+    "DEAD_W": 12.3,
+    "HARD_PENALTY": 400.0,
+}
 
 
 def _placements(piece):
@@ -77,12 +83,18 @@ def features(bits):
     return bits.bit_count(), (pockets & ~bits).bit_count(), trans, (RING & ~bits).bit_count()
 
 
-def _cheap(bits, lines):
+def _cheap(bits, lines, w):
     occ, iso, trans, edge = features(bits)
-    return LINE_REWARD * lines - OCC_W * occ - ISO_W * iso - TRANS_W * trans - EDGE_W * edge
+    return (
+        w["LINE_REWARD"] * lines
+        - w["OCC_W"] * occ
+        - w["ISO_W"] * iso
+        - w["TRANS_W"] * trans
+        - w["EDGE_W"] * edge
+    )
 
 
-def _fit_penalty(bits):
+def _fit_penalty(bits, w):
     shares = []
     dead = 0
     for poses in PIECE_TYPES:
@@ -93,7 +105,11 @@ def _fit_penalty(bits):
     mean_all = sum(shares) / len(shares)
     alive = [share for share in shares if share > 0]
     mean_alive = sum(alive) / len(alive) if alive else 0.0
-    return FIT_CUBE_W * (1 - mean_alive) ** 3 + FIT_MEAN_W * (1 - mean_all) + DEAD_W * dead
+    return (
+        w["FIT_CUBE_W"] * (1 - mean_alive) ** 3
+        + w["FIT_MEAN_W"] * (1 - mean_all)
+        + w["DEAD_W"] * dead
+    )
 
 
 def playable(bits, poses, budget):
@@ -115,7 +131,8 @@ def playable(bits, poses, budget):
 class SearchPolicy:
     name = "search"
 
-    def __init__(self):
+    def __init__(self, weights=None):
+        self.w = {**DEFAULT_WEIGHTS, **(weights or {})}
         self.reset(0)
 
     def reset(self, game_seed):
@@ -132,23 +149,30 @@ class SearchPolicy:
         trays = self._hard_trays()
         best_score, best_move = None, None
         for cheap, leaf_bits, move in leaves[:FINAL]:
-            bad = 0
-            for tray in trays:
+            risk = 0.0
+            for weight, tray in trays:
                 budget = [TRAY_BUDGET]
                 if not playable(leaf_bits, tray, budget):
-                    bad += 1
+                    risk += weight
                 if budget[0] < 0:
                     self.exhausted += 1
-            score = cheap - _fit_penalty(leaf_bits) - HARD_PENALTY * bad / SAMPLES
+            score = cheap - _fit_penalty(leaf_bits, self.w) - self.w["HARD_PENALTY"] * risk
             if best_score is None or score > best_score:
                 best_score, best_move = score, move
         return best_move if best_move is not None else actions[0]
 
     def _hard_trays(self):
-        return [
-            tuple(self.rng.choice(PIECE_TYPES[self.rng.choice(HARD_TYPES)]) for _ in range(3))
-            for _ in range(SAMPLES)
-        ]
+        draws = {t: [self.rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
+        trays = []
+        for types, weight in HARD_MULTISETS:
+            used = {}
+            tray = []
+            for t in types:
+                k = used.get(t, 0)
+                used[t] = k + 1
+                tray.append(draws[t][k])
+            trays.append((weight, tuple(tray)))
+        return trays
 
     def _leaves(self, bits, remaining):
         frontier = [(bits, remaining, None, 0)]
@@ -161,7 +185,9 @@ class SearchPolicy:
                         if not (b & mask):
                             nb, cleared = clear_lines(b | mask)
                             total = lines + cleared
-                            children.append((_cheap(nb, total), nb, rest, total, first or (idx, x, y)))
+                            children.append(
+                                (_cheap(nb, total, self.w), nb, rest, total, first or (idx, x, y))
+                            )
             if not children:
                 return []
             if not children[0][2]:

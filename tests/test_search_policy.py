@@ -1,11 +1,14 @@
 """Testy polityki wiązkowej: bitboardy zgodne z Board, wykładalność tacki zgodna z brute force."""
+import json
 import os
 import random
 import sys
+import tempfile
 import unittest
 import unittest.mock
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 import search_policy as sp
 from board import Board
@@ -80,7 +83,8 @@ def reference_fit(grid):
     alive = [share for share in shares if share > 0]
     mean_alive = sum(alive) / len(alive) if alive else 0.0
     mean_all = sum(shares) / len(shares)
-    return sp.FIT_CUBE_W * (1 - mean_alive) ** 3 + sp.FIT_MEAN_W * (1 - mean_all) + sp.DEAD_W * dead
+    w = sp.DEFAULT_WEIGHTS
+    return w["FIT_CUBE_W"] * (1 - mean_alive) ** 3 + w["FIT_MEAN_W"] * (1 - mean_all) + w["DEAD_W"] * dead
 
 
 class SearchPolicyTest(unittest.TestCase):
@@ -116,7 +120,7 @@ class SearchPolicyTest(unittest.TestCase):
         rng = random.Random(6)
         for _ in range(100):
             grid = random_grid(rng, rng.uniform(0.0, 0.8))
-            self.assertAlmostEqual(reference_fit(grid), sp._fit_penalty(sp.to_bits(grid)))
+            self.assertAlmostEqual(reference_fit(grid), sp._fit_penalty(sp.to_bits(grid), sp.DEFAULT_WEIGHTS))
 
     def test_playable_matches_brute_force(self):
         rng = random.Random(4)
@@ -164,6 +168,14 @@ class SearchPolicyTest(unittest.TestCase):
             return trace
 
         self.assertEqual(play(5, 60), play(5, 60))
+
+    def test_build_reads_weights_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "search.json"), "w", encoding="utf-8") as fh:
+                json.dump({"OCC_W": 2.5}, fh)
+            policy = policies.build(tmp)
+        self.assertEqual(2.5, policy.w["OCC_W"])
+        self.assertEqual(sp.DEFAULT_WEIGHTS["ISO_W"], policy.w["ISO_W"])
 
 
 if __name__ == "__main__":
