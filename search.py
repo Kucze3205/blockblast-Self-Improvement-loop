@@ -91,6 +91,22 @@ def _penalty(occ, draws):
     return -(_fit_penalty(occ) + HARD_PENALTY * _risk(occ, draws))
 
 
+def _distinct(children):
+    # Permutacje tych samych klocków dają tę samą planszę i zajmują miejsca w wiązce.
+    children.sort(key=lambda c: c[0], reverse=True)
+    seen = set()
+    out = []
+    for child in children:
+        key = (child[1], child[2], child[4])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(child)
+        if len(out) == BEAM:
+            break
+    return out
+
+
 def plan_tray(occ, pieces, rng):
     """pieces: [(indeks w game.pieces, Pose)]. Zwraca [(indeks, anchor)] albo []."""
     draws = {t: [POSES[rng.choice(PIECE_TYPES[t])] for _ in range(DRAWS)] for t in HARD_TYPES}
@@ -108,8 +124,7 @@ def plan_tray(occ, pieces, rng):
                     children.append((_cheap(occ2, lines_total), occ2, rest, seq + ((game_index, anchor),), lines_total))
         if not children:
             break
-        children.sort(key=lambda c: c[0], reverse=True)
-        states = children[:BEAM]
+        states = _distinct(children)
     if not states or not states[0][3]:
         return []
     best = max(states[:FINAL], key=lambda s: s[0] + _penalty(s[1], draws))

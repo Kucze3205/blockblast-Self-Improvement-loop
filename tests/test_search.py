@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 import bitboard as bb
 from game import Game
-from search import SearchPolicy, _cheap, plan_tray
+from search import SearchPolicy, _cheap, _distinct, plan_tray
 
 
 def _tray(game):
@@ -35,6 +35,13 @@ class TestSearch(unittest.TestCase):
                     game.step(move)
                     placed += 1
         self.assertGreater(placed, 0)
+
+    def test_beam_keeps_distinct_boards(self):
+        first = (1.0, 5, (), ((0, 1),), 0)
+        same_board = (0.5, 5, (), ((1, 2), (0, 1)), 0)
+        other = (0.2, 6, (), ((2, 3),), 0)
+        kept = _distinct([same_board, other, first])
+        self.assertEqual([c[0] for c in kept], [1.0, 0.2])
 
     def test_same_seed_same_moves(self):
         def play(seed):
