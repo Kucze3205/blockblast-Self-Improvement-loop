@@ -2,16 +2,26 @@
  "rodzic": "2.2",
  "rodzic_sha": "1fb754ac01c0cdc19eef0ca96f161c26d9c20285",
  "kolejnosc": 12,
- "sha": "1fb754ac01c0cdc19eef0ca96f161c26d9c20285",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "7d53d1046f0e3a08c2a24e8e20e4239ccf28bfd8",
+ "stan": "ocena w toku",
+ "gist": "Korekta notatki 6c4b2fc: ablacja MIX_SAMPLES, rodzina spadła dwa razy",
+ "notatki": [
+  "Korekta notatki 6c4b2fc: ablacja MIX_SAMPLES, rodzina spadła dwa razy\n\nBez zmian kodu. Poprawia notatkę 6c4b2fc: kilka twierdzeń było błędnych albo nieuzasadnionych.\n\nPoprawki:\n- Ablacja: MIX_SAMPLES = 0 odtwarza 2.2 dokładnie (zero losowań mieszanych, ta sama ścieżka RNG; diff 1fb754a..6c4b2fc to potwierdza). MIX_PENALTY = 0 tego nie robi: losowania mieszane zużywają RNG, więc tacki hard od drugiego ruchu są inne.\n- Zera w 5/5.2 (317 z 323 stanów) nie wynikały z tego, że większość próbek nie ma trudnych klocków. Rozkład przy 1/3 na slot: 0 trudnych 30%, 1 trudny 44%, 2 trudne 22%, 3 trudne 4%. Notatka 5/5.2 wiąże niezerowość z planszami bliskimi przegranej.\n- Diagnoza 108 z 204 przegranych pochodzi z 5/2.2 (cytowana w 5/5.2), nie z 5/5.2.\n- Pominięta bliska rodzina: 5/2.3 (kara łączna z warunkowych próbek, baza kodu 5.1 o 0,983, wynik 0,976; indeks podaje rodzica 2.2, ale kod to 5.1) i 5/5.2 (baza 5.1, wynik 0,977). Obie ok. -0,007 względem bazy.\n- Usunięte: zdanie o multizbiorach w 4.1 i 5.1, bo indeks ani notatki tego nie potwierdzają.\n- Smoke: bez wyjątków. Liczby ruchów usunięte z notatki, bo nie są wynikiem.\n- Limit czasu: w indeksie 3/3.4 przy 55,7 min za wolna, 4/3.1 przy 56,9 min przeszła, 4/2.2 przy 57,2 min za wolna. To nie jest jedna stała granica; limit nie jest w repo. Szacunek 2.3: ok. 1,8 min (2.2 miał 1,3 min, koszt ruchu +40%).\n\nDlaczego to nie powtórka, po poprawce: człon mieszany warunkuje na liczbie trudnych klocków (1-2), a nie na dopasowaniu, i jest rozłączny z członem hard (tylko 3 trudne), więc ta sama tacka nie liczy się dwa razy (poza DEAD_W). To jednak ta sama rodzina co 5/2.3 i 5/5.2: wspólna kara za tackę.\n\nRyzyko: rodzina spadła dwa razy na bazie 5.1, więc wynik może znów być poniżej bazy. MIX_PENALTY 100 i K=24 nieostrojone.\n\nCo dalej:\n- zrobione: 1fb754a (węzeł 2.2), 6c4b2fc (węzeł 2.3), ten commit (korekta notatki)\n- ocena 2.3 względem 2.2 (w drzewie 6: 0,978, klucz fbf02cb52df323a5); najlepszy zmierzony wynik w historii to 5/4.3 (0,985)\n- jeśli 2.3 spadnie: nie strojić wag tej rodziny, tylko zmienić mechanizm\n- czego nie powtarzać: pełnego rozkładu bez warunku (5/5.2); wspólnej kary za tackę warunkowanej na dopasowaniu (5/2.3) bez nowego mechanizmu\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Ryzyko tacek z 1-2 trudnymi klockami z próbek generatora (węzeł 2.3)\n\nMechanizm:\n- liść, multizbiór trudnych tacek (3 trudne klocki, HARD_PENALTY 400) i ich pozy bez zmian względem 2.2\n- nowy człon: _mixed_trays losuje 24 tacki z rozkładu generatora (typ 1/15, potem poza 1/|typ|),\n  odrzucając tacki z zero albo trzema trudnymi klockami; kara MIX_PENALTY 100 * ułamek tych tacek,\n  których nie da się ułożyć łącznie\n- _risk: wspólna pętla dla obu członów, treść dla trudnych tacek taka sama jak w 2.2\n- test: _mixed_trays daje 24 tacki z jednym lub dwoma trudnymi klockami, wagi sumują się do 1\n\nDowód z historii:\n- 5/5.2 (0.977, rodzic 5/5.1 0.983): ta sama idea, próbki z pełnego rozkładu. Jego notatka: lokalnie\n  108 z 204 przegranych to tacki z martwym klockiem, reszta to tacki, w których każdy klocek pasuje\n  osobno, ale nie razem. Człon był zerowy na 317 z 323 stanów, bo większość próbek to tacki bez\n  trudnych klocków.\n- 2.2 losuje tacki tylko z trzema trudnymi klockami (1/27 rozkładu), więc tacki z jednym lub dwoma\n  dużymi klockami nie mają żadnej kary.\n- 5/5.2 w \"Co dalej\" proponowało ważenie próbek w stronę dużych klocków; ta próba to ten krok, z\n  warunkiem na 1-2 trudne klocki.\n\nDlaczego to nie powtórka:\n- 5/5.2 próbkowało wszystkie tacki i mnożyło karę przez P(każdy klocek pasuje osobno). Tu próbki są\n  warunkowe na 1-2 trudne klocki, a człon jest dodatkiem do dokładnego członu 2.2, nie zamiennikiem.\n- HARD_TYPES, HARD_PENALTY i wagi liścia bez zmian.\n\nRyzyko:\n- wynik nieznany; MIX_PENALTY 100 i K=24 nie strojone\n- martwe klocki liczą się tu i w DEAD_W (człon nie filtruje tacek z martwym klockiem), czyli kara jest\n  podwójna dla tych tacek\n- tacki bez trudnych klocków (ok. 30% rozkładu) są pominięte; zakładam, że są prawie zawsze grywalne,\n  to nie jest pomiar\n- koszt: smoke lokalny (seedy 1-3, limit 200 ruchów): 12,7 ms na ruch względem 9,1 ms bez członu\n  (+40%). Z indeksu granica czasu wygląda na ok. 55-57 min (3/3.4 przy 55,7 min za wolna, 4/3.1 przy\n  56,9 min przeszła), a 2.2 ma 1,3 min; limit nie jest w repo\n- smoke bez wyjątków; liczba ruchów w smoke (600 wobec 456) nie jest wynikiem\n\nCo dalej:\n- zrobione: 1fb754a (węzeł 2.2), ten commit (węzeł 2.3)\n- następny krok: ocena 2.3 względem 2.2 (0.978, klucz fbf02cb52df323a5). Jeśli spadnie: MIX_PENALTY 0\n  odtwarza 2.2, więc sprawdzić, czy spadek siedzi w przegranych z tackami bez martwego klocka\n- czego nie powtarzać: pełnego rozkładu bez warunku na trudne klocki (5/5.2); strojenia HARD_PENALTY przy\n  tym estymatorze; multizbiorów na liściu 4.1 i 5.1\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 57,
+  "usd": 3.9381,
+  "minuty": 16.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T20:59:58Z",
+   "koniec": "2026-10-10T21:16:29Z",
+   "tury": 57,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
