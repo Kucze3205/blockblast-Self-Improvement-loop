@@ -2,16 +2,25 @@
  "rodzic": "5.3",
  "rodzic_sha": "d25c209b35debbf94ea52829870c400153645133",
  "kolejnosc": 20,
- "sha": "d25c209b35debbf94ea52829870c400153645133",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "80ba98affee2c77461be13f1e73fe3691265eaad",
+ "stan": "ocena w toku",
+ "gist": "Dodaj karę za parę następnych tacek, której sześciu klocków nie da się łącznie wyłożyć",
+ "notatki": [
+  "Dodaj karę za parę następnych tacek, której sześciu klocków nie da się łącznie wyłożyć\n\nMechanizm:\n- do wyboru finału dochodzi kara -300 * odsetek par tacek, w których pierwsza tacka się wykłada, a sześć klocków obu tacek razem już nie\n- 4 pary, każda z dwóch świeżo wylosowanych trudnych tacek (3 klocki z HARD_TYPES, pozy losowane jak w generatorze); DFS na 6 klockach z budżetem 150 prób postawienia; po wyczerpaniu budżetu brak kary\n- liść, wagi, kara dopasowania, ryzyko trudnych tacek (400) i BEAM 40 bez zmian względem 5.3\n\nDowód z historii:\n- wg notatki 5/5.1 (drzewo 5) to wagi i cechy 5/2.1 plus ten człon: s_sym 0.98332, 45 przegranych; baza 5/2.1: 0.98275, 47 przegranych\n- różnica +0.0006 to szum; dowód mówi tylko, że człon na tamtej bazie nie szkodzi\n- dwutackowe warianty w drzewie 3 nie pomogły: 2.4 (kara tylko na zapełnionej planszy) 0.877 wobec bazy 2.3 0.922; 4.4 0.921 wobec 4.3 0.925\n\nDlaczego to nie powtórka:\n- żaden węzeł drzewa 6 nie ma członu na parę tacek (grep po .historia: trafienia tylko w drzewach 3 i 5)\n- nowa kombinacja: człon z 5/5.1 na bazie 5.3, czyli BEAM 40 i liść z pomiaru 2.1\n\nRyzyko:\n- wynik niezmierzony; dowód z drzewa 5 jest słaby (patrz wyżej)\n- odtworzone z opisu: kodu 5/5.1 nie ma w repo (ee691e8 nieobecny). Notatka mówi o 4 parach z 16 próbek; losuję 4 pary z 8 niezależnych tacek. Przy niezależnym losowaniu wartość oczekiwana kary ta sama, różni się wariancja\n- dodatkowe losowania zmieniają ciąg RNG, więc 5.4 nie da się porównać seed po seedzie z 5.3\n- testy: tests/test_beam_policy.py 5/5 (dwa nowe: DFS bez budżetu zgodny z _fits na 200 planszach; optymizm po wyczerpaniu budżetu)\n- smoke (seedy 1-3, do 300 ruchów; nie jest to wynik): bez wyjątków i nielegalnych ruchów; 6.6 ms na ruch z członem, 3.9 bez niego w tej samej partii; najgorzej 71 ms\n- limit_shardu_s nieodczytany (nie znalazłem .github/evaluator/config.json); jeśli ocena da \"za wolna\": najpierw PAIR_BUDGET, potem PAIRS, wagi bez zmian\n\nCo dalej:\n- zrobione: d25c209 (5.3), ten commit (5.4)\n- następny krok: wynik oceny 5.4 względem 5.3 (0.974). Poniżej 0.974: ablacja członu (pair = 0) przed czymkolwiek innym. Za wolna: skrócić DFS\n- czego nie powtarzać: strojenia wagi 300 bez nowego pomiaru\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 87,
+  "usd": 5.637,
+  "minuty": 28.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T21:19:54Z",
+   "koniec": "2026-10-10T21:48:22Z",
+   "tury": 87,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
