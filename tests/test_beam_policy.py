@@ -72,6 +72,17 @@ class BeamPolicyTest(unittest.TestCase):
             grid = random_grid(rng, rng.uniform(0.0, 0.8))
             self.assertAlmostEqual(reference_fit(grid), policy._fit_penalty(policies._bits(grid)))
 
+    def test_fits_within_matches_fits_without_budget(self):
+        rng = random.Random(9)
+        for _ in range(200):
+            bits = policies._bits(random_grid(rng, rng.uniform(0.3, 0.9)))
+            pieces = [policies._shape_mask(PIECE_POOL[rng.randrange(len(PIECE_POOL))].shape) for _ in range(3)]
+            self.assertEqual(policies._fits(bits, pieces), policies._fits_within(bits, pieces, 10**9))
+
+    def test_fits_within_is_optimistic_once_budget_is_spent(self):
+        pieces = [policies._shape_mask(PIECE_POOL[0].shape)]
+        self.assertTrue(policies._fits_within(0, pieces, 0))
+
     def test_games_play_legal_moves(self):
         for seed in range(3):
             policy = policies.build(None)

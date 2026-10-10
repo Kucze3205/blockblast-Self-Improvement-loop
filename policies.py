@@ -24,9 +24,11 @@ BEAM = 40
 FINAL = 12
 HARD_TYPES = (3, 4, 6, 7, 10)
 HARD_DRAWS = 3
+PAIRS = 4
+PAIR_BUDGET = 150
 DEFAULT_PARAMS = {
     "lines": 4.2, "occ": 1.4, "iso": 0.75, "trans": 1.5, "edge": 2.0,
-    "fit_cube": 400.0, "fit_mean": 80.0, "dead": 12.3, "hard": 400.0,
+    "fit_cube": 400.0, "fit_mean": 80.0, "dead": 12.3, "hard": 400.0, "pair": 300.0,
 }
 
 _MASKS = {}
@@ -108,6 +110,7 @@ class BeamPolicy:
 
     def _plan_tray(self, bits, pieces):
         draws = self._draw_hard_poses()
+        pairs = self._draw_hard_pairs()
         beam = [(bits, tuple(i for i, p in enumerate(pieces) if p is not None), (), 0)]
         best = ()
         while True:
@@ -131,7 +134,9 @@ class BeamPolicy:
                 finals = nxt[:FINAL]
                 _, _, _, _, acts = max(
                     finals,
-                    key=lambda t: t[0] - self._fit_penalty(t[1]) - self.params["hard"] * self._risk(t[1], draws),
+                    key=lambda t: t[0] - self._fit_penalty(t[1])
+                    - self.params["hard"] * self._risk(t[1], draws)
+                    - self._pair_penalty(t[1], pairs),
                 )
                 return list(acts)
             beam = [(b, r, a, c) for _, b, r, c, a in nxt[:BEAM]]
@@ -156,6 +161,24 @@ class BeamPolicy:
             if not _fits(bits, trio):
                 risk += weight
         return risk
+
+    def _draw_hard_pairs(self):
+        trays = [self._draw_hard_tray() for _ in range(2 * PAIRS)]
+        return [(trays[2 * i], trays[2 * i + 1]) for i in range(PAIRS)]
+
+    def _draw_hard_tray(self):
+        out = []
+        for _ in range(3):
+            t = self.rng.choice(HARD_TYPES)
+            out.append(_shape_mask(PIECE_POOL[self.rng.choice(PIECE_TYPES[t])].shape))
+        return out
+
+    def _pair_penalty(self, bits, pairs):
+        bad = 0
+        for first, second in pairs:
+            if _fits(bits, first) and not _fits_within(bits, first + second, PAIR_BUDGET):
+                bad += 1
+        return self.params["pair"] * bad / len(pairs)
 
     def _leaf(self, bits, lines):
         p = self.params
@@ -207,6 +230,30 @@ def _fits(bits, pieces):
                 if not (bits & m) and _fits(_clear(bits | m)[0], rest):
                     return True
     return False
+
+
+def _fits_within(bits, pieces, budget):
+    # Po wyczerpaniu budżetu zwraca True: brak kary zamiast dalszego przeszukiwania.
+    spent = [0]
+
+    def rec(bits, pieces):
+        if not pieces:
+            return True
+        for i, (mask, h, w) in enumerate(pieces):
+            rest = pieces[:i] + pieces[i + 1:]
+            for y in range(Board.HEIGHT - h + 1):
+                for x in range(Board.WIDTH - w + 1):
+                    m = mask << (y * 8 + x)
+                    if bits & m:
+                        continue
+                    spent[0] += 1
+                    if spent[0] > budget:
+                        return True
+                    if rec(_clear(bits | m)[0], rest):
+                        return True
+        return False
+
+    return rec(bits, pieces)
 
 
 def _shape_mask(shape):
