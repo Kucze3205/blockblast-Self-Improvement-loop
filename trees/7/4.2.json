@@ -2,16 +2,25 @@
  "rodzic": "4.1",
  "rodzic_sha": "31efc7d621ef997c8d5f870305f01333323d6c01",
  "kolejnosc": 9,
- "sha": "31efc7d621ef997c8d5f870305f01333323d6c01",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "eeab59e1652d60dbb4731cd0d6d46b7ec2f1de20",
+ "stan": "ocena w toku",
+ "gist": "Liść wiązki z przejściami 1-D i brzegiem jak w węźle 1.1",
+ "notatki": [
+  "Liść wiązki z przejściami 1-D i brzegiem jak w węźle 1.1\n\nMechanizm:\n- _leaf, używany w rankingu wiązki i w ocenie końcowej, dostaje dwie cechy, których brakowało: przejścia 1-D w wierszach i kolumnach (waga 1.5, ściany liczone jako zapełnione) oraz puste pola na brzegu planszy (waga 2.0)\n- zajętość 1.4, kieszenie 0.75 i linie 4.2 bez zmian; ryzyko trudnych tacek i martwe typy bez zmian\n\nDowód z historii:\n- 1.1 = 0.949: ranking wiązki i liść mają przejścia 1-D (1.5) i brzeg (2.0)\n- 2.1 = 0.453 i 4.1 = 0.454 (31efc7d): ranking wiązki nie ma ani przejść, ani brzegu; 2.1 ma je tylko w końcowej karze, a 4.1 w ogóle\n- notatki 5/4.2 i 5/4.3 podają \"krawędzie 1.5\" i \"puste pola przy brzegu 2.0\"; kodu z tree 5 nie ma w repozytorium, więc definicję krawędzi przyjąłem z 1.1 (przejścia 1-D), nie z kodu tree 5\n\nDlaczego to nie powtórka:\n- 4.1 miał wagi zajętości, kieszeni i linii, ale nie przejścia ani brzeg w rankingu wiązki; to luka w implementacji, nie zmierzona cecha\n- różnice względem 1.1 zostają: ryzyko oparte na multizbiorze z martwą pozą (nie kolejka planu na tackę, nie fit_penalty), wiązka 120 zamiast 40\n\nRyzyko:\n- wynik niezmierzony, rozstrzyga ocena\n- definicja krawędzi może różnić się od tree 5, bo jej kodu nie ma w repo\n- liczba stanów wiązki wzrosła razem z 120, czas nie został sprawdzony na limicie shardu\n\nTesty: tests/test_tray_search.py 9 z 9, w tym nowy test_leaf_matches_bruteforce (przejścia, brzeg i liść względem referencji na listach). Smoke: 3 partie (seedy 1-3) bez wyjątków i bez nielegalnych ruchów.\n\nCo dalej:\n- zrobione: 31efc7d (węzeł 4.1, 0.454), ten commit (węzeł 4.2)\n- następny krok: ocena 4.2; jeśli wynik poniżej 0.949, sprawdzić, czy spadek idzie z ryzyka multizbioru albo z kary za martwe pole względem fit_penalty z 1.1\n- czego nie powtarzać: zmian samej szerokości wiązki bez zmiany liścia\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 53,
+  "usd": 3.2254,
+  "minuty": 14.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T23:23:03Z",
+   "koniec": "2026-10-10T23:37:02Z",
+   "tury": 53,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
