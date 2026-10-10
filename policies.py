@@ -7,17 +7,26 @@ co polityka umie, a nie jak wypada w trakcie nauki (#8).
 import json
 import os
 import random
+from itertools import combinations_with_replacement, permutations
 
 from board import Board
+from pieces import PIECE_POOL, PIECE_TYPES
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 FULL = (1 << 64) - 1
 ROWS = [0xFF << (8 * r) for r in range(8)]
 COLS = [0x0101010101010101 << c for c in range(8)]
 BEAM = 12
-DEFAULT_PARAMS = {"lines": 3.0, "holes": 2.0, "bump": 0.5, "height": 0.3}
+FINAL = 20
+HARD_TYPES = (3, 4, 6, 7, 10)
+HARD_DRAWS = 3
+DEFAULT_PARAMS = {"lines": 3.0, "holes": 2.0, "bump": 0.5, "height": 0.3, "hard": 400.0}
 
 _MASKS = {}
+HARD_MULTISETS = [
+    (c, len(set(permutations(c))) / 125)
+    for c in combinations_with_replacement(HARD_TYPES, 3)
+]
 
 
 class RandomPolicy:
@@ -79,6 +88,7 @@ class BeamPolicy:
 
     def reset(self, game_seed):
         self._plan = []
+        self.rng = random.Random(game_seed)
 
     def act(self, game, actions):
         legal = set(actions)
@@ -90,9 +100,10 @@ class BeamPolicy:
         return actions[0]
 
     def _plan_tray(self, bits, pieces):
+        draws = self._draw_hard_poses()
         beam = [(bits, tuple(i for i, p in enumerate(pieces) if p is not None), ())]
         best = ()
-        while beam[0][1]:
+        while True:
             nxt = []
             for board, rem, acts in beam:
                 for idx in rem:
@@ -104,14 +115,38 @@ class BeamPolicy:
                             if board & m:
                                 continue
                             after, lines = _clear(board | m)
-                            value = self._leaf(after, lines)
-                            nxt.append((value, after, left, acts + ((idx, x, y),)))
+                            nxt.append((self._leaf(after, lines), after, left, acts + ((idx, x, y),)))
             if not nxt:
                 break
             nxt.sort(key=lambda t: t[0], reverse=True)
+            if not nxt[0][2]:
+                finals = nxt[:FINAL]
+                _, _, _, acts = max(
+                    finals, key=lambda t: t[0] - self.params["hard"] * self._risk(t[1], draws)
+                )
+                return list(acts)
             beam = [(b, r, a) for _, b, r, a in nxt[:BEAM]]
             best = beam[0][2]
         return list(best)
+
+    def _draw_hard_poses(self):
+        return {
+            t: [_shape_mask(PIECE_POOL[self.rng.choice(PIECE_TYPES[t])].shape) for _ in range(HARD_DRAWS)]
+            for t in HARD_TYPES
+        }
+
+    def _risk(self, bits, draws):
+        risk = 0.0
+        for types, weight in HARD_MULTISETS:
+            used = {}
+            trio = []
+            for t in types:
+                k = used.get(t, 0)
+                used[t] = k + 1
+                trio.append(draws[t][k])
+            if not _fits(bits, trio):
+                risk += weight
+        return risk
 
     def _leaf(self, bits, lines):
         p = self.params
@@ -142,6 +177,19 @@ def _bits(grid):
             if cell:
                 bits |= 1 << (y * 8 + x)
     return bits
+
+
+def _fits(bits, pieces):
+    if not pieces:
+        return True
+    for i, (mask, h, w) in enumerate(pieces):
+        rest = pieces[:i] + pieces[i + 1:]
+        for y in range(Board.HEIGHT - h + 1):
+            for x in range(Board.WIDTH - w + 1):
+                m = mask << (y * 8 + x)
+                if not (bits & m) and _fits(_clear(bits | m)[0], rest):
+                    return True
+    return False
 
 
 def _shape_mask(shape):
