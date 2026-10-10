@@ -17,6 +17,7 @@ HARD_TYPES = (3, 4, 7, 6, 10)  # beam4, beam5, square3, rect23, corner5
 BEAM = 40
 FINAL = 12
 TRAY_BUDGET = 400
+MIX_SAMPLES = 24
 HARD_MULTISETS = [
     (types, len(set(itertools.permutations(types))) / len(HARD_TYPES) ** 3)
     for types in itertools.combinations_with_replacement(HARD_TYPES, 3)
@@ -31,6 +32,7 @@ DEFAULT_WEIGHTS = {
     "FIT_MEAN_W": 80.0,
     "DEAD_W": 12.3,
     "HARD_PENALTY": 400.0,
+    "MIX_PENALTY": 100.0,
 }
 
 
@@ -147,19 +149,30 @@ class SearchPolicy:
         leaves = self._leaves(bits, remaining)
         leaves.sort(key=lambda leaf: leaf[0], reverse=True)
         trays = self._hard_trays()
+        mixed = self._mixed_trays()
         best_score, best_move = None, None
         for cheap, leaf_bits, move in leaves[:FINAL]:
-            risk = 0.0
-            for weight, tray in trays:
-                budget = [TRAY_BUDGET]
-                if not playable(leaf_bits, tray, budget):
-                    risk += weight
-                if budget[0] < 0:
-                    self.exhausted += 1
-            score = cheap - _fit_penalty(leaf_bits, self.w) - self.w["HARD_PENALTY"] * risk
+            risk = self._risk(leaf_bits, trays)
+            mix_risk = self._risk(leaf_bits, mixed)
+            score = (
+                cheap
+                - _fit_penalty(leaf_bits, self.w)
+                - self.w["HARD_PENALTY"] * risk
+                - self.w["MIX_PENALTY"] * mix_risk
+            )
             if best_score is None or score > best_score:
                 best_score, best_move = score, move
         return best_move if best_move is not None else actions[0]
+
+    def _risk(self, bits, trays):
+        risk = 0.0
+        for weight, tray in trays:
+            budget = [TRAY_BUDGET]
+            if not playable(bits, tray, budget):
+                risk += weight
+            if budget[0] < 0:
+                self.exhausted += 1
+        return risk
 
     def _hard_trays(self):
         draws = {t: [self.rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
@@ -173,6 +186,16 @@ class SearchPolicy:
                 tray.append(draws[t][k])
             trays.append((weight, tuple(tray)))
         return trays
+
+    def _mixed_trays(self):
+        trays = []
+        while len(trays) < MIX_SAMPLES:
+            types = [self.rng.randrange(len(PIECE_TYPES)) for _ in range(3)]
+            hard = sum(t in HARD_TYPES for t in types)
+            if hard in (0, 3):
+                continue
+            trays.append(tuple(self.rng.choice(PIECE_TYPES[t]) for t in types))
+        return [(1 / MIX_SAMPLES, tray) for tray in trays]
 
     def _leaves(self, bits, remaining):
         frontier = [(bits, remaining, None, 0)]

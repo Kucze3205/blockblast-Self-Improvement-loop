@@ -148,6 +148,16 @@ class SearchPolicyTest(unittest.TestCase):
                             expected.add((idx, x, y))
                 self.assertEqual(expected, found)
 
+    def test_mixed_trays_have_one_or_two_hard_pieces(self):
+        policy = sp.SearchPolicy()
+        policy.reset(9)
+        trays = policy._mixed_trays()
+        self.assertEqual(sp.MIX_SAMPLES, len(trays))
+        self.assertAlmostEqual(1.0, sum(weight for weight, _ in trays))
+        for _, tray in trays:
+            hard = sum(PIECE_POOL[pose].type_index in sp.HARD_TYPES for pose in tray)
+            self.assertIn(hard, (1, 2))
+
     def test_build_contract_and_determinism(self):
         def play(seed, moves):
             policy = policies.build(None)
