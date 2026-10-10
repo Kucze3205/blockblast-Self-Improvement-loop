@@ -4,7 +4,9 @@ from bitboard import COL_MASK, FULL, POSES, ROW_MASK, W, bits, clear_full, fit, 
 from pieces import PIECE_TYPES
 
 BEAM = 40
-FINAL = 12
+FINAL_OPEN = 8
+FINAL_CROWDED = 20
+CROWDED_FREE = 22
 DRAWS = 3
 HARD_TYPES = (4, 6, 7, 10, 9)
 HARD_PENALTY = 500.0
@@ -107,6 +109,10 @@ def _distinct(children):
     return out
 
 
+def _final(occ):
+    return FINAL_CROWDED if _count(FULL & ~occ) <= CROWDED_FREE else FINAL_OPEN
+
+
 def plan_tray(occ, pieces, rng):
     """pieces: [(indeks w game.pieces, Pose)]. Zwraca [(indeks, anchor)] albo []."""
     draws = {t: [POSES[rng.choice(PIECE_TYPES[t])] for _ in range(DRAWS)] for t in HARD_TYPES}
@@ -127,7 +133,7 @@ def plan_tray(occ, pieces, rng):
         states = _distinct(children)
     if not states or not states[0][3]:
         return []
-    best = max(states[:FINAL], key=lambda s: s[0] + _penalty(s[1], draws))
+    best = max(states[:_final(occ)], key=lambda s: s[0] + _penalty(s[1], draws))
     return list(best[3])
 
 

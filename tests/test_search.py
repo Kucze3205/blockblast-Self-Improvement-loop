@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 import bitboard as bb
 from game import Game
-from search import SearchPolicy, _cheap, _distinct, plan_tray
+from search import SearchPolicy, _cheap, _distinct, _final, plan_tray
 
 
 def _tray(game):
@@ -72,6 +72,10 @@ class TestSearch(unittest.TestCase):
 
     def test_full_board_gives_empty_plan(self):
         self.assertEqual(plan_tray(bb.FULL, [(0, _single())], random.Random(1)), [])
+
+    def test_final_widens_only_on_crowded_board(self):
+        self.assertEqual(_final((1 << 42) - 1), 20)
+        self.assertEqual(_final((1 << 41) - 1), 8)
 
 
 if __name__ == "__main__":
