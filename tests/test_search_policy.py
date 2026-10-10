@@ -43,6 +43,25 @@ def _brute_tray_fits(grid, poses):
     return False
 
 
+def _brute_shape_cost(grid):
+    occ = iso = edges = border = 0
+    for r in range(8):
+        for c in range(8):
+            nbrs = [
+                (rr, cc)
+                for rr, cc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1))
+                if 0 <= rr < 8 and 0 <= cc < 8
+            ]
+            if grid[r][c]:
+                occ += 1
+                edges += sum(1 for rr, cc in nbrs if not grid[rr][cc])
+            elif all(grid[rr][cc] for rr, cc in nbrs):
+                iso += 1
+            if not grid[r][c] and (r in (0, 7) or c in (0, 7)):
+                border += 1
+    return sp.W_OCC * occ + sp.W_ISO * iso + sp.W_EDGE * edges + sp.W_BORDER * border
+
+
 class SearchPolicyTests(unittest.TestCase):
     def test_positions_match_engine_legal_moves(self):
         for seed in range(20):
@@ -85,6 +104,17 @@ class SearchPolicyTests(unittest.TestCase):
             for _ in range(4):
                 tray = [rng.randrange(len(PIECE_POOL)) for _ in range(3)]
                 self.assertEqual(sp._tray_fits(bits, tray), _brute_tray_fits(game.board.grid, tray))
+
+    def test_shape_cost_matches_bruteforce(self):
+        for seed in range(20):
+            game = _random_position(seed, moves=seed * 2)
+            bits = sp._board_bits(game.board.grid)
+            self.assertAlmostEqual(sp._shape_cost(bits), _brute_shape_cost(game.board.grid))
+
+    def test_cheap_separates_placements_without_clears(self):
+        corner = sp._place(0, sp._bit(0, 0))[0]
+        center = sp._place(0, sp._bit(3, 3))[0]
+        self.assertNotEqual(sp._cheap(corner, 0), sp._cheap(center, 0))
 
     def test_policy_plays_legal_moves(self):
         policy = build(None)

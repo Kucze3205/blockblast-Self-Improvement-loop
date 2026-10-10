@@ -21,7 +21,7 @@ W_BORDER = 2.0
 W_DEAD = 12.3
 W_MATCH_CUBE = 400.0
 W_MATCH_LIN = 80.0
-W_HARD = 400.0
+W_HARD = 500.0
 
 
 def _bit(r, c):
@@ -37,13 +37,8 @@ BORDER_MASK = sum(
     if r in (0, BOARD - 1) or c in (0, BOARD - 1)
 )
 
-NEIGHBOURS = [[] for _ in range(BOARD * BOARD)]
-for _r in range(BOARD):
-    for _c in range(BOARD):
-        for _dr, _dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            _nr, _nc = _r + _dr, _c + _dc
-            if 0 <= _nr < BOARD and 0 <= _nc < BOARD:
-                NEIGHBOURS[_r * BOARD + _c].append(_nr * BOARD + _nc)
+H_PAIRS = FULL & ~COL_MASKS[BOARD - 1]
+V_PAIRS = FULL & ~ROW_MASKS[BOARD - 1]
 
 POSITIONS = []
 for _piece in PIECE_POOL:
@@ -92,20 +87,29 @@ def _tray_fits(board, poses):
     return False
 
 
+def _shape_cost(board):
+    free = ~board & FULL
+    edges = (
+        ((board ^ (board >> 1)) & H_PAIRS).bit_count()
+        + ((board ^ (board >> BOARD)) & V_PAIRS).bit_count()
+    )
+    # Poza planszą liczy się jak zajęte, żeby brzeg nie robił z pól przy ścianie dziur.
+    walled = (
+        (((board << 1) & FULL) | COL_MASKS[0])
+        & ((board >> 1) | COL_MASKS[BOARD - 1])
+        & (((board << BOARD) & FULL) | ROW_MASKS[0])
+        & ((board >> BOARD) | ROW_MASKS[BOARD - 1])
+    )
+    iso = (walled & free).bit_count()
+    empty_border = (free & BORDER_MASK).bit_count()
+    return W_OCC * board.bit_count() + W_ISO * iso + W_EDGE * edges + W_BORDER * empty_border
+
+
 def _cheap(board, lines):
-    return W_LINE * lines - W_OCC * board.bit_count()
+    return W_LINE * lines - _shape_cost(board)
 
 
 def _penalty(board, hard_trays):
-    occ = board.bit_count()
-    empty_border = (~board & BORDER_MASK).bit_count()
-    iso = edges = 0
-    for i in range(BOARD * BOARD):
-        if board >> i & 1:
-            edges += sum(1 for j in NEIGHBOURS[i] if not board >> j & 1)
-        elif all(board >> j & 1 for j in NEIGHBOURS[i]):
-            iso += 1
-
     dead = 0
     fraction = 0.0
     for poses in PIECE_TYPES:
@@ -117,10 +121,7 @@ def _penalty(board, hard_trays):
 
     lost = sum(1 for tray in hard_trays if not _tray_fits(board, tray))
     return (
-        W_OCC * occ
-        + W_ISO * iso
-        + W_EDGE * edges
-        + W_BORDER * empty_border
+        _shape_cost(board)
         + W_DEAD * dead
         + W_MATCH_CUBE * (1 - avg) ** 3
         + W_MATCH_LIN * (1 - avg)
