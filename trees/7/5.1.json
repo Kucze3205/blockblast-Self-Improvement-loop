@@ -2,16 +2,28 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 5,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "acc95eef7f737ee6780bbdb1075b292a1e9fc672",
+ "stan": "ocena w toku",
+ "gist": "Dodaj trening wag oceny planszy na czasie do przegranej",
+ "notatki": [
+  "Dodaj trening wag oceny planszy na czasie do przegranej\n\nMechanizm: train_value.py gra partie SearchPolicy na 4 procesach, zbiera cechy planszy przed każdym ruchem i etykietę min(postawienia do przegranej, 100), dopasowuje regresję grzbietową (12 cech i wyraz wolny) i zapisuje weights/value.npz. Runda 0 gra domyślnymi wagami, runda 1 wagami z rundy 0, czyli jedna iteracja polityki.\n\nDowód: 1000 partii na rundę, 60k stanów w rundzie 0 i 106k w rundzie 1. R² na walidacji: 0.090 (runda 0), 0.011 (runda 1). Wyraz wolny 41.3. Smoke: build('weights') ładuje wagi i gra legalne ruchy. To nie jest wynik gry; mierzy go ewaluator.\n\nDlaczego to nie powtórka: poprzednie drzewa strojły wagi ręcznie (lokalne strojenie, drzewo 5) albo liczyły ryzyko trudnych tacek. Tu wagi dopasowuje regresja do czasu do przegranej, a polityka jest iterowana. Najbliższe: 5/1.3 (logistyczny liść na skutkach przegranej w 10 tackach), ale inny cel i model.\n\nRyzyko: R² jest niskie, więc cechy planszy słabo przewidują przegraną. Cechy nie widzą losowej następnej tacki, a poprzednie drzewa traktowały jej ryzyko jako osobny składnik. Wagi są kolinearne (agg = fill + holes/4), więc rozkład wag między tymi cechami jest dowolny; wartość planszy od tego wyboru nie zależy.\n\nCo dalej: zrobione 57c445b, 338f207, 6cb97dd. Następny krok: zmierzyć węzeł ewaluatorem; jeśli wynik słaby, dodać cechę ryzyka następnej tacki: udział pozycji, w których losowy klocek się nie mieści. Nie powtarzać: regresji tylko na cechach planszy i ręcznego strojenia wag.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Napraw best_move: niepełna tacka zwraca ruch z najgłębszej warstwy\n\nMechanizm: wiązka po klockach tacki kończy się na warstwie, do której da się jeszcze coś położyć. Dotąd brak pełnej kolejności zwracał None, a polityka grała actions[0], czyli pierwszy legalny ruch bez oceny.\n\nDowód: nowy test (plansza w szachownicę, tacka z kwadratem 2x2 i pojedynczym klockiem) przed poprawką padał na None, po poprawce przechodzi. tests/test_search.py i tests/test_engine.py: 23 passed.\n\nDlaczego to nie powtórka: poprawia błąd w mechanizmie z 57c445b, nie zmienia wag ani cech.\n\nRyzyko: zmienia wybór tylko w stanach, gdzie cała tacka się nie mieści. Wynik gry nie jest zmierzony.\n\nCo dalej: zrobione 57c445b, 338f207. Następny krok: trening wag oceny (train_value.py) w osobnym commicie. Nie powtarzać: zakładania, że tacka zawsze mieści się cała.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj policies.build: wiązka po tacce na bitboardach z liniową oceną planszy\n\nBrak build w policies.py dawał wynik 0 w ewaluacji, więc dodaję build(weights)\nzwracający obiekt z reset/act. Wiązka (szerokość 12) przechodzi po klockach\ntacki w dowolnej kolejności, czyszcząc linie po każdym postawieniu, i wybiera\npierwszy ruch najlepszej pełnej kolejności wg V(x) = w·cechy(x) + b.\n\nWagi domyślne są ręczne, nietrenowane; weights=None używa ich, katalog z\nvalue.npz nadpisuje. Testy sprawdzają zgodność ruchów i czyszczenia z Board.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Usuń martwy import turtle z model.py\n\nImport ciągnął tkinter, którego nie ma na maszynie uruchomieniowej; przez to\nnie dało się zaimportować agent.py i jeden test w tests/test_engine.py padał.\nZmienna nie była nigdzie używana poza parametrem train_step.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 78,
+  "usd": 3.8478,
+  "minuty": 20.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-10T22:34:16Z",
+   "koniec": "2026-10-10T22:54:18Z",
+   "tury": 78,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
