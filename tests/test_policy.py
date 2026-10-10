@@ -1,15 +1,33 @@
 import os
+import random
 import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from game import Game
-from search_policy import FULL, SearchPolicy, dead_probability, place, pockets, to_bits, transitions
+from pieces import PIECE_TYPES
+from search_policy import (
+    FULL,
+    HARD_PENALTY,
+    SearchPolicy,
+    _fits_all,
+    _hard_penalty,
+    _sample_hard_tray,
+    place,
+    pockets,
+    to_bits,
+    transitions,
+)
 
 
 def grid_from(rows):
     return [list(row) for row in rows]
+
+
+def sampled_trays(seed, count=16):
+    rng = random.Random(seed)
+    return [_sample_hard_tray(rng) for _ in range(count)]
 
 
 class BitboardHelpersTest(unittest.TestCase):
@@ -35,9 +53,19 @@ class BitboardHelpersTest(unittest.TestCase):
         rows[3][2] = 1
         self.assertEqual(pockets(to_bits(rows)), 1)
 
-    def test_dead_probability_extremes(self):
-        self.assertEqual(dead_probability(0), 0.0)
-        self.assertAlmostEqual(dead_probability(FULL), 1.0)
+
+class TrayPlayabilityTest(unittest.TestCase):
+    def test_empty_board_takes_every_sampled_hard_tray(self):
+        self.assertEqual(_hard_penalty(0, sampled_trays(1)), 0.0)
+
+    def test_full_board_takes_no_tray(self):
+        self.assertEqual(_hard_penalty(FULL, sampled_trays(1)), HARD_PENALTY)
+
+    def test_isolated_free_cells_take_no_beam2(self):
+        rows = [[1 if (x + y) % 2 == 0 else 0 for x in range(8)] for y in range(8)]
+        board = to_bits(grid_from(rows))
+        self.assertFalse(_fits_all(board, [PIECE_TYPES[1][0], PIECE_TYPES[0][0], PIECE_TYPES[0][0]], [150]))
+        self.assertTrue(_fits_all(board, [PIECE_TYPES[0][0]] * 3, [150]))
 
 
 class SearchPolicyTest(unittest.TestCase):

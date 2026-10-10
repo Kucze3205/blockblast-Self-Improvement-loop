@@ -1,3 +1,5 @@
+import random
+
 from pieces import PIECE_POOL, PIECE_TYPES
 
 FULL = (1 << 64) - 1
@@ -12,9 +14,12 @@ W_OCC = 1.4
 W_POCKET = 0.75
 W_TRANS = 1.5
 W_DEAD_PIECE = 12.3
-W_RISK = 100.0
-BEAM = 12
-FINAL = 24
+BEAM = 40
+FINAL = 12
+HARD_TYPES = (4, 6, 7, 10, 9)  # typy z pieces.CANONICAL_TYPES: beam5, rect23, square3, corner5, L
+SAMPLES = 16
+HARD_PENALTY = 500.0
+TRAY_BUDGET = 150
 
 
 def _anchors(shape):
@@ -29,16 +34,7 @@ def _anchors(shape):
     return out
 
 
-def _pose_probabilities():
-    probs = [0.0] * len(PIECE_POOL)
-    for poses in PIECE_TYPES:
-        for p in poses:
-            probs[p] = 1.0 / (len(PIECE_TYPES) * len(poses))
-    return probs
-
-
 ANCHORS = [_anchors(piece.shape) for piece in PIECE_POOL]
-POSE_PROB = _pose_probabilities()
 
 
 def to_bits(grid):
@@ -94,16 +90,31 @@ def _alive(board, p):
     return False
 
 
-def dead_probability(board):
-    total = 0.0
-    for p in range(len(PIECE_POOL)):
-        if not _alive(board, p):
-            total += POSE_PROB[p]
-    return total
+def _fits_all(board, pieces, budget):
+    if not pieces:
+        return True
+    for p in set(pieces):
+        rest = list(pieces)
+        rest.remove(p)
+        for _, _, mask in ANCHORS[p]:
+            if board & mask:
+                continue
+            budget[0] -= 1
+            if budget[0] < 0:
+                return False
+            new_board, _ = place(board, mask)
+            if _fits_all(new_board, rest, budget):
+                return True
+    return False
 
 
-def tray_risk(board):
-    return 1.0 - (1.0 - dead_probability(board)) ** 3
+def _sample_hard_tray(rng):
+    return [rng.choice(PIECE_TYPES[rng.choice(HARD_TYPES)]) for _ in range(3)]
+
+
+def _hard_penalty(board, trays):
+    bad = sum(1 for tray in trays if not _fits_all(board, tray, [TRAY_BUDGET]))
+    return HARD_PENALTY * bad / len(trays)
 
 
 def _expand(score, board, remaining, first):
@@ -125,7 +136,7 @@ class SearchPolicy:
     name = "search"
 
     def reset(self, game_seed):
-        pass
+        self.rng = random.Random(game_seed)
 
     def act(self, game, actions):
         board = to_bits(game.board.grid)
@@ -138,4 +149,5 @@ class SearchPolicy:
             if not level:
                 return fallback
         level.sort(key=lambda c: c[0], reverse=True)
-        return max(level[:FINAL], key=lambda c: c[0] - W_RISK * tray_risk(c[1]))[3]
+        trays = [_sample_hard_tray(self.rng) for _ in range(SAMPLES)]
+        return max(level[:FINAL], key=lambda c: c[0] - _hard_penalty(c[1], trays))[3]
