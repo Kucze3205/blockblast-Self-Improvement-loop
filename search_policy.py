@@ -8,11 +8,14 @@ ROWS = [0xFF << (8 * y) for y in range(8)]
 LINES = ROWS + COLS
 NOT_COL0 = FULL & ~COLS[0]
 NOT_COL7 = FULL & ~COLS[7]
+NOT_ROW7 = FULL & ~ROWS[7]
+RING = ROWS[0] | ROWS[7] | COLS[0] | COLS[7]
 
 W_LINE = 4.2
 W_OCC = 1.4
 W_POCKET = 0.75
 W_TRANS = 1.5
+W_EDGE = 2.0
 W_DEAD_PIECE = 12.3
 BEAM = 40
 FINAL = 12
@@ -56,21 +59,16 @@ def place(board, mask):
 
 
 def _blocked_neighbours(board):
-    up = ((board << 8) & FULL) | ROWS[0]
-    down = (board >> 8) | ROWS[7]
-    left = ((board << 1) & NOT_COL0) | COLS[0]
-    right = ((board >> 1) & NOT_COL7) | COLS[7]
+    up = (board << 8) & FULL
+    down = board >> 8
+    left = (board << 1) & NOT_COL0
+    right = (board >> 1) & NOT_COL7
     return up, down, left, right
 
 
 def transitions(board):
-    up, down, left, right = _blocked_neighbours(board)
-    return (
-        (board ^ left).bit_count()
-        + ((board ^ right) & COLS[7]).bit_count()
-        + (board ^ up).bit_count()
-        + ((board ^ down) & ROWS[7]).bit_count()
-    )
+    _, down, _, right = _blocked_neighbours(board)
+    return ((board ^ right) & NOT_COL7).bit_count() + ((board ^ down) & NOT_ROW7).bit_count()
 
 
 def pockets(board):
@@ -80,7 +78,12 @@ def pockets(board):
 
 
 def shape_cost(board):
-    return W_OCC * board.bit_count() + W_POCKET * pockets(board) + W_TRANS * transitions(board)
+    return (
+        W_OCC * board.bit_count()
+        + W_POCKET * pockets(board)
+        + W_TRANS * transitions(board)
+        + W_EDGE * (RING & ~board).bit_count()
+    )
 
 
 def _alive(board, p):

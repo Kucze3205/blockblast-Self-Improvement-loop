@@ -11,11 +11,13 @@ from search_policy import (
     FULL,
     HARD_PENALTY,
     SearchPolicy,
+    W_EDGE,
     _fits_all,
     _hard_penalty,
     _sample_hard_tray,
     place,
     pockets,
+    shape_cost,
     to_bits,
     transitions,
 )
@@ -37,11 +39,14 @@ class BitboardHelpersTest(unittest.TestCase):
         self.assertEqual(lines, 1)
         self.assertEqual(new_board, 0)
 
-    def test_transitions_on_empty_board_count_walls(self):
-        self.assertEqual(transitions(0), 32)
+    def test_transitions_on_empty_board_ignore_walls(self):
+        self.assertEqual(transitions(0), 0)
 
     def test_transitions_around_single_cell(self):
-        self.assertEqual(transitions(1 << (8 * 3 + 3)), 36)
+        self.assertEqual(transitions(1 << (8 * 3 + 3)), 4)
+
+    def test_empty_ring_cells_cost_edge_weight(self):
+        self.assertEqual(shape_cost(0), W_EDGE * 28)
 
     def test_transitions_on_full_board(self):
         self.assertEqual(transitions(FULL), 0)
