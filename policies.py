@@ -8,6 +8,11 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
+from search_policy import SearchPolicy
+
+
+def build(weights=None):
+    return SearchPolicy()
 
 
 class RandomPolicy:
