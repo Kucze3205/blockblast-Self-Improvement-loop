@@ -8,6 +8,7 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
+from search import SearchPolicy
 
 
 class RandomPolicy:
@@ -59,7 +60,7 @@ class ModelPolicy:
 
 
 def build(weights):
-    return GreedyPolicy()
+    return SearchPolicy()
 
 
 def _immediate_gain(game, action):
