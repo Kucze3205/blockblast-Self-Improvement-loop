@@ -4,13 +4,11 @@ Polityki grające, których używa benchmark.
 Wszystkie są deterministyczne przy zadanym seedzie partii — benchmark mierzy,
 co polityka umie, a nie jak wypada w trakcie nauki (#8).
 """
-import json
-import os
 import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
-from search import FEATURE_COUNT, best_move, features, occupancy
+from search_policy import SearchPolicy
 
 
 class RandomPolicy:
@@ -79,39 +77,5 @@ def _immediate_gain(game, action):
     return gain
 
 
-DEFAULT_WEIGHTS = [-3.0, -2.0, -1.0, -1.0, -0.8, -0.8, 1.0, 1.0, -2.0, 0.5, 0.8, 0.0]
-DEFAULT_BIAS = 0.0
-SEARCH_WIDTH = 12
-
-
-class SearchPolicy:
-    """Wiązka po klockach tacki na bitboardach, ocena planszy liniowa z wag."""
-
-    name = "search"
-
-    def __init__(self, weights, bias, width):
-        self._weights = list(weights)
-        self._bias = bias
-        self._width = width
-
-    def reset(self, game_seed):
-        pass
-
-    def act(self, game, actions):
-        occ = occupancy(game.board.grid)
-        pieces = [(i, p.index) for i, p in enumerate(game.pieces) if p is not None]
-        move = best_move(occ, pieces, self._value, self._width)
-        return move if move is not None else actions[0]
-
-    def _value(self, occ):
-        return self._bias + sum(w * f for w, f in zip(self._weights, features(occ)))
-
-
 def build(weights):
-    if weights is None:
-        return SearchPolicy(DEFAULT_WEIGHTS, DEFAULT_BIAS, SEARCH_WIDTH)
-    with open(os.path.join(weights, "value.json")) as f:
-        data = json.load(f)
-    values = data["w"]
-    assert len(values) == FEATURE_COUNT, f"wagi maja {len(values)} cech, oczekiwano {FEATURE_COUNT}"
-    return SearchPolicy(values, float(data["b"]), SEARCH_WIDTH)
+    return SearchPolicy()
