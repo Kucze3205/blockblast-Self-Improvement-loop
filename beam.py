@@ -74,7 +74,7 @@ def cheap(b, lines):
     iso = _pc(e & ~near)
     border = _pc(e & BORDER)
     inner = _pc((b ^ (b >> 1)) & NOT_COL7) + _pc((b ^ (b >> 8)) & NOT_ROW7)
-    return -1.4 * _pc(b) - 0.75 * iso - 1.5 * (inner + border) - 2.0 * border + 4.2 * lines
+    return -1.4 * _pc(b) - 0.75 * iso - 1.5 * inner - 2.0 * border + 4.2 * lines
 
 
 def _fits(b, i):
