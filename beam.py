@@ -24,7 +24,7 @@ FINAL_K = 8
 FINAL_K_TIGHT = 20
 TIGHT_FREE = 22
 TRAY_FAIL = 400.0
-MIX_TRAYS = 64
+MIX_TRAYS = 128
 # P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
 P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
 
