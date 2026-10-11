@@ -179,11 +179,14 @@ class BeamPolicy:
             return max(finals, key=lambda s: cheap(s[0], s[2]))[3]
 
         triples = _hard_triples(self.rng)
-        ranked = sorted(finals, key=lambda s: -cheap(s[0], s[2]))
+        scored = sorted(((cheap(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
         k = FINAL_K_TIGHT if 64 - _pc(base) <= TIGHT_FREE else FINAL_K
+        cut = scored[min(k, len(scored)) - 1][0]
         best_by_move = {}
-        for b, _used, lines, first in ranked[:k]:
-            value = cheap(b, lines) - risk(b, triples)
+        for score, (b, _used, _lines, first) in scored:
+            if score < cut:
+                break
+            value = score - risk(b, triples)
             if first not in best_by_move or value > best_by_move[first][0]:
                 best_by_move[first] = (value, b)
 
