@@ -25,9 +25,7 @@ W_FIT = 400.0
 W_FIT_LIN = 80.0
 W_DEAD = 12.3
 W_HARD = 400.0
-W_WIN = 100.0
 HARD_TYPES = (3, 4, 7, 6, 10)
-SQUARE3_POSE = POSES[PIECE_TYPES[7][0]]
 LOOK_TRAYS = 4
 LOOK_TOP = 3
 LOOK_BEAM = 40
@@ -149,8 +147,7 @@ def _risk(occ, sampled):
     for weight, slots in HARD_MULTISETS:
         if not _tray_ok(occ, [POSES[sampled[t][j]] for t, j in slots]):
             hard += weight
-    windows = fit_mask(occ, SQUARE3_POSE).bit_count()
-    return W_FIT * miss ** 3 + W_FIT_LIN * miss + W_DEAD * dead + W_HARD * hard + W_WIN / (1 + windows) ** 2
+    return W_FIT * miss ** 3 + W_FIT_LIN * miss + W_DEAD * dead + W_HARD * hard
 
 
 class SurvivalPolicy:
