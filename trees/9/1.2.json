@@ -2,16 +2,25 @@
  "rodzic": "1.1",
  "rodzic_sha": "69a4cfffc6b28682cb583e9d9df8b3089191d961",
  "kolejnosc": 3,
- "sha": "69a4cfffc6b28682cb583e9d9df8b3089191d961",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "9d01065719db8cd9d2bd2e6de1dc06b209af61e1",
+ "stan": "ocena w toku",
+ "gist": "Dodaj pełną wykładalność następnej tacki do wiązki po tacce",
+ "notatki": [
+  "Dodaj pełną wykładalność następnej tacki do wiązki po tacce\n\nMechanizm: 1.1 (69a4cff) karze następną tackę tylko za pojedynczy klocek bez\nmiejsca, 1-(1-q)^3 z wagą 300. Tu ta kara zostaje z wagą 66 (jak w 5/2.2),\na dochodzi kara 400 za każdą z 8 próbkowanych tacek, której nie da się ułożyć\nw żadnej kolejności. Sprawdzenie to DFS na bitboardach z czyszczeniem linii.\nPróbki losuje ten sam rozkład co generator, osobnym RNG seedowanym w reset,\nwięc generator gry się nie zmienia. Próbki są wspólne dla wszystkich\nkandydatów w ruchu. Kara jest liczona dla pięciu najlepszych finalistów.\n\nDowód z historii: 5/2.2 (0.981) zapisał, że około połowa przegranych to tacki,\nw których klocki pasują pojedynczo, ale nie razem. 8/2.2 (0.811) miał to samo\nryzyko pojedynczego klocka i w notatce proponował jako następny krok pełną\nwykładalność próbkowanych trójek. Węzeł 1.1 ma 122 przegrane i modeluje tylko\npojedynczy klocek.\n\nDlaczego to nie powtórka: 8/1.6 też karze nieułożenie tacki (400), ale\nw przeglądzie następnej tacki z LOOK_BEAM 40, a nie jako karę finalisty wiązki.\nTu kara siedzi w wyborze finalisty po beamie 24, bez przeglądu.\n\nRyzyko:\n- wynik niezmierzony; mierzy go ocena.\n- 8 próbek jest zgrubne: jedna nieułożona tacka kosztuje 50 punktów, skok dyskretny.\n- koszt: smoke 3 partie, 0 wyjątków, 0 nielegalnych ruchów, 17.3 ms na ruch\n  (1.1: ok. 11 ms). Szacunek oceny ok. 2.5 * 17.3/11 = 3.9 min, poniżej 8.9 min.\n- testy: tests/test_policies_tray.py 4/4 (DFS bitowy zgodny z referencją na\n  listach na 150 planszach). tests/test_engine.py 16/17, błąd to brak tkinter.\n\nCo dalej:\n- zrobione: ten commit (węzeł 1.2 na bazie 1.1).\n- następny krok: ocena 1.2. Jeśli nie przekroczy 0.963 (najlepszy wynik drzewa 9),\n  nie zwiększam SAMPLES bez pomiaru czasu; wybieram inny mechanizm.\n- czego nie powtarzać: samej kary za pojedynczy klocek (1.1); liści z wykładalnością\n  reszty tacki bez modelu nowej tacki (8/2.1, 0.285).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 35,
+  "usd": 2.0697,
+  "minuty": 9.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T11:00:18Z",
+   "koniec": "2026-10-11T11:09:36Z",
+   "tury": 35,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
