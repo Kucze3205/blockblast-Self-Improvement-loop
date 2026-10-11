@@ -2,16 +2,25 @@
  "rodzic": "2.2",
  "rodzic_sha": "4260a7e963c62c96b150352fe428cc00d6a789aa",
  "kolejnosc": 12,
- "sha": "4260a7e963c62c96b150352fe428cc00d6a789aa",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "d959eba67f38d1ac811c23e00df2f297f0f3a997",
+ "stan": "ocena w toku",
+ "gist": "Ryzyko trudnych tacek ważone multizbiorem zamiast 16 losowych tacek",
+ "notatki": [
+  "Ryzyko trudnych tacek ważone multizbiorem zamiast 16 losowych tacek\n\nMechanizm:\n- liść bez zmian względem 2.2 (kształt w rankingu i karze, dopasowanie typów, martwe typy)\n- 35 multizbiorów trójek z HARD_TYPES [4, 6, 7, 10, 9], waga = liczba permutacji / 125; suma wag = 1\n- na ruch losuję 3 pozy na każdy typ; k-te wystąpienie typu w multizbiorze bierze k-tą pozę\n- ryzyko = suma wag tacek, których nie da się ułożyć; W_HARD 500 -> 400 (jak w 6/2.2)\n\nDowód z historii:\n- 6/2.1 (0.969) -> 6/2.2 (0.978): ten sam liść, 16 losowych tacek zamienione na multizbiór\n- 6/3.3 (0.971) -> 6/3.4 (0.977): ta sama zamiana na innym liściu\n- 6/1.3 -> 6/1.4 (0.960 -> 0.960): bez zysku, więc zmiana nie daje zysku z góry\n- diagnoza fallbacku (partie 1-8, limit 300, jak w 2.2): 8 z 1778 ruchów bez liścia, ale 0 z 8 ma\n  pełne dokończenie tacki (_tray_fits). Wiązka niczego nie przycinała; to utracone tacki.\n  Poprawka \"dokończ bez przycinania\" odpada.\n- testy: 8 OK (w tym normalizacja wag i zgodność trójek z multizbiorami)\n- smoke: seedy 1-3, 300 ruchów, bez wyjątków, ok. 5 ms na ruch (900 ruchów w 4,6 s)\n\nDlaczego to nie powtórka: drzewo 7 nie miało multizbioru na tym liściu. Drzewo 6 miało go na\ninnych liściach (4.1, 5.1). Przydział póz per miejsce (5/4.3) nie jest tu łączony, żeby wynik\ndało się przypisać jednej zmianie.\n\nRyzyko:\n- wynik nieznany, mierzy go ocena\n- estymator liczy 35 sprawdzeń tacki na liść zamiast 16\n- W_HARD 400 wzięte z 6/2.2, bez strojenia\n- HARD_TYPES jak w 2.2; trójki z pozostałych typów zakładam jako mieszczące się\n\nCo dalej:\n- zrobione: 4260a7e (węzeł 2.2), ten commit (węzeł 7/2.3)\n- następny krok: ocena 7/2.3 względem 2.2 (0.973) i 5/4.3 (0.985); jeśli wynik spadnie,\n  sprawdzić W_HARD (400 vs 500) przed czymkolwiek innym\n- czego nie powtarzać: poprawki fallbacku actions[0] (0 z 8 dokończeń); 16 losowych tacek\n  na tym liściu\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 41,
+  "usd": 2.0443,
+  "minuty": 8.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T02:06:45Z",
+   "koniec": "2026-10-11T02:15:17Z",
+   "tury": 41,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
