@@ -1,5 +1,5 @@
 """
-Polityka przeżycia: wiązka po klockach bieżącej tacki i ryzyko trudnych tacek.
+Polityka przeżycia: wiązka po klockach bieżącej tacki, ryzyko trudnych tacek i przegląd następnej tacki.
 
 Cechy liścia z lokalnego strojenia (drzewo 5, węzeł 2.1), ryzyko trudnych tacek
 ważone multizbiorem (5/4.2) z osobną pozą dla każdego miejsca w tacce (5/4.3).
@@ -26,6 +26,11 @@ W_FIT_LIN = 80.0
 W_DEAD = 12.3
 W_HARD = 400.0
 HARD_TYPES = (3, 4, 7, 6, 10)
+LOOK_TRAYS = 3
+LOOK_TOP = 3
+LOOK_BEAM = 40
+LOOK_FINAL = 2
+W_LOSS = 400.0
 
 
 def _hard_multisets():
@@ -68,18 +73,18 @@ def _cheap(occ):
     return -(W_OCC * occ.bit_count() + W_ISO * iso + W_EDGE * edges + W_BORDER * border)
 
 
-def _keep(ordered):
-    """Obcina wiązkę do BEAM bez przecinania remisu: kolejność wstawiania nie rozstrzyga remisu."""
-    if len(ordered) <= BEAM:
+def _keep(ordered, width=BEAM):
+    """Obcina wiązkę do width bez przecinania remisu: kolejność wstawiania nie rozstrzyga remisu."""
+    if len(ordered) <= width:
         return ordered
-    cut = ordered[BEAM - 1][0]
-    end = BEAM
-    while end < min(len(ordered), BEAM_CAP) and ordered[end][0] == cut:
+    cut = ordered[width - 1][0]
+    end = width
+    while end < min(len(ordered), width + BEAM_CAP - BEAM) and ordered[end][0] == cut:
         end += 1
     return ordered[:end]
 
 
-def _search(occ, pieces):
+def _search(occ, pieces, width=BEAM):
     """Wiązka po kolejnościach i pozycjach klocków tacki; zwraca (stany, czy pełne)."""
     beam = [(0.0, occ, 0, 0, None)]
     for _ in pieces:
@@ -102,8 +107,12 @@ def _search(occ, pieces):
                     m ^= low
         if not children:
             break
-        beam = _keep(sorted(children.values(), key=lambda s: -s[0]))
+        beam = _keep(sorted(children.values(), key=lambda s: -s[0]), width)
     return beam, bool(beam) and beam[0][3].bit_count() == len(pieces)
+
+
+def _random_tray(rng):
+    return [(j, POSES[rng.choice(PIECE_TYPES[rng.randrange(len(PIECE_TYPES))])]) for j in range(3)]
 
 
 def _tray_ok(occ, poses):
@@ -147,28 +156,56 @@ class SurvivalPolicy:
     def __init__(self, seed=0):
         self._seed = seed
         self.rng = random.Random(f"{seed}:0")
+        self._trays = []
+        self._sampled = None
+        self._risk_memo = {}
+        self._look_memo = {}
 
     def reset(self, game_seed):
         self.rng = random.Random(f"{self._seed}:{game_seed}")
 
+    def _new_tray(self):
+        self._sampled = {t: [self.rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
+        self._trays = [_random_tray(self.rng) for _ in range(LOOK_TRAYS)]
+        self._risk_memo = {}
+        self._look_memo = {}
+
+    def _risk_of(self, board):
+        if board not in self._risk_memo:
+            self._risk_memo[board] = _risk(board, self._sampled)
+        return self._risk_memo[board]
+
+    def _two_step(self, board):
+        if board not in self._look_memo:
+            total = 0.0
+            for tray in self._trays:
+                beam, complete = _search(board, tray, LOOK_BEAM)
+                if complete:
+                    total += max(score - self._risk_of(child) for score, child, *_ in beam[:LOOK_FINAL])
+                else:
+                    total -= W_LOSS
+            self._look_memo[board] = total / len(self._trays)
+        return self._look_memo[board]
+
     def act(self, game, actions):
         occ = _occupancy(game.board.grid)
         pieces = [(idx, POSES[p.index]) for idx, p in enumerate(game.pieces) if p is not None]
-        sampled = {t: [self.rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
+        if len(pieces) == 3 or not self._trays:
+            self._new_tray()
         beam, complete = _search(occ, pieces)
         if not complete:
             _score, _board, _lines, _used, (j, low) = max(beam, key=lambda s: s[0])
         else:
             final = FINAL_LARGE if (FULL & ~occ).bit_count() <= FINAL_FREE_CELLS else FINAL_SMALL
             cut = beam[min(final, len(beam)) - 1][0]
-            best = None
-            for score, board, _lines, _used, first in beam:
+            cands = []
+            for score, board, lines, _used, first in beam:
                 if score < cut:
                     break
-                value = score - _risk(board, sampled)
-                if best is None or value > best[0]:
-                    best = (value, first)
-            j, low = best[1]
+                cands.append((score - self._risk_of(board), board, lines, first))
+            cands.sort(key=lambda c: -c[0])
+            _value, _board, _lines, (j, low) = max(
+                cands[:LOOK_TOP], key=lambda c: c[0] + self._two_step(c[1]))
         idx = pieces[j][0]
         anchor = low.bit_length() - 1
         return (idx, anchor % 8, anchor // 8)
