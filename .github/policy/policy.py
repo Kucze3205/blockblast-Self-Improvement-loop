@@ -43,8 +43,11 @@ def solve(question):
         tip = nodes[-1]["wezel"]
         if tip not in legal:
             continue
+        record = max(o["s_v"] for o in nodes)
+        # ostatnia runda: liczy się tylko czubek będący rekordem łańcucha
+        if remaining == 0 and nodes[-1]["s_v"] < record:
+            continue
         if len(nodes) >= SHALLOW:
-            record = max(o["s_v"] for o in nodes)
             # łańcuch blisko najlepszego wyniku daje darmowe losowania przy szczycie
             # (paczka kosztuje tyle co najdłuższy węzeł), więc zatrzymany nie jest zamykany
             if _stalled(nodes) and record < global_best - NEAR:
