@@ -4,10 +4,15 @@ Polityki grające, których używa benchmark.
 Wszystkie są deterministyczne przy zadanym seedzie partii — benchmark mierzy,
 co polityka umie, a nie jak wypada w trakcie nauki (#8).
 """
+import json
+import os
 import random
 
+import valuation
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
+
+NTUPLE_FILE = "ntuple.json"
 
 
 class RandomPolicy:
@@ -74,3 +79,56 @@ def _immediate_gain(game, action):
         if not any(any(row) for row in board.grid):
             gain += FULL_CLEAR_BONUS
     return gain
+
+
+def _after(game, occ, action):
+    idx, x, y = action
+    return valuation.clear_full(occ | valuation.piece_mask(game.pieces[idx].shape, x, y))
+
+
+def _tray_survives(game, idx, after):
+    rest = tuple(
+        valuation.shape_key(p.shape)
+        for j, p in enumerate(game.pieces)
+        if p is not None and j != idx
+    )
+    return valuation.completable(after, rest)
+
+
+class NTuplePolicy:
+    """Najwyższa wartość po postawieniu, pod warunkiem że tacka wciąż ma co położyć."""
+
+    name = "ntuple"
+
+    def __init__(self, table):
+        self.table = table
+
+    def reset(self, game_seed):
+        pass
+
+    def act(self, game, actions):
+        occ = valuation.occupancy(game.board.grid)
+        afters = [_after(game, occ, action) for action in actions]
+        values = [valuation.value(self.table, after) for after in afters]
+        order = sorted(range(len(actions)), key=lambda i: -values[i])
+        for i in order:
+            if _tray_survives(game, actions[i][0], afters[i]):
+                return actions[i]
+        return actions[order[0]]
+
+    def explore(self, game, actions, rng):
+        occ = valuation.occupancy(game.board.grid)
+        for action in rng.sample(actions, len(actions)):
+            if _tray_survives(game, action[0], _after(game, occ, action)):
+                return action
+        return rng.choice(actions)
+
+
+def build(weights):
+    if weights is None:
+        return GreedyPolicy()
+    path = os.path.join(weights, NTUPLE_FILE)
+    if not os.path.exists(path):
+        return GreedyPolicy()
+    with open(path, encoding="utf-8") as fh:
+        return NTuplePolicy(valuation.load_table(json.load(fh)))
