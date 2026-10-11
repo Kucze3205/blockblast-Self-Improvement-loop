@@ -3,6 +3,7 @@ Polityka przeszukująca tackę: wiązka po postawieniach klocków tacki na bitbo
 ocena końcowej planszy (cechy liścia, dopasowanie typów, ryzyko trudnych tacek).
 """
 import math
+import random
 from collections import Counter
 from itertools import combinations_with_replacement
 
@@ -52,8 +53,6 @@ def _placements(shape):
 
 
 POSES = [_placements(piece.shape) for piece in PIECE_POOL]
-HARD_POSES = [p for t in HARD_TYPES for p in PIECE_TYPES[t]]
-HARD_POSE_WEIGHT = {p: 1 / (len(HARD_TYPES) * len(PIECE_TYPES[t])) for t in HARD_TYPES for p in PIECE_TYPES[t]}
 
 
 def _orderings(ms):
@@ -61,8 +60,8 @@ def _orderings(ms):
 
 
 HARD_MULTISETS = [
-    (ms, _orderings(ms) * math.prod(HARD_POSE_WEIGHT[p] for p in ms))
-    for ms in combinations_with_replacement(HARD_POSES, 3)
+    (ms, _orderings(ms) / len(HARD_TYPES) ** 3)
+    for ms in combinations_with_replacement(HARD_TYPES, 3)
 ]
 
 
@@ -159,17 +158,22 @@ def _tray_ok(board, poses):
         return True
 
 
-def _hard_risk(b, alive):
+def _hard_risk(b, samples):
     risk = 0.0
     for ms, weight in HARD_MULTISETS:
-        if not (any(alive[p] for p in ms) and _tray_ok(b, ms)):
+        seen = {}
+        poses = []
+        for t in ms:
+            k = seen.get(t, 0)
+            seen[t] = k + 1
+            poses.append(samples[t][k])
+        if not _tray_ok(b, poses):
             risk += weight
     return risk
 
 
-def _final_value(b, rank, w):
-    alive = _alive(b)
-    return rank - _fit_penalty(alive, w) - HARD_W * _hard_risk(b, alive)
+def _final_value(b, rank, w, samples):
+    return rank - _fit_penalty(_alive(b), w) - HARD_W * _hard_risk(b, samples)
 
 
 class SearchPolicy:
@@ -179,6 +183,7 @@ class SearchPolicy:
         self.w = {**DEFAULT_WEIGHTS, **(weights or {})}
 
     def reset(self, game_seed):
+        self.rng = random.Random(f"0:{game_seed}")  # jak w 67c8cbf, żeby ablacja różniła się tylko estymatorem
         self.queue = []
 
     def act(self, game, actions):
@@ -193,6 +198,7 @@ class SearchPolicy:
 
     def _plan(self, board, slots):
         w = self.w
+        samples = {t: [self.rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
         full = (1 << len(slots)) - 1
         states = {(board, 0): (0.0, 0, ())}
         for _ in slots:
@@ -222,5 +228,5 @@ class SearchPolicy:
         free = 64 - _pc(board)
         count = FINAL_CROWDED if free <= CROWDED_FREE else FINAL_OPEN
         finals = sorted(complete, key=lambda c: -c[1][0])[:count]
-        best = max(finals, key=lambda c: _final_value(c[0], c[1][0], w))
+        best = max(finals, key=lambda c: _final_value(c[0], c[1][0], w, samples))
         return best[1][2]

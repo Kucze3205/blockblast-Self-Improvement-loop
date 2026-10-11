@@ -15,8 +15,7 @@ from game import Game
 from pieces import PIECE_POOL, PIECE_TYPES
 from search_policy import (
     HARD_MULTISETS,
-    HARD_POSE_WEIGHT,
-    HARD_POSES,
+    HARD_TYPES,
     _alive,
     _cheap,
     _clear,
@@ -134,21 +133,17 @@ class SearchPolicyTest(unittest.TestCase):
         self.assertAlmostEqual(_fit_penalty(_alive(full)), 400 + 80 + 12.3 * len(PIECE_TYPES))
 
     def test_hard_multisets_are_a_distribution(self):
-        self.assertEqual(len(HARD_MULTISETS), 286)
+        self.assertEqual(len(HARD_MULTISETS), 35)
         self.assertAlmostEqual(sum(w for _, w in HARD_MULTISETS), 1.0)
 
-    def test_hard_risk_matches_bruteforce(self):
-        rng = random.Random(4)
-        for density in (0.2, 0.3):
-            grid = random_grid(rng, density)
-            expected = 0.0
-            for p1 in HARD_POSES:
-                for p2 in HARD_POSES:
-                    for p3 in HARD_POSES:
-                        if not ref_playable(grid, (p1, p2, p3)):
-                            expected += HARD_POSE_WEIGHT[p1] * HARD_POSE_WEIGHT[p2] * HARD_POSE_WEIGHT[p3]
-            b = _to_bits(grid)
-            self.assertAlmostEqual(_hard_risk(b, _alive(b)), expected)
+    def test_hard_risk_extremes_and_range(self):
+        rng = random.Random(7)
+        samples = {t: [rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
+        self.assertAlmostEqual(_hard_risk(0, samples), 0.0)
+        self.assertAlmostEqual(_hard_risk((1 << 64) - 1, samples), 1.0)
+        for density in (0.2, 0.3, 0.5):
+            risk = _hard_risk(_to_bits(random_grid(rng, density)), samples)
+            self.assertTrue(0.0 <= risk <= 1.0)
 
     def test_plan_moves_are_legal_on_empty_board(self):
         game = Game(5)
