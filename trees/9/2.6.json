@@ -2,16 +2,25 @@
  "rodzic": "2.5",
  "rodzic_sha": "8eba1be9c7ae81bfa12dd6e4fba2eb44767cce72",
  "kolejnosc": 12,
- "sha": "8eba1be9c7ae81bfa12dd6e4fba2eb44767cce72",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "d9e3f275afa325f7e9b7f6757474c328dc04dd9e",
+ "stan": "ocena w toku",
+ "gist": "Przegląd następnej tacki pomija nieumieszczalne próbki, bez podwójnej kary",
+ "notatki": [
+  "Przegląd następnej tacki pomija nieumieszczalne próbki, bez podwójnej kary\n\nMechanizm:\nBaza to 9/2.4 (cf6df19): przegląd następnej tacki bez ogona. Nieumieszczalna próbka dawała w przeglądzie −TRAY_FAIL, a ta sama śmierć była już karana w risk (tacki samo-twarde) i w tail_penalty (mieszane), więc śmierć liczyła się dwa razy, około 800·P zamiast 400·P. Teraz _next_value zwraca None dla nieumieszczalnej tacki, act uśrednia tylko wykonalne próbki, a gdy żadna nie jest wykonalna, zostaje −TRAY_FAIL. Wywołania plan i kolejność losowań bez zmian; gdy wszystkie próbki są wykonalne, decyzje są jak w 2.4.\n\nDowód z historii:\n- 9/2.4 (cf6df19, 0,99525) i 9/1.4 mają identyczne listy 13 przegranych gier (przeżycie 80–443).\n- 9/2.5 (8eba1be, 0,9918) i 9/1.5 (0,9918) dodały ogon do przeglądu, czyli karę za śmierć na drugim poziomie. Obie mają po 22 przegrane, z czego tylko jedna pokrywa się z grami 2.4.\n- W notatkach drzewa 9 nie ma próby pomijania nieumieszczalnych próbek (szukano: wykonaln, wartownik, TRAY_FAIL).\n\nDlaczego to nie powtórka:\n2.5 i 1.5 zwiększały karę za śmierć po następnej tacce. Ta zmiana usuwa podwójne liczenie tej samej śmierci w przeglądzie, czyli idzie w przeciwnym kierunku i zmienia agregację, a nie wagę.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator.\n- Kara za śmierć po następnej tacce spada z około 800·P do 400·P (ogon i risk). Jeśli podwójna kara była potrzebna, gry mogą kończyć się wcześniej.\n- Gdy wszystkie próbki są nieumieszczalne, podwójne liczenie zostaje.\n- Koszt obliczeń bez zmian względem 2.4.\n\nCo dalej:\nZrobione: baza 2.4 (cf6df19), _next_value bez ogona zwraca None dla nieumieszczalnej tacki, test _next_value zaktualizowany. Testy beam 7/7, smoke 3 partie bez wyjątku, test_engine: błąd importu tkinter (brak modułu w środowisku).\nNastępny krok: ocena tego węzła względem 9/2.4 (0,99525). Jeśli spadnie, sprawdzić, które z 13 przegranych gier 2.4 zmieniły wynik, zanim ruszę karę za śmierć.\nCzego nie powtarzać: ogona w przeglądzie następnej tacki (9/1.5, 9/2.5, 0,9918).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 76,
+  "usd": 5.1741,
+  "minuty": 22.8
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T19:24:55Z",
+   "koniec": "2026-10-11T19:47:44Z",
+   "tury": 76,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
