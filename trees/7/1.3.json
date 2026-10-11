@@ -2,16 +2,25 @@
  "rodzic": "1.2",
  "rodzic_sha": "3ab93e976f0d7ebb0c6421128e36f08498abfa25",
  "kolejnosc": 11,
- "sha": "3ab93e976f0d7ebb0c6421128e36f08498abfa25",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "37c066548123fb2a52bedb5e226f0032c0ace72c",
+ "stan": "ocena w toku",
+ "gist": "Liść węzła 2.2 z dokładnym ryzykiem trudnych tacek zamiast 16 losowych tacek",
+ "notatki": [
+  "Liść węzła 2.2 z dokładnym ryzykiem trudnych tacek zamiast 16 losowych tacek\n\nMechanizm: wiązka i liść jak w 2.2 (kształt planszy w rankingu wiązki i w karze końcowej, dopasowanie typów ze średnią po wszystkich typach). Ryzyko trudnych tacek to suma wag 969 multizbiorów trzech poz z HARD_TYPES (4, 6, 7, 10, 9), waga = permutacje * iloczyn 1/(5*n_typu), zamiast 16 losowanych tacek. Przejście tacki: DFS z pamięcią i budżetem 400 węzłów, wyczerpany budżet = tacka przechodzi (jak w 1.1).\n\nDowód z historii: 2.2 = 0.973 (16 tacek, 72 straty). Na liściu 1.1 przejście z próbkowania (1.2 = 0.918) do dokładnej wartości (1.1 = 0.949) dało +0.031, więc szum estymatora może kosztować strat także na 2.2.\n\nDlaczego nie powtórka: nowe połączenie liścia 2.2 z estymatorem 1.1; żaden węzeł nie mierzył tej kombinacji.\n\nRyzyko: czas ruchu (lokalnie 3 partie po 150 ruchów, średnio 0.067 s, max 0.173 s na ruch; to nie limit ewaluatora); budżet DFS może zaniżać ryzyko na planszach, gdzie przejście wymaga ponad 400 węzłów; fallback actions[0] przy pustej wiązce bez zmian jak w 2.2; wynik niezmierzony.\n\nCo dalej:\n- zrobione: ten commit (7/7 testów OK, 3 partie bez wyjątku)\n- następny krok: ocena zewnętrzna, porównanie z 2.2 (0.973); jeśli nie przebije 2.2, sprawdzić budżet DFS (wariant z budżetem 10^9 na planszach z 1.1)\n- nie powtarzać: próbkowania trudnych tacek, samego dostrajania wag bez nowej hipotezy\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 40,
+  "usd": 3.7134,
+  "minuty": 16.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T02:06:42Z",
+   "koniec": "2026-10-11T02:22:43Z",
+   "tury": 40,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
