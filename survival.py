@@ -26,7 +26,6 @@ W_FIT_LIN = 80.0
 W_DEAD = 12.3
 W_HARD = 400.0
 HARD_TYPES = (3, 4, 7, 6, 10)
-LOOK_TRAYS = 4
 LOOK_TOP = 3
 LOOK_BEAM = 40
 LOOK_FINAL = 2
@@ -111,8 +110,17 @@ def _search(occ, pieces, width=BEAM):
     return beam, bool(beam) and beam[0][3].bit_count() == len(pieces)
 
 
-def _random_tray(rng):
-    return [(j, POSES[rng.choice(PIECE_TYPES[rng.randrange(len(PIECE_TYPES))])]) for j in range(3)]
+def _stratified_trays(rng):
+    # Stratyfikacja po liczbie trudnych klocków: każda liczba 0..3 dostaje jedną tackę, ważoną dwumianowo.
+    non_hard = [t for t in range(len(PIECE_TYPES)) if t not in HARD_TYPES]
+    p = len(HARD_TYPES) / len(PIECE_TYPES)
+    trays = []
+    for k in range(4):
+        types = [rng.choice(HARD_TYPES) for _ in range(k)] + [rng.choice(non_hard) for _ in range(3 - k)]
+        rng.shuffle(types)
+        weight = math.comb(3, k) * p ** k * (1 - p) ** (3 - k)
+        trays.append(([(j, POSES[rng.choice(PIECE_TYPES[t])]) for j, t in enumerate(types)], weight))
+    return trays
 
 
 def _tray_ok(occ, poses):
@@ -166,7 +174,7 @@ class SurvivalPolicy:
 
     def _new_tray(self):
         self._sampled = {t: [self.rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
-        self._trays = [_random_tray(self.rng) for _ in range(LOOK_TRAYS)]
+        self._trays = _stratified_trays(self.rng)
         self._risk_memo = {}
         self._look_memo = {}
 
@@ -178,13 +186,13 @@ class SurvivalPolicy:
     def _two_step(self, board):
         if board not in self._look_memo:
             total = 0.0
-            for tray in self._trays:
+            for tray, weight in self._trays:
                 beam, complete = _search(board, tray, LOOK_BEAM)
                 if complete:
-                    total += max(score - self._risk_of(child) for score, child, *_ in beam[:LOOK_FINAL])
+                    total += weight * max(score - self._risk_of(child) for score, child, *_ in beam[:LOOK_FINAL])
                 else:
-                    total -= W_LOSS
-            self._look_memo[board] = total / len(self._trays)
+                    total -= weight * W_LOSS
+            self._look_memo[board] = total
         return self._look_memo[board]
 
     def act(self, game, actions):
