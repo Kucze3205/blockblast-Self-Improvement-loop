@@ -2,16 +2,27 @@
  "rodzic": "5.2",
  "rodzic_sha": "3f7b23988859f4f37a1b0e0dc6e5097f669e5d6c",
  "kolejnosc": 15,
- "sha": "3f7b23988859f4f37a1b0e0dc6e5097f669e5d6c",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "a727e5c833114b5eff2c146be99e56c15646dd73",
+ "stan": "ocena w toku",
+ "gist": "Dodaj ryzyko trudnych tacek liczone przeszukiwaniem do liścia 7/2.2 (węzeł 5.3)",
+ "notatki": [
+  "Dodaj ryzyko trudnych tacek liczone przeszukiwaniem do liścia 7/2.2 (węzeł 5.3)\n\nMechanizm: liść wiązki z 2.2 plus kara W_HARD=500 za ryzyko, że trudna tacka się nie mieści.\nRyzyko to suma wag po wszystkich 969 wielozbiorach trzech póz z pięciu trudnych typów\n(HARD_TYPES = [4, 6, 7, 10, 9], 17 póz). Waga wielozbioru to liczba kolejności razy iloczyn\nudziałów póz (typ jednostajnie spośród 15, poza jednostajnie w typie, warunkowo na trudne).\nTacka sprawdzana przeszukiwaniem z czyszczeniem linii, budżet 400 węzłów na tackę; wyczerpany\nbudżet liczy tacę jako mieszczącą się. Finalista wybierany przez odcięcie z górną granicą bez\nryzyka, które daje ten sam wynik co pełny max (test to sprawdza).\n\nDowód z historii: następnym krokiem 2.2 było „dokładne ryzyko trudnych tacek jak w 1.1\nzamiast próbkowania”. W tabeli 1.1 (dokładne ryzyko, 0.949) pokonało swojego bliźniaka 1.2\nz próbkowaniem (0.918). Punkt odniesienia to 2.2 (0.973).\n\nDlaczego to nie powtórka: nie 1.1 (17 póz zamiast 11, liść z 2.2) i nie próbkowanie z 2.2.\nW tabeli rodziny 7 nie ma liścia 2.2 z dokładnym ryzykiem.\n\nRyzyko: koszt czasu, nie wynik. Trzy partie (ziarna 1-3, do 300 ruchów): średnio 44 ms na ruch,\np95 273 ms, max 483 ms; bez budżetu 115 ms, z budżetem 95 ms, z odcięciem 44 ms. Limit czasu\noceny nieznany (config maskowany). Na 72 planszach z trzech partii (wolne pola 27-64) żadna tacka\nnie wyczerpała budżetu, a ryzyko przy 400 i 2000 węzłach było identyczne. Wynik w grze nie\nzmierzony. Testy: 27 OK. Ruchy legalne, bez wyjątków.\n\nCo dalej:\n- Zrobione: fd4a27c (powrót do bazy 2.2), 9283159 (fallback wiązki), ten commit (5.3).\n- Następny krok: ocena 5.3 poza agentem. Jeśli wynik nie przebije 2.2, nie dokładać poprawek\n  ryzyka bez nowego powodu; jeśli czas oceny okaże się za duży, zmniejszyć zestaw póz.\n- Czego nie powtarzać: próbkowania trudnych tacek zamiast dokładnego sprawdzenia, wag z ridge.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Napraw fallback wiązki 7/2.2: niepełna tacka gra najgłębszą warstwą\n\nMechanizm: _beam przerywa, gdy warstwa nie ma dzieci, i zwraca ostatnią pełną\nwarstwę zamiast pustej listy. act nie ma już ścieżki actions[0]: wiązka daje co\nnajmniej jeden ruch, gdy są legalne ruchy.\n\nDowód z historii: 7/2.2 notuje fallback actions[0] w 0,45% ruchów (8 z 1778).\n6cb97dd naprawił ten sam błąd w search.py, a odtworzenie 2.2 w fd4a27c go nie\nzawierało. Test: plansza w szachownicę, kwadrat 2x2 i 1x1; _beam zwraca stany\ndługości 1. Bez break ta plansza daje pustą listę, co sprawdzono rozumowaniem,\nnie uruchomieniem przed poprawką.\n\nDlaczego to nie powtórka: poprawka błędu, nie zmiana wag ani liścia.\n\nRyzyko: zmienia wybór tylko w stanach, gdzie cała tacka się nie mieści (koniec\ngry, 1-2 postawienia). Wynik niezmierzony. Testy 24/24.\n\nCo dalej:\n- zrobione: ten commit (fallback na bazie fd4a27c)\n- następny krok: dokładne ryzyko trudnych tacek w strukturze 2.2 (węzeł 5.3)\n- czego nie powtarzać: zakładania, że tacka zawsze mieści się cała\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wróć do bazy 7/2.2: wiązka z liściem kształtu zamiast wag z ridge\n\nMechanizm: z 338f207 przywrócony policies.py, zastosowany .historia/7/2.patch\n(search_policy.py, tests/test_search_policy.py, build ignoruje wagi i zwraca\nSearchPolicy()). Usunięte search.py, tests/test_search.py, train_value.py i\nweights/value.json, czyli ścieżka uczenia wag z 57c445b i acc95ee.\n\nDowód z historii: 7/2.2 = 0.973 (72 przegrane), najlepszy węzeł drzewa 7.\n5/2.2 (3f7b239) = 0.778. Notatka 5/5.1 mówi, że uczenie wag na czasie do\nprzegranej dało R2 0.011, a współczynnik zajętości wyszedł dodatni, czyli\nliść nagradza zapełnianie planszy.\n\nDlaczego to nie powtórka: odtworzenie zmierzonego węzła jako punkt wyjścia,\nnie nowy wynik. Nowość przyjdzie w następnych commitach.\n\nRyzyko: brak poprawki fallbacku z 6cb97dd (2.2 gra actions[0], gdy tacka się\nnie mieści, 0.45% ruchów). Wynik niezmierzony. Testy: 23/23 przechodzą.\n\nCo dalej:\n- zrobione: ten commit (odtworzenie 2.2 na gałęzi 5)\n- następny krok: poprawka fallbacku w _beam (osobny commit), potem dokładne\n  ryzyko trudnych tacek w strukturze 2.2 (węzeł 5.3)\n- czego nie powtarzać: uczenia wag ridge na czasie do przegranej (5.1, 5.2)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 107,
+  "usd": 9.802,
+  "minuty": 50.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T02:06:48Z",
+   "koniec": "2026-10-11T02:57:08Z",
+   "tury": 107,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
