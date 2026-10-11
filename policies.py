@@ -61,11 +61,17 @@ class ModelPolicy:
 
 BEAM = 24
 FINAL = 16
-RISK_W = 300.0
+TOP = 5
+SAMPLES = 8
+Q_W = 66.0
+TRAY_W = 400.0
 POCKET_W = 6.0
 TRANS_W = 1.0
 LINE_W = 10.0
 N = 8
+FULL = (1 << (N * N)) - 1
+ROW_BITS = [((1 << N) - 1) << (N * r) for r in range(N)]
+COL_BITS = [sum(1 << (N * r + c) for r in range(N)) for c in range(N)]
 
 
 def _fits(grid, shape, x, y):
@@ -151,6 +157,63 @@ def _piece_fail_prob(grid):
     return fail / len(PIECE_TYPES)
 
 
+def _piece_bits(shape):
+    h, w = len(shape), len(shape[0])
+    cells = [dy * N + dx for dy, row in enumerate(shape) for dx, cell in enumerate(row) if cell]
+    valid = sum(1 << (y * N + x) for y in range(N - h + 1) for x in range(N - w + 1))
+    return cells, valid, sum(1 << off for off in cells)
+
+
+PIECE_BITS = [_piece_bits(p.shape) for p in PIECE_POOL]
+
+
+def _to_bits(grid):
+    return sum(1 << (r * N + c) for r in range(N) for c in range(N) if grid[r][c])
+
+
+def _clear_bits(board):
+    rows = [r for r in range(N) if (board & ROW_BITS[r]) == ROW_BITS[r]]
+    cols = [c for c in range(N) if (board & COL_BITS[c]) == COL_BITS[c]]
+    for r in rows:
+        board &= ~ROW_BITS[r]
+    for c in cols:
+        board &= ~COL_BITS[c]
+    return board
+
+
+def _tray_ok(board, tray):
+    """Czy wszystkie klocki tacki (indeksy PIECE_POOL) da się ułożyć w jakiejkolwiek kolejności."""
+    seen = set()
+
+    def dfs(b, left):
+        if not left:
+            return True
+        key = (b, left)
+        if key in seen:
+            return False
+        seen.add(key)
+        free = ~b & FULL
+        for j, idx in enumerate(tray):
+            if not (left >> j) & 1:
+                continue
+            cells, valid, mask = PIECE_BITS[idx]
+            anchors = valid
+            for off in cells:
+                anchors &= free >> off
+            while anchors:
+                low = anchors & -anchors
+                anchors ^= low
+                if dfs(_clear_bits(b | (mask << (low.bit_length() - 1))), left & ~(1 << j)):
+                    return True
+        return False
+
+    return dfs(board, (1 << len(tray)) - 1)
+
+
+def _sample_tray(rng):
+    return [rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3)]
+
+
 def _plan(grid, slots):
     beam = [(0.0, 0, grid, ())]
     for _ in range(len(slots)):
@@ -173,10 +236,17 @@ def _plan(grid, slots):
     return beam
 
 
-def _choose(plans):
-    best_total, best_move = None, None
+def _choose(plans, trays):
+    ranked = []
     for sc, _, g, moves in sorted(plans, key=lambda t: t[0], reverse=True)[:FINAL]:
-        total = sc - POCKET_W * _pockets(g) - RISK_W * (1 - (1 - _piece_fail_prob(g)) ** 3)
+        total = sc - POCKET_W * _pockets(g) - Q_W * (1 - (1 - _piece_fail_prob(g)) ** 3)
+        ranked.append((total, g, moves))
+    ranked.sort(key=lambda t: t[0], reverse=True)
+    best_total, best_move = None, None
+    for total, g, moves in ranked[:TOP]:
+        bits = _to_bits(g)
+        dead = sum(1 for tray in trays if not _tray_ok(bits, tray))
+        total -= TRAY_W * dead / len(trays)
         if best_total is None or total > best_total:
             best_total, best_move = total, moves[0]
     return best_move
@@ -196,14 +266,18 @@ def _greedy_move(game, actions):
 class SurvivalPolicy:
     name = "survival"
 
+    def __init__(self):
+        self.rng = random.Random(0)
+
     def reset(self, game_seed):
-        pass
+        self.rng = random.Random(f"tray:{game_seed}")
 
     def act(self, game, actions):
         slots = [(i, p.shape) for i, p in enumerate(game.pieces) if p is not None]
         plans = _plan(game.board.grid, slots)
         if plans:
-            return _choose(plans)
+            trays = [_sample_tray(self.rng) for _ in range(SAMPLES)]
+            return _choose(plans, trays)
         return _greedy_move(game, actions)
 
 
