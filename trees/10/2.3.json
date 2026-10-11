@@ -2,16 +2,25 @@
  "rodzic": "2.2",
  "rodzic_sha": "aec441a6fe672b74b33ab209ca717afaf5e2e695",
  "kolejnosc": 6,
- "sha": "aec441a6fe672b74b33ab209ca717afaf5e2e695",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "1a3be883799a53dabab4ccfe98217988e9c347b0",
+ "stan": "ocena w toku",
+ "gist": "Wybór ruchu po całej tacce: wiązka i P(następna tacka) × V",
+ "notatki": [
+  "Wybór ruchu po całej tacce: wiązka i P(następna tacka) × V\n\nMechanizm: RiskPolicy._tray_ends przeszukuje ułożenia całej tacki\nwiązką 4 na poziom. Po każdym klocku odrzuca ruchy, po których reszta\ntacki się nie układa (valuation.completable), i zostawia 4 najlepsze\nwg V. act bierze 8 najwyżej ocenionych zakończeń i wybiera ten o\nnajwiększym P × V, gdzie P to odsetek 16 wspólnych próbek następnej\ntacki (CRN), które układają się po danym zakończeniu. Gdy zakończeń nie\nma, zostaje ruch o największym V.\n\nDowód: 10/2.1 (TD(0), s_sym 0.731) -> 10/2.2 (ryzyko przy ostatnim\nklocku, 16 próbek): 0.771. Przegląd następnej tacki na CRN był częścią\n9/2.6 (s_sym 0.996, najlepszy węzeł drzewa 9). Losowanie tacek w\n_sample_tray zgodne z generator.py: typ jednostajnie, potem poza\njednostajnie w obrębie typu.\n\nDlaczego nie powtórka: 2.2 patrzył na przeżycie tacki tylko przy\nostatnim klocku, a dwa pierwsze wybierał po samym V. Tu przeżycie\ntacki wchodzi do wyboru od pierwszego klocka. To nie strojenie K ani top.\n\nRyzyko: wynik NIEZMIERZONY, ocena jeszcze nie była. 16 próbek to szum.\nBez oceny: build('weights') na 10 partiach, 0 nielegalnych ruchów,\nśrednio 1.9 ms na decyzję (HEAD 2.0), max 32 ms. Otwarcie na pustej\nplanszy (ok. 127 ruchów, losowe wagi): 6.3 ms (HEAD 5.4). Top-8\nzakończeń może pochodzić z kilku pierwszych ruchów. Limit czasu oceny\nnieznany (config nieczytelny w tej piaskownicy). test_engine\ntest_agent_accepts_epsilon_zero pada tu na braku tkinter (agent ->\nmodel -> turtle); zmienione pliki tego nie dotyczą.\n\nCo dalej:\n- zrobione: aec441a (ostatni klocek po P × V), ten commit (wiązka po tacce)\n- następny krok: ocena tego commitu. Jeśli nie przebije 0.771, sprawdzić\n  na tych samych seedach, z ilu pierwszych ruchów pochodzi top-8 zakończeń\n  (bez zmiany oceny).\n- nie powtarzać: q^3, kary za śmierć na P × V, strojenia K/top.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 46,
+  "usd": 2.8828,
+  "minuty": 12.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T23:38:55Z",
+   "koniec": "2026-10-11T23:51:02Z",
+   "tury": 46,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
