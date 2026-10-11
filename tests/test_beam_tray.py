@@ -107,15 +107,11 @@ class TrayPlayableTest(unittest.TestCase):
             b = B._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
             poses = B._sample_tray(rng)
             triples = B._hard_triples(rng)
-            mixed = B._mixed_trays(rng)
             states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
-            expected = -B.TRAY_FAIL
+            expected = None
             if states:
-                expected = max(
-                    B.cheap(s[0], s[2]) - B.risk(s[0], triples) - B.tail_penalty(s[0], mixed)
-                    for s in states[:2]
-                )
-            self.assertEqual(policy._next_value(b, triples, mixed, poses), expected)
+                expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
+            self.assertEqual(policy._next_value(b, triples, poses), expected)
 
     def test_policy_plays_legal_moves(self):
         game = Game(1)
