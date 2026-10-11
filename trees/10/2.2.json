@@ -2,16 +2,25 @@
  "rodzic": "2.1",
  "rodzic_sha": "ac8137cca076dca39df5e2bd8a535bb4dabf81db",
  "kolejnosc": 4,
- "sha": "ac8137cca076dca39df5e2bd8a535bb4dabf81db",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "aec441a6fe672b74b33ab209ca717afaf5e2e695",
+ "stan": "ocena w toku",
+ "gist": "Ostatni klocek tacki wybiera ruch po P(następna tacka dokańczalna) razy V",
+ "notatki": [
+  "Ostatni klocek tacki wybiera ruch po P(następna tacka dokańczalna) razy V\n\nMechanizm: policies.build zwraca RiskPolicy (ta sama sygnatura reset/act).\nGdy na tacce został jeden klocek, bierze 8 ruchów o najwyższej V i dla każdego\nliczy ułamek z 16 tacek losowanych z rozkładu generatora (typ jednostajnie,\npotem orientacja; te same 16 dla wszystkich kandydatów w danej decyzji).\nWybiera ruch o najwyższym ułamku razy max(V, 0). Pozostałe decyzje idą jak\ndotąd przez NTuplePolicy.act (wiązka 4). Wagi i trening bez zmian:\ntrain_ntuple.py nadal używa NTuplePolicy.\n\nDowód z historii:\n- 10/2.1 (ac8137c): 623 z 1200 gier przegranych, średnio ok. 365 postawień.\n  Ruch nie patrzy na następną tackę; notatka 2.1 wskazuje ją jako pierwszy kandydat.\n- 9/2.1 (przegląd następnej tacki na wspólnych losowaniach): s_sym 0,963 wobec\n  0,950 dla 9/1.1 z tego samego korzenia.\n- 10/1.1: wszystkie 1200 gier przegrane. Ryzyko liczyło q^3, czyli P(wszystkie\n  trzy klocki nie mieszczą się). Martwa tacka wystarcza jeden klocek, więc tu\n  ryzyko to bezpośrednio P(niedokańczalna) z próbek, bez wzoru na q.\n- Pomiar czasu (sonda na 3 partiach, nie wynik): 2,5 ms na decyzję średnio,\n  maks. 62 ms; poprzedni commit 1,45 ms w tej samej sondzie.\n\nDlaczego to nie powtórka: 10/1.1 miał ręczną heurystykę i błędny wzór; 9/2.x\nmiał heurystykę bitową. Tu wartość to uczone krotki z ac8137c, a ryzyko dotyczy\ntylko ostatniego klocka tacki i nie ma osobnej kary ponad P*V.\n\nRyzyko:\n- P*V liczy śmierć dwa razy: V już niesie średnie ryzyko z treningu, więc\n  ranking może karać za mocno. Nie zmierzone.\n- K=16 próbek: rozdzielczość P to 1/16. To szum, nie wynik.\n- Tylko ostatni klocek tacki. Dwa pierwsze nadal wybiera 2-ply po V, więc stan\n  po tacce nie jest kontrolowany.\n- Rozkład tacek to model z pieces.py i generator.py (zał. Z-6), nie pomiar.\n- Wagi uczone na poprzedniej polityce; V działa poza swoim rozkładem.\n\nCo dalej:\n- zrobione: ac8137c (n-krotki, lookahead, wagi); ten commit (RiskPolicy, testy:\n  completable zgodne z wyliczeniem na Board, ułamek na jawnych tackach)\n- następny krok: ten sam przegląd na drugim klocku tacki (liście to koniec\n  tacki, te same 16 losowań), albo K=32, jeśli czas oceny na to pozwoli\n- czego nie powtarzać: q^3 jako ryzyka; kary za śmierć dodanej do P*V;\n  strojenia K i top na wyniku\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 52,
+  "usd": 3.8181,
+  "minuty": 18.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T23:18:59Z",
+   "koniec": "2026-10-11T23:37:22Z",
+   "tury": 52,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
