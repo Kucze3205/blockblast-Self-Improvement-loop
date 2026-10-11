@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "60da9e224b5d74b4e8ca2ea5ff893bcc98dc9274",
+ "stan": "ocena w toku",
+ "gist": "Dodaj policies.build: przeszukanie tacki z dokładnym ryzykiem następnej tacki",
+ "notatki": [
+  "Dodaj policies.build: przeszukanie tacki z dokładnym ryzykiem następnej tacki\n\nMechanizm:\n- policies.build(weights) zwraca SurvivalPolicy z survival.py. Wagi są ignorowane (brak weights/).\n- Wstępna ocena każdego ruchu: 6*linie - krawędzie_otwarte - 8*dziury, na bitboardach.\n- Z najlepszych kandydatów wybierane są tylko te, po których reszta tacki da się dokończyć\n  (DFS po kolejnościach klocków, czyszczenie linii między postawieniami).\n- Ryzyko następnej tacki: q = P(losowy klocek nie mieści się na planszy). Generator losuje\n  klocki niezależnie, więc P(martwa tacka) = q^3 jest dokładne po ostatnim klocku tacki.\n  Kara: 300*q^3 + 40*q.\n\nDowód z historii:\n- Gałąź trees/10/1 nie miała policies.build, więc ewaluacja tej gałęzi dawała prawdopodobnie 0.\n- Model bitowy zgadza się z silnikiem: 0 rozbieżności na 250 ruchach. tests/test_survival.py: 5/5.\n- Diagnoza jednej przegranej partii (seed 101): zamknięte dziury i brak wolnego 3x3 dla square3.\n  Stąd kara za dziury, której wcześniejsza wersja nie miała.\n\nDlaczego to nie powtórka:\n- Nie odtwarza wiązki z drzewa 9 ani jego wag. Dokładne ryzyko tacki było w drzewach 5 i 7,\n  tu jest połączone z dokończalnością tacki w DFS i z karą za dziury.\n\nRyzyko:\n- Wynik niezmierzony. Dla pierwszych dwóch klocków tacki q liczone jest na planszy po ruchu,\n  a nie po całej tacce, więc to przybliżenie.\n- Wagi 6/1/8/300/40 są z rozsądku, nie strojone na wynikach.\n- Czas: ok. 0,3 ms na ruch w teście smoke. Limit ewaluatora nieznany (drzewo 7 odrzuciło 12,1 min).\n\nCo dalej:\n- Zrobione: policies.build, SurvivalPolicy, testy modelu bitowego.\n- Następny krok: ocena tego węzła względem rekordu 9/2.6 (0,9959). Jeśli wynik będzie słaby,\n  sprawdzić, czy przegrane mają dziury, zanim ruszę wagi.\n- Czego nie powtarzać: strojenia wag na seedach ewaluacji; wiązki po całej tacce bez dokończalności.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 47,
+  "usd": 2.1563,
+  "minuty": 9.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T21:50:17Z",
+   "koniec": "2026-10-11T21:59:15Z",
+   "tury": 47,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
