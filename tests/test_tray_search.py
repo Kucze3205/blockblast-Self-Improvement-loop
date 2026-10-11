@@ -10,11 +10,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from board import Board
 from game import Game
-from pieces import PIECE_POOL, PIECE_TYPES
+from pieces import PIECE_POOL
 from policies import build
 from tray_search import (
     HARD_MULTISETS,
-    HARD_TYPES,
     SLOT_P,
     W_BORDER,
     W_ISO,
@@ -124,11 +123,9 @@ class TestBitboardPrimitives(unittest.TestCase):
             )
             self.assertAlmostEqual(_leaf(occ, 2), expect)
 
-    def test_hard_multisets_cover_hard_mass(self):
+    def test_hard_multisets_are_conditional_on_hard_trays(self):
         total = sum(weight for weight, _ in HARD_MULTISETS)
-        hard_mass = sum(SLOT_P[p] for t in HARD_TYPES for p in PIECE_TYPES[t])
-        self.assertAlmostEqual(total, hard_mass ** 3, places=12)
-        self.assertAlmostEqual(total, (len(HARD_TYPES) / 15) ** 3, places=12)
+        self.assertAlmostEqual(total, 1.0, places=12)
 
 
 class TestRiskAgainstEngine(unittest.TestCase):

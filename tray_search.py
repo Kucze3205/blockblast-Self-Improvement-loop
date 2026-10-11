@@ -44,10 +44,12 @@ for _poses in PIECE_TYPES:
         SLOT_P[_p] = 1 / (15 * len(_poses))
 
 HARD_POSES = [p for t in HARD_TYPES for p in PIECE_TYPES[t]]
+HARD_MASS = sum(SLOT_P[p] for p in HARD_POSES)
+# Suma wag = 1 (warunkowo na trzy trudne klocki): W_HARD jest skalibrowane do tej skali.
 HARD_MULTISETS = []
 for _combo in combinations_with_replacement(HARD_POSES, 3):
     _perms = 6 // prod(factorial(c) for c in Counter(_combo).values())
-    _weight = _perms * SLOT_P[_combo[0]] * SLOT_P[_combo[1]] * SLOT_P[_combo[2]]
+    _weight = _perms * SLOT_P[_combo[0]] * SLOT_P[_combo[1]] * SLOT_P[_combo[2]] / HARD_MASS ** 3
     HARD_MULTISETS.append((_weight, _combo))
 
 
