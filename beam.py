@@ -173,13 +173,14 @@ class BeamPolicy:
 
     def act(self, game, actions):
         slots = [(idx, p.index) for idx, p in enumerate(game.pieces) if p is not None]
-        finals = plan(_to_bits(game.board.grid), slots, BEAM, BEAM_CAP, partial=True)
+        base = _to_bits(game.board.grid)
+        finals = plan(base, slots, BEAM, BEAM_CAP, partial=True)
         if _pc(finals[0][1]) < len(slots):
             return max(finals, key=lambda s: cheap(s[0], s[2]))[3]
 
         triples = _hard_triples(self.rng)
         ranked = sorted(finals, key=lambda s: -cheap(s[0], s[2]))
-        k = FINAL_K_TIGHT if 64 - _pc(ranked[0][0]) <= TIGHT_FREE else FINAL_K
+        k = FINAL_K_TIGHT if 64 - _pc(base) <= TIGHT_FREE else FINAL_K
         best_by_move = {}
         for b, _used, lines, first in ranked[:k]:
             value = cheap(b, lines) - risk(b, triples)
