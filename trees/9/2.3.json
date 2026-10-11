@@ -2,16 +2,25 @@
  "rodzic": "2.2",
  "rodzic_sha": "ddf3ecffc1d4a48d8f0738d8341456dd9858985f",
  "kolejnosc": 6,
- "sha": "ddf3ecffc1d4a48d8f0738d8341456dd9858985f",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "4428645f9a6b35bd1862bed2b8615dabbdd172f3",
+ "stan": "ocena w toku",
+ "gist": "Kara za dopasowanie: sześcian po wszystkich typach, cofnięcie E",
+ "notatki": [
+  "Kara za dopasowanie: sześcian po wszystkich typach, cofnięcie E\n\nMechanizm: w risk miss = 1 − średnia po wszystkich typach (martwy typ liczy się jako 0). Sześcian ·400 i liniowo ·80 idą po tym samym miss. Usunięto listę żywych typów. 12,3 za martwy typ i 400 za trudne tacki bez zmian. To ta sama liczba co q w 9/2.1 (96a8752, POSE_P = 1/(15·liczba póz typu)).\n\nDowód z historii: 9/2.1 (0,963) miało tę kostkę przed A, B, D i C. 8/1.1 (0,975) pisze „400·(1−śr)^3 + 80·(1−śr)” z jednym „śr”, a 8/1.6 (0,993) notuje „reszta bez zmian”. Kostka po żywych typach (E, d991c8e) pochodzi z 6/4.2 (0,974). Jej rodzic 4.1 ma wynik 0,390, a 4.2 cofa kilka odchyleń naraz, więc tej jednej definicji nie ma w czystym pomiarze.\n\nBłąd w E: kostka po żywych typach nie jest monotoniczna względem zbioru żywych typów. Przykład 1: pięć żywych typów z udziałami 0,6; 0,6; 0,6; 0,6; 0,125 i dziesięć martwych. Zabicie typu 0,125 (żadna jego poza nie pasuje): kostka 48,5 → 25,6 (−22,9), martwy typ +12,3, liniowo +0,7, razem −9,9. Ruch zabijający rzadki typ na zagrożonej planszy dostaje więc premię; ożywienie tego typu daje +9,9. Po wszystkich typach ten sam ruch daje +20,0 (kostka 230,1 → 237,1, martwy +12,3, liniowo +0,7). Przykład 2: dziesięć martwych i pięć żywych w całości. Po żywych kostka wynosi 0, po wszystkich 118,5. E obniżało karę za planszę z tyloma martwymi typami, a 12,3 za typ tego nie rekompensuje.\n\nDlaczego to nie powtórka: 9/2.1 miało tę kostkę, ale bez A, B, D i C. Ten węzeł to 2.3: 2.2 (ddf3ecf) z cofniętym E, czego nie mierzono osobno.\n\nRyzyko: E mogło pomagać na planszach z wieloma martwymi typami, bo tam kara była niższa. Jeśli wynik spadnie poniżej 0,987, ta tolerancja była potrzebna i trzeba cofnąć ten commit. Liczby to arytmetyka przykładów, nie pomiar.\n\nSmoke (seedy 1-4, do 200 ruchów, bez oceny): 704 ruchy, 0 nielegalnych, 0 wyjątków. Czas na tych samych planszach: 52,0 ms na ruch wobec 52,2 dla HEAD. W d991c8e notowano 36 ms; różnica to maszyna, nie kod. Wynik nieznany; nie liczyć jako zysku przed oceną.\n\nCo dalej:\n- zrobione: 2.2 (ddf3ecf, 0,987) z E (d991c8e); ten commit cofa E\n- następny krok: ocena tego commita względem ddf3ecf. Jeśli ≥ 0,987: osobny węzeł z karą za martwy typ według szansy, że typ trafi do tacki, 400·(1 − (14/15)^3) ≈ 73 zamiast 12,3. Jeśli < 0,987: cofnąć ten commit.\n- czego nie powtarzać: kostki po żywych typach (E); usuwania członu dopasowania całkiem: 8/1.1 i 9/2.1 go mają, a 8/1.6 go dziedziczy.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 77,
+  "usd": 6.2186,
+  "minuty": 32.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T17:05:30Z",
+   "koniec": "2026-10-11T17:37:38Z",
+   "tury": 77,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
