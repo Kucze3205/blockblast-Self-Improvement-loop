@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "827913df7d2af704f153204a653ece13dcac5f81",
+ "stan": "ocena w toku",
+ "gist": "Dodaj policies.build: ocena planszy po ruchu z wykładalnością reszty tacki",
+ "notatki": [
+  "Dodaj policies.build: ocena planszy po ruchu z wykładalnością reszty tacki\n\nMechanizm:\n- policies.build(weights) zwraca TrayAwarePolicy z reset(seed) i act(game, actions); wagi są ignorowane (None albo katalog)\n- ocena ruchu = 2*linie - 3*izolowane puste pola + liczba pustych kwadratów 2x2 na planszy po ruchu\n- ruch odpada, jeśli reszta tacki (dowolna kolejność, z czyszczeniem linii) nie mieści się na planszy; gdy żaden ruch nie przechodzi, wybierany jest najlepszy bez filtra\n- plansza jako bitmaska 64-bit; pierwsza wersja karała liczbę zajętych pól, a ta sama tacka dokłada różną liczbę pól zależnie od klocka, więc faworyzowała małe klocki i zostawiała duże na koniec; karę usunięto\n\nDowód z historii:\n- stan wyjściowy gałęzi nie ma policies.build, więc ocena nie ma czego uruchomić (wynik 0)\n- drzewa 3-7: wiązka po tacce (BEAM 40, FINAL 20) z ryzykiem trudnych tacek dała 0.949-0.985; najlepsze 5/4.3 = 0.985\n- SHA z zapisów .historia nie istnieją w tym repozytorium, więc kodu poprzednich prób nie odtworzono\n\nDlaczego to nie powtórka:\n- brak wiązki po tacce i brak ryzyka trudnych tacek; cechy oceny i test wykładalności reszty tacki są nowe\n\nRyzyko:\n- wynik niezmierzony; wagi cech ustawione z rozumowania, nie z pomiaru\n- smoke: zgodność bitmaski z Board dla 3788 ruchów, 3 partie bez wyjątku\n- koszt ok. 0.1 ms na decyzję; limit czasu oceny nieznany, bo katalog .github jest w tej sesji niedostępny\n\nCo dalej:\n- zrobione: ten commit, pierwszy węzeł łańcucha 2 drzewa 8 (rodzic: korzeń)\n- następny krok: ocena tego commitu; jeśli s_sym < 0.985, osobna próba z cechami długich przerw (3-5 pól w rzędzie) zamiast strojenia wag\n- czego nie powtarzać: strojenia wag bez pomiaru; wiązki po tacce przed wynikiem tej próby\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 36,
+  "usd": 1.8644,
+  "minuty": 9.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T04:38:14Z",
+   "koniec": "2026-10-11T04:47:19Z",
+   "tury": 36,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
