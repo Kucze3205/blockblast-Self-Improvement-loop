@@ -2,16 +2,25 @@
  "rodzic": "2.1",
  "rodzic_sha": "827913df7d2af704f153204a653ece13dcac5f81",
  "kolejnosc": 4,
- "sha": "827913df7d2af704f153204a653ece13dcac5f81",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "d74ba8cc506da6cdba5ec2ef1e1724154e618f3d",
+ "stan": "ocena w toku",
+ "gist": "Dodaj policies.build: wiązka po tacce z oceną szansy, że następna tacka ma mieszczący się klocek",
+ "notatki": [
+  "Dodaj policies.build: wiązka po tacce z oceną szansy, że następna tacka ma mieszczący się klocek\n\nMechanizm:\n- policies.build(weights) zwraca TrayFitPolicy z reset(seed) i act(game, actions); wagi są ignorowane\n- wiązka po kolejnościach i pozycjach klocków bieżącej tacki: 12 stanów po pierwszym postawieniu, 6 po drugim, sortowanie przez _value; liście po wyłożeniu całej tacki\n- ocena liścia: 1 - (1 - q)^3, gdzie q = P(losowy klocek generatora mieści się na planszy); losowanie typ 1/15, potem poza 1/n; q liczone przez erozję bitmaski (kotwice AND przesunięte puste pola)\n- klucz liścia jest leksykograficzny: (przeżycie, _value po wyczyszczonych liniach), czyli przeżycie przed punktami\n- gdy żadna tacka nie daje liścia, wybierany jest najlepszy _value bez wiązki\n\nDowód z historii:\n- 2.1 (827913d): s_sym 0.285, 1176 z 1200 partii przegranych. Zgodność z Board sprawdzono na 400 planszach (bitmaska, _place, _value, wykładalność reszty tacki): 0 rozbieżności, więc błąd jest w konstrukcji, nie w kodzie\n- przyczyna: 2.1 chroni tylko resztę bieżącej tacki, a przegrana następuje, gdy nowa losowa tacka nie ma żadnego mieszczącego się klocka, czego 2.1 nie modeluje\n- 1.1 (3f4c30b): wiązka po tacce dała s_sym 0.975, więc sam mechanizm wiązki jest sprawdzony; tu zmienia się ocena liścia\n\nDlaczego to nie powtórka:\n- 1.1 ocenia liść trudnymi typami i licznikiem niewyłożalnych trójek; tu jedna wielkość z wag generatora, bez listy typów\n- 2.1 nie ma wiązki ani szansy na następną tackę\n\nRyzyko:\n- wynik niezmierzony; parametry wiązki (12, 6) nie były strojone\n- ocena następnej tacki to \"co najmniej jeden klocek się mieści\", nie pełna wykładalność trzech klocków, więc przeżycie jest przeszacowane\n- koszt: smoke 3 partie bez nielegalnego ruchu, act średnio 1.9 ms, max 8.7 ms na ruch (nie ocena)\n- testy: 16/17; jedna porażka to brak tkinter w środowisku (model.py importuje turtle), niezwiązana z polityką\n\nCo dalej:\n- zrobione: 827913d (2.1, zmierzony), ten commit (nowy mechanizm wiązki z szansą na następną tackę)\n- następny krok: ocena tego commitu; jeśli s_sym < 0.985, dodać do liścia pełną wykładalność następnej tacki (próbkowane trójki z wag generatora)\n- czego nie powtarzać: strojenia wag _value bez pomiaru; liścia opartego tylko na liczbie linii\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 32,
+  "usd": 1.9049,
+  "minuty": 8.7
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T04:57:34Z",
+   "koniec": "2026-10-11T05:06:14Z",
+   "tury": 32,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
