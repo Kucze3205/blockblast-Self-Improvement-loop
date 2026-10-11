@@ -8,6 +8,11 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
+from survival import SurvivalPolicy
+
+
+def build(weights):
+    return SurvivalPolicy()
 
 
 class RandomPolicy:
