@@ -71,6 +71,7 @@ BORDER = ROWS[0] | ROWS[N - 1] | COLS[0] | COLS[N - 1]
 
 HARD_TYPES = (3, 4, 6, 7, 10)
 N_TYPES = len(PIECE_TYPES)
+HARD_SHARE = (len(HARD_TYPES) / N_TYPES) ** 3
 BEAM = 120
 BEAM_CAP = 160
 LOOK_BEAM = 40
@@ -199,7 +200,7 @@ def risk(b, triples):
             hard += w
     miss_live = 1.0 - mean_live
     miss_all = 1.0 - mean_all
-    return TRAY_FAIL * miss_live ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * hard
+    return TRAY_FAIL * miss_live ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * HARD_SHARE * hard
 
 
 def plan(board, slots, width, cap, partial=False):

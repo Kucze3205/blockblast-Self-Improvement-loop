@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import policies as P
 from game import Game
+from generator import Generator
 from pieces import PIECE_POOL
 
 N = 8
@@ -98,6 +99,12 @@ class TrayPlayableTest(unittest.TestCase):
 
     def test_tail_penalty_is_zero_on_empty_board(self):
         self.assertEqual(P.tail_penalty(0, P._mixed_trays(random.Random(4))), 0.0)
+
+    def test_hard_share_matches_generator(self):
+        gen = Generator(11)
+        n = 30000
+        hits = sum(all(p.type_index in P.HARD_TYPES for p in gen.next_pieces()) for _ in range(n))
+        self.assertAlmostEqual(hits / n, P.HARD_SHARE, delta=0.004)
 
     def test_policy_plays_legal_moves(self):
         game = Game(1)
