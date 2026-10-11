@@ -2,16 +2,25 @@
  "rodzic": "1.1",
  "rodzic_sha": "60da9e224b5d74b4e8ca2ea5ff893bcc98dc9274",
  "kolejnosc": 3,
- "sha": "60da9e224b5d74b4e8ca2ea5ff893bcc98dc9274",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "aefbe3e61c9d42ec8244e722b4834c1e47232956",
+ "stan": "ocena w toku",
+ "gist": "Wiązka po tacce z dokończalnością i ryzykiem następnej tacki (CRN)",
+ "notatki": [
+  "Wiązka po tacce z dokończalnością i ryzykiem następnej tacki (CRN)\n\nMechanizm:\n- SurvivalPolicy.act rozwija tacką do trzech klocków. Na każdym poziomie kandydaci są\n  sortowani po _prescreen (6*linie - krawędzie - 8*dziury). Do wiązki (BEAM=4) trafiają\n  tylko ci, po których reszta tacki da się dokończyć (completable, DFS po kolejnościach).\n- Liście, czyli cała tacka położona, oceniane są na 6 najlepszych prescreenem:\n  prescreen - 300*q^3 - 40*q - 200*pnc. q = P(losowy klocek nie ma miejsca) na planszy\n  po całej tacce. pnc = udział z K=8 próbek CRN (stałe seedy), których następna tacka\n  jest niedokończalna.\n- Zwracany jest pierwszy ruch korzenia prowadzący do najlepszego liścia.\n\nDowód z historii:\n- 10/1.1 (pojedynczy ruch, dokończalność, q): 0,129.\n- Drzewo 7: pojedynczy ruch bez wiązki po tacce (3.1) 0,190; wiązka po tacce z ryzykiem\n  trudnych tacek (2.1) 0,453.\n- Drzewo 9: wiązka po całej tacce z ryzykiem (1.1) 0,950; pełna wykładalność następnej\n  tacki w wiązce (1.2) 0,951; przegląd następnej tacki na CRN (2.1) 0,963; najlepszy 2.6 0,996.\n- Diagnostyka na seedach 1-40 (nie ocena): zgony to tacki, które już przy losowaniu nie\n  dawały się dokończyć. Dla q w [0,1; 0,2) takich tacek jest ok. 16%, a q^3 daje ok. 0,3%.\n- Pierwsza wersja przycinała wiązkę tylko po prescreenie i w 20 z 40 partii gubiła tacki,\n  które przy losowaniu dawały się dokończyć. Teraz przycinanie idzie po dokładnej dokończalności.\n- tests/test_survival.py: 5/5. tests/test_engine.py nie startuje bez tkinter (model.py);\n  to błąd sprzed tej zmiany.\n\nDlaczego to nie powtórka:\n- Wag ani kodu z drzewa 9 nie kopiuję. Mechanizmy są z drzewa 9 (1.1, 1.2, 2.1), połączone\n  w nowej kombinacji. To zmienia zdanie z 1.1, że nie odtwarzam wiązki z drzewa 9: wiązka\n  jest, ale z CRN i z q liczonym na całej tacce (1.1 liczył je po dwóch klockach).\n\nRyzyko:\n- Wynik niezmierzony. To nie jest pomiar ani dowód poprawy.\n- Czas lokalnie: średnio ok. 1,9 ms na ruch, najgorszy 21 ms (1.1: ok. 0,3 ms). Czas\n  ewaluacji rośnie z długością partii. Limit nieznany: w checkoucie nie ma konfiguracji\n  z limit_shardu_s, a drzewo 7 odrzuciło węzeł na 12,1 min.\n- Podwójne liczenie: pnc liczy też próbki z klockiem bez miejsca, które Q_W*q już karze.\n  W drzewie 9 usunięcie tego (2.5 -> 2.6) szło z wynikiem 0,992 -> 0,996. Tu tego nie\n  zmieniam, żeby nie mieszać mechanizmu ze zmianą wag.\n- Gdy tacka jest niedokończalna przy losowaniu, zwracane jest actions[0].\n- BEAM, LEAF_TOP, NC_W i SAMPLE_K nie są strojone. Przy K=8 jeden skok pnc to 25 pkt kary.\n\nCo dalej:\n- Zrobione: 60da9e2 (węzeł 1.1). Ten commit to węzeł 1.2.\n- Następny krok: ocena 1.2. Najpierw czas i ewentualne 'za wolna', potem przegrane\n  (niedokończalne tacki, dziury), dopiero potem wagi. Kandydat do zmiany struktury:\n  pnc tylko z próbek bez brakujących klocków, jak 9/2.6.\n- Czego nie powtarzać: pojedynczego ruchu bez wiązki po tacce (1.1, 7/3.1); strojenia\n  wag na seedach ewaluacji.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 59,
+  "usd": 3.8614,
+  "minuty": 17.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T23:19:00Z",
+   "koniec": "2026-10-11T23:36:08Z",
+   "tury": 59,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
