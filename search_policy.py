@@ -1,5 +1,7 @@
 """Polityka wiązkowa po tacce: plan postawień na tackę, liść z karą za zajętość i ryzyko trudnych tacek."""
 import random
+from itertools import combinations_with_replacement
+from math import factorial, prod
 
 from pieces import PIECE_POOL, PIECE_TYPES
 
@@ -10,8 +12,11 @@ BEAM = 40
 FINAL_SMALL = 8
 FINAL_TIGHT = 20
 TIGHT_FREE_CELLS = 22
-RISK_TRAYS = 16
 HARD_TYPES = [4, 6, 7, 10, 9]
+HARD_MULTISETS = [
+    (ms, factorial(3) // prod(factorial(ms.count(t)) for t in set(ms)) / len(HARD_TYPES) ** 3)
+    for ms in combinations_with_replacement(HARD_TYPES, 3)
+]
 
 W_LINE = 4.2
 W_OCC = 1.4
@@ -21,7 +26,7 @@ W_BORDER = 2.0
 W_DEAD = 12.3
 W_MATCH_CUBE = 400.0
 W_MATCH_LIN = 80.0
-W_HARD = 500.0
+W_HARD = 400.0
 
 
 def _bit(r, c):
@@ -119,13 +124,13 @@ def _penalty(board, hard_trays):
         fraction += fits / len(poses)
     avg = fraction / len(PIECE_TYPES)
 
-    lost = sum(1 for tray in hard_trays if not _tray_fits(board, tray))
+    lost = sum(w for tray, w in hard_trays if not _tray_fits(board, tray))
     return (
         _shape_cost(board)
         + W_DEAD * dead
         + W_MATCH_CUBE * (1 - avg) ** 3
         + W_MATCH_LIN * (1 - avg)
-        + W_HARD * lost / len(hard_trays)
+        + W_HARD * lost
     )
 
 
@@ -163,7 +168,7 @@ class SearchPolicy:
         board = _board_bits(game.board.grid)
         slots = [s for s, piece in enumerate(game.pieces) if piece is not None]
         pose_of = {s: game.pieces[s].index for s in slots}
-        hard_trays = [self._hard_tray() for _ in range(RISK_TRAYS)]
+        hard_trays = self._hard_trays()
 
         leaves = _beam(board, slots, pose_of)
         if not leaves:
@@ -175,9 +180,14 @@ class SearchPolicy:
         best = max(finalists, key=lambda leaf: W_LINE * leaf[2] - _penalty(leaf[0], hard_trays))
         return best[3][0]
 
-    def _hard_tray(self):
-        tray = []
-        for _ in range(3):
-            t = self.rng.choice(HARD_TYPES)
-            tray.append(self.rng.choice(PIECE_TYPES[t]))
-        return tray
+    def _hard_trays(self):
+        poses = {t: [self.rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
+        trays = []
+        for multiset, weight in HARD_MULTISETS:
+            used = dict.fromkeys(HARD_TYPES, 0)
+            tray = []
+            for t in multiset:
+                tray.append(poses[t][used[t]])
+                used[t] += 1
+            trays.append((tray, weight))
+        return trays

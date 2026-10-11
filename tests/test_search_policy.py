@@ -116,6 +116,18 @@ class SearchPolicyTests(unittest.TestCase):
         center = sp._place(0, sp._bit(3, 3))[0]
         self.assertNotEqual(sp._cheap(corner, 0), sp._cheap(center, 0))
 
+    def test_hard_multisets_are_normalized(self):
+        self.assertEqual(len(sp.HARD_MULTISETS), 35)
+        self.assertAlmostEqual(sum(w for _, w in sp.HARD_MULTISETS), 1.0)
+
+    def test_hard_trays_follow_multisets(self):
+        policy = build(None)
+        policy.reset(3)
+        trays = policy._hard_trays()
+        self.assertEqual(len(trays), len(sp.HARD_MULTISETS))
+        for (multiset, _), (tray, _) in zip(sp.HARD_MULTISETS, trays):
+            self.assertEqual(sorted(PIECE_POOL[p].type_index for p in tray), sorted(multiset))
+
     def test_policy_plays_legal_moves(self):
         policy = build(None)
         game = Game(seed=5)
