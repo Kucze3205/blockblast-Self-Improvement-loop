@@ -1,5 +1,7 @@
 """Polityka wiązkowa po tacce: plan postawień na tackę, liść z karą za zajętość i ryzyko trudnych tacek."""
-import random
+import itertools
+import math
+from collections import Counter
 
 from pieces import PIECE_POOL, PIECE_TYPES
 
@@ -10,8 +12,8 @@ BEAM = 40
 FINAL_SMALL = 8
 FINAL_TIGHT = 20
 TIGHT_FREE_CELLS = 22
-RISK_TRAYS = 16
 HARD_TYPES = [4, 6, 7, 10, 9]
+TRAY_BUDGET = 400
 
 W_LINE = 4.2
 W_OCC = 1.4
@@ -54,6 +56,15 @@ for _piece in PIECE_POOL:
     POSITIONS.append(_options)
 
 
+HARD_POSES = sorted(p for t in HARD_TYPES for p in PIECE_TYPES[t])
+HARD_SHARE = {p: 1 / (len(HARD_TYPES) * len(PIECE_TYPES[t])) for t in HARD_TYPES for p in PIECE_TYPES[t]}
+HARD_TRAYS = [
+    (poses, math.factorial(3) // math.prod(math.factorial(c) for c in Counter(poses).values())
+     * math.prod(HARD_SHARE[p] for p in poses))
+    for poses in itertools.combinations_with_replacement(HARD_POSES, 3)
+]
+
+
 def _board_bits(grid):
     bits = 0
     for r in range(BOARD):
@@ -76,15 +87,45 @@ def _fits(board, pose):
     return any((board & mask) == 0 for mask, _, _ in POSITIONS[pose])
 
 
-def _tray_fits(board, poses):
+class _Budget(Exception):
+    pass
+
+
+def _tray_ok(board, poses, clear, seen, budget):
     if not poses:
         return True
+    if (board, poses) in seen:
+        return False
+    seen.add((board, poses))
+    budget[0] -= 1
+    if budget[0] < 0:
+        raise _Budget
     for i, pose in enumerate(poses):
+        if i and poses[i - 1] == pose:
+            continue
         rest = poses[:i] + poses[i + 1:]
         for mask, _, _ in POSITIONS[pose]:
-            if (board & mask) == 0 and _tray_fits(_place(board, mask)[0], rest):
+            if board & mask:
+                continue
+            nxt = _place(board, mask)[0] if clear else board | mask
+            if _tray_ok(nxt, rest, clear, seen, budget):
                 return True
     return False
+
+
+def _tray_fits(board, poses, limit=math.inf):
+    # Ułożenie bez czyszczenia jest też ułożeniem z czyszczeniem, więc to tylko szybka ścieżka.
+    # Wyczerpany budżet liczy tacę jako mieszczącą się, więc ryzyko jest co najwyżej zaniżone.
+    budget = [limit]
+    poses = tuple(sorted(poses))
+    try:
+        return _tray_ok(board, poses, False, set(), budget) or _tray_ok(board, poses, True, set(), budget)
+    except _Budget:
+        return True
+
+
+def _hard_risk(board):
+    return sum(weight for poses, weight in HARD_TRAYS if not _tray_fits(board, poses, TRAY_BUDGET))
 
 
 def _shape_cost(board):
@@ -109,7 +150,7 @@ def _cheap(board, lines):
     return W_LINE * lines - _shape_cost(board)
 
 
-def _penalty(board, hard_trays):
+def _base_penalty(board):
     dead = 0
     fraction = 0.0
     for poses in PIECE_TYPES:
@@ -118,14 +159,11 @@ def _penalty(board, hard_trays):
             dead += 1
         fraction += fits / len(poses)
     avg = fraction / len(PIECE_TYPES)
-
-    lost = sum(1 for tray in hard_trays if not _tray_fits(board, tray))
     return (
         _shape_cost(board)
         + W_DEAD * dead
         + W_MATCH_CUBE * (1 - avg) ** 3
         + W_MATCH_LIN * (1 - avg)
-        + W_HARD * lost / len(hard_trays)
     )
 
 
@@ -155,29 +193,36 @@ def _beam(board, slots, pose_of):
     return states
 
 
+def _choose_leaf(finalists):
+    scored = []
+    for i, leaf in enumerate(finalists):
+        base = _base_penalty(leaf[0])
+        scored.append((W_LINE * leaf[2] - base, i, base))
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    best_value = best_i = None
+    for bound, i, base in scored:
+        if best_value is not None and bound < best_value:
+            break
+        leaf = finalists[i]
+        value = W_LINE * leaf[2] - (base + W_HARD * _hard_risk(leaf[0]))
+        if best_value is None or value > best_value or (value == best_value and i < best_i):
+            best_value, best_i = value, i
+    return finalists[best_i]
+
+
 class SearchPolicy:
     name = "search"
 
     def reset(self, game_seed):
-        self.rng = random.Random(f"search:{game_seed}")
+        pass
 
     def act(self, game, actions):
         board = _board_bits(game.board.grid)
         slots = [s for s, piece in enumerate(game.pieces) if piece is not None]
         pose_of = {s: game.pieces[s].index for s in slots}
-        hard_trays = [self._hard_tray() for _ in range(RISK_TRAYS)]
-
         leaves = _beam(board, slots, pose_of)
 
         free = BOARD * BOARD - board.bit_count()
         keep = FINAL_TIGHT if free <= TIGHT_FREE_CELLS else FINAL_SMALL
         finalists = sorted(leaves, key=lambda leaf: _cheap(leaf[0], leaf[2]), reverse=True)[:keep]
-        best = max(finalists, key=lambda leaf: W_LINE * leaf[2] - _penalty(leaf[0], hard_trays))
-        return best[3][0]
-
-    def _hard_tray(self):
-        tray = []
-        for _ in range(3):
-            t = self.rng.choice(HARD_TYPES)
-            tray.append(self.rng.choice(PIECE_TYPES[t]))
-        return tray
+        return _choose_leaf(finalists)[3][0]

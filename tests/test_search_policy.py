@@ -116,6 +116,14 @@ class SearchPolicyTests(unittest.TestCase):
         center = sp._place(0, sp._bit(3, 3))[0]
         self.assertNotEqual(sp._cheap(corner, 0), sp._cheap(center, 0))
 
+    def test_hard_trays_are_a_distribution(self):
+        self.assertEqual(len(sp.HARD_TRAYS), 969)
+        self.assertAlmostEqual(sum(w for _, w in sp.HARD_TRAYS), 1.0)
+
+    def test_hard_risk_extremes(self):
+        self.assertEqual(sp._hard_risk(0), 0.0)
+        self.assertAlmostEqual(sp._hard_risk(sp.FULL), 1.0)
+
     def test_beam_keeps_deepest_layer_when_tray_does_not_fit(self):
         checker = sum(sp._bit(r, c) for r in range(8) for c in range(8) if (r + c) % 2)
         square2 = next(p.index for p in PIECE_POOL if p.name == "square2")
@@ -124,6 +132,22 @@ class SearchPolicyTests(unittest.TestCase):
         self.assertTrue(states)
         for _, _, _, acts in states:
             self.assertEqual(len(acts), 1)
+
+    def test_choose_leaf_matches_full_argmax(self):
+        for seed in range(4):
+            game = _random_position(seed, moves=seed * 7)
+            if game.done:
+                continue
+            board = sp._board_bits(game.board.grid)
+            slots = [s for s, piece in enumerate(game.pieces) if piece is not None]
+            pose_of = {s: game.pieces[s].index for s in slots}
+            leaves = sp._beam(board, slots, pose_of)
+            finalists = sorted(leaves, key=lambda leaf: sp._cheap(leaf[0], leaf[2]), reverse=True)[:8]
+            naive = max(
+                finalists,
+                key=lambda leaf: sp.W_LINE * leaf[2] - (sp._base_penalty(leaf[0]) + sp.W_HARD * sp._hard_risk(leaf[0])),
+            )
+            self.assertIs(sp._choose_leaf(finalists), naive)
 
     def test_policy_plays_legal_moves(self):
         policy = build(None)
