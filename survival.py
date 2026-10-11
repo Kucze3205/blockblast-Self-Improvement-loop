@@ -17,7 +17,7 @@ HOLE_W = 8.0
 DEAD_W = 300.0
 Q_W = 40.0
 NC_W = 200.0
-SAMPLE_K = 8
+SAMPLE_K = 32
 
 
 def _pose_bits(shape):
