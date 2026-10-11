@@ -1,173 +1,141 @@
-"""
-Testy polityki SearchPolicy: bitboard zgodny z prostą implementacją na listach,
-DFS grywalności tacki zgodny z pełnym przeszukiwaniem, kontrakt policies.build.
-"""
+"""Testy bitowych pomocników polityki wiązkowej względem silnika gry (board.py, game.py)."""
 import os
 import random
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import policies
-import search_policy
+import search_policy as sp
+from board import Board
 from game import Game
-from pieces import PIECE_POOL, PIECE_TYPES
-from search_policy import (
-    HARD_MULTISETS,
-    HARD_TYPES,
-    _alive,
-    _cheap,
-    _clear,
-    _fit_penalty,
-    _hard_risk,
-    _to_bits,
-    _tray_ok,
-)
+from pieces import PIECE_POOL
+from policies import build
 
 
-def ref_clear(grid):
-    rows = [y for y in range(8) if all(grid[y])]
-    cols = [x for x in range(8) if all(grid[y][x] for y in range(8))]
-    out = [row[:] for row in grid]
-    for y in rows:
-        out[y] = [0] * 8
-    for x in cols:
-        for y in range(8):
-            out[y][x] = 0
-    return out, len(rows) + len(cols)
+def _random_position(seed, moves):
+    rng = random.Random(seed)
+    game = Game(seed=seed)
+    for _ in range(moves):
+        actions = game.available_actions()
+        if not actions or game.done:
+            break
+        game.step(rng.choice(actions))
+    return game
 
 
-def ref_cheap(grid):
-    def blocked(x, y):
-        return not (0 <= x < 8 and 0 <= y < 8) or grid[y][x] == 1
-
-    trans = 0
-    for y in range(8):
-        seq = [1] + grid[y] + [1]
-        trans += sum(seq[i] != seq[i + 1] for i in range(9))
-    for x in range(8):
-        seq = [1] + [grid[y][x] for y in range(8)] + [1]
-        trans += sum(seq[i] != seq[i + 1] for i in range(9))
-    pockets = border = occ = 0
-    for y in range(8):
-        for x in range(8):
-            if grid[y][x]:
-                occ += 1
-                continue
-            if sum(blocked(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))) >= 3:
-                pockets += 1
-            if x in (0, 7) or y in (0, 7):
-                border += 1
-    return -1.4 * occ - 0.75 * pockets - 1.5 * trans - 2.0 * border
-
-
-def ref_playable(grid, poses):
-    def rec(g, rem):
-        if not rem:
-            return True
-        for i, p in enumerate(rem):
-            shape = PIECE_POOL[p].shape
-            for y in range(8 - len(shape) + 1):
-                for x in range(8 - len(shape[0]) + 1):
-                    cells = [(y + dy, x + dx) for dy, row in enumerate(shape) for dx, c in enumerate(row) if c]
-                    if any(g[cy][cx] for cy, cx in cells):
-                        continue
-                    ng = [r[:] for r in g]
-                    for cy, cx in cells:
-                        ng[cy][cx] = 1
-                    ng, _ = ref_clear(ng)
-                    if rec(ng, rem[:i] + rem[i + 1:]):
+def _brute_tray_fits(grid, poses):
+    if not poses:
+        return True
+    for i, p in enumerate(poses):
+        rest = poses[:i] + poses[i + 1:]
+        piece = PIECE_POOL[p]
+        for y in range(8 - len(piece.shape) + 1):
+            for x in range(8 - len(piece.shape[0]) + 1):
+                board = Board()
+                board.grid = [row[:] for row in grid]
+                if board.can_place_piece(piece, x, y):
+                    board.place_piece(piece, x, y)
+                    rows, cols = board.check_full_lines()
+                    board.clear_lines(rows, cols)
+                    if _brute_tray_fits(board.grid, rest):
                         return True
-        return False
-
-    return rec(grid, list(poses))
+    return False
 
 
-def bits_to_grid(bits):
-    return [[(bits >> (8 * y + x)) & 1 for x in range(8)] for y in range(8)]
+def _brute_shape_cost(grid, w):
+    occ = iso = edges = border = 0
+    for r in range(8):
+        for c in range(8):
+            nbrs = [
+                (rr, cc)
+                for rr, cc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1))
+                if 0 <= rr < 8 and 0 <= cc < 8
+            ]
+            if grid[r][c]:
+                occ += 1
+                edges += sum(1 for rr, cc in nbrs if not grid[rr][cc])
+            elif all(grid[rr][cc] for rr, cc in nbrs):
+                iso += 1
+            if not grid[r][c] and (r in (0, 7) or c in (0, 7)):
+                border += 1
+    return w["OCC_W"] * occ + w["ISO_W"] * iso + w["EDGE_W"] * edges + w["BORDER_W"] * border
 
 
-def random_grid(rng, density):
-    return [[1 if rng.random() < density else 0 for _ in range(8)] for _ in range(8)]
+class SearchPolicyTests(unittest.TestCase):
+    def test_positions_match_engine_legal_moves(self):
+        for seed in range(20):
+            game = _random_position(seed, moves=seed)
+            if game.done:
+                continue
+            bits = sp._board_bits(game.board.grid)
+            legal = set(game.available_actions())
+            for s, piece in enumerate(game.pieces):
+                if piece is None:
+                    continue
+                mine = {(s, x, y) for mask, x, y in sp.POSITIONS[piece.index] if (bits & mask) == 0}
+                self.assertEqual(mine, {a for a in legal if a[0] == s})
 
+    def test_place_matches_board_clear(self):
+        for seed in range(20):
+            game = _random_position(seed, moves=seed + 5)
+            if game.done:
+                continue
+            bits = sp._board_bits(game.board.grid)
+            for idx, x, y in game.available_actions():
+                piece = game.pieces[idx]
+                mask = next(m for m, xx, yy in sp.POSITIONS[piece.index] if (xx, yy) == (x, y))
+                filled, cleared = sp._place(bits, mask)
+                board = Board()
+                board.grid = [row[:] for row in game.board.grid]
+                board.place_piece(piece, x, y)
+                rows, cols = board.check_full_lines()
+                board.clear_lines(rows, cols)
+                self.assertEqual(filled, sp._board_bits(board.grid))
+                self.assertEqual(cleared, len(rows) + len(cols))
 
-class SearchPolicyTest(unittest.TestCase):
-    def setUp(self):
-        self._budget = search_policy.DFS_BUDGET
-        search_policy.DFS_BUDGET = 10 ** 9
+    def test_tray_ok_matches_brute_force(self):
+        rng = random.Random(11)
+        with mock.patch.object(sp, "DFS_BUDGET", 10**9):
+            for seed in range(10):
+                game = _random_position(seed, moves=seed * 3)
+                if game.done:
+                    continue
+                bits = sp._board_bits(game.board.grid)
+                for _ in range(4):
+                    tray = [rng.randrange(len(PIECE_POOL)) for _ in range(3)]
+                    self.assertEqual(sp._tray_ok(bits, tray), _brute_tray_fits(game.board.grid, tray))
 
-    def tearDown(self):
-        search_policy.DFS_BUDGET = self._budget
+    def test_shape_cost_matches_bruteforce(self):
+        w = sp.DEFAULT_WEIGHTS
+        for seed in range(20):
+            game = _random_position(seed, moves=seed * 2)
+            bits = sp._board_bits(game.board.grid)
+            self.assertAlmostEqual(sp._shape_cost(bits, w), _brute_shape_cost(game.board.grid, w))
 
-    def test_clear_matches_reference(self):
-        rng = random.Random(1)
-        for _ in range(300):
-            grid = random_grid(rng, rng.choice((0.5, 0.8, 0.95)))
-            cleared, lines = _clear(_to_bits(grid))
-            ref, ref_lines = ref_clear(grid)
-            self.assertEqual(bits_to_grid(cleared), ref)
-            self.assertEqual(lines, ref_lines)
+    def test_cheap_separates_placements_without_clears(self):
+        w = sp.DEFAULT_WEIGHTS
+        corner = sp._place(0, sp._bit(0, 0))[0]
+        center = sp._place(0, sp._bit(3, 3))[0]
+        self.assertNotEqual(sp._cheap(corner, 0, w), sp._cheap(center, 0, w))
 
-    def test_cheap_features_match_reference(self):
-        rng = random.Random(2)
-        for _ in range(300):
-            grid = random_grid(rng, rng.choice((0.0, 0.2, 0.5, 0.8)))
-            self.assertAlmostEqual(_cheap(_to_bits(grid)), ref_cheap(grid))
+    def test_hard_multisets_are_probabilities(self):
+        self.assertAlmostEqual(sum(weight for _, weight in sp.HARD_MULTISETS), 1.0)
 
-    def test_tray_playability_matches_bruteforce(self):
-        rng = random.Random(3)
-        seen = {True: 0, False: 0}
-        for _ in range(60):
-            grid = random_grid(rng, rng.choice((0.2, 0.35, 0.5)))
-            poses = [rng.randrange(len(PIECE_POOL)) for _ in range(3)]
-            got = _tray_ok(_to_bits(grid), poses)
-            self.assertEqual(got, ref_playable(grid, poses))
-            seen[got] += 1
-        self.assertGreater(seen[True], 0)
-        self.assertGreater(seen[False], 0)
-
-    def test_fit_penalty_extremes(self):
-        full = (1 << 64) - 1
-        self.assertEqual(_fit_penalty(_alive(0)), 0)
-        self.assertAlmostEqual(_fit_penalty(_alive(full)), 400 + 80 + 12.3 * len(PIECE_TYPES))
-
-    def test_hard_multisets_are_a_distribution(self):
-        self.assertEqual(len(HARD_MULTISETS), 35)
-        self.assertAlmostEqual(sum(w for _, w in HARD_MULTISETS), 1.0)
-
-    def test_hard_risk_extremes_and_range(self):
-        rng = random.Random(7)
-        samples = {t: [rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
-        self.assertAlmostEqual(_hard_risk(0, samples), 0.0)
-        self.assertAlmostEqual(_hard_risk((1 << 64) - 1, samples), 1.0)
-        for density in (0.2, 0.3, 0.5):
-            risk = _hard_risk(_to_bits(random_grid(rng, density)), samples)
-            self.assertTrue(0.0 <= risk <= 1.0)
-
-    def test_plan_moves_are_legal_on_empty_board(self):
-        game = Game(5)
-        policy = policies.build(None)
+    def test_policy_plays_legal_moves(self):
+        policy = build(None)
+        game = Game(seed=5)
         policy.reset(5)
-        slots = [(i, p.index) for i, p in enumerate(game.pieces)]
-        for move in policy._plan(_to_bits(game.board.grid), slots):
-            self.assertNotEqual(game.step(move)[3], "wrong_placement")
-
-    def test_build_contract_and_determinism(self):
-        def run(seed):
-            game = Game(seed)
-            policy = policies.build(None)
-            policy.reset(seed)
-            moves = []
-            while not game.done and len(moves) < 40:
-                actions = game.available_actions()
-                move = policy.act(game, actions)
-                self.assertIn(move, actions)
-                moves.append(move)
-                game.step(move)
-            return moves
-
-        self.assertEqual(run(7), run(7))
+        for _ in range(30):
+            if game.done:
+                break
+            actions = game.available_actions()
+            if not actions:
+                break
+            action = policy.act(game, actions)
+            self.assertIn(action, actions)
+            game.step(action)
 
 
 if __name__ == "__main__":

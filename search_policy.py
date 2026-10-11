@@ -1,125 +1,92 @@
 """
-Polityka przeszukująca tackę: wiązka po postawieniach klocków tacki na bitboardach,
-ocena końcowej planszy (cechy liścia, dopasowanie typów, ryzyko trudnych tacek).
+Polityka wiązkowa po tacce: plan postawień na tackę, liść z kształtem planszy,
+kara za dopasowanie typów i dokładne ryzyko trudnych tacek.
 """
 import math
-import random
 from collections import Counter
 from itertools import combinations_with_replacement
 
 from pieces import PIECE_POOL, PIECE_TYPES
 
-FULL = (1 << 64) - 1
-COL0 = sum(1 << (8 * y) for y in range(8))
-COL7 = COL0 << 7
-ROW0 = 0xFF
-ROW7 = 0xFF << 56
-RING = ROW0 | ROW7 | COL0 | COL7
-ROWS_0_6 = FULL & ~ROW7
-ROW_MASKS = [0xFF << (8 * y) for y in range(8)]
-COL_MASKS = [COL0 << x for x in range(8)]
+BOARD = 8
+FULL = (1 << (BOARD * BOARD)) - 1
 
 BEAM = 40
-FINAL_CROWDED = 20
-FINAL_OPEN = 8
-CROWDED_FREE = 22
+FINAL_SMALL = 8
+FINAL_TIGHT = 20
+TIGHT_FREE_CELLS = 22
 DFS_BUDGET = 400
-HARD_TYPES = (3, 4, 7, 6, 10)
-HARD_W = 400.0
+HARD_TYPES = (4, 6, 7, 10, 9)
+
 DEFAULT_WEIGHTS = {
     "LINE_W": 4.2,
     "OCC_W": 1.4,
-    "POCKET_W": 0.75,
-    "TRANS_W": 1.5,
+    "ISO_W": 0.75,
+    "EDGE_W": 1.5,
     "BORDER_W": 2.0,
+    "DEAD_W": 12.3,
     "FIT_W": 400.0,
     "FIT_MEAN_W": 80.0,
-    "DEAD_W": 12.3,
+    "HARD_W": 500.0,
 }
 
 
-def _placements(shape):
-    h, w = len(shape), len(shape[0])
-    out = []
-    for y in range(8 - h + 1):
-        for x in range(8 - w + 1):
-            mask = 0
-            for dy, row in enumerate(shape):
-                for dx, cell in enumerate(row):
-                    if cell:
-                        mask |= 1 << ((y + dy) * 8 + x + dx)
-            out.append((x, y, mask))
-    return out
+def _bit(r, c):
+    return 1 << (r * BOARD + c)
 
 
-POSES = [_placements(piece.shape) for piece in PIECE_POOL]
-
-
-def _orderings(ms):
-    return math.factorial(3) // math.prod(math.factorial(c) for c in Counter(ms).values())
-
-
-HARD_MULTISETS = [
-    (ms, _orderings(ms) / len(HARD_TYPES) ** 3)
-    for ms in combinations_with_replacement(HARD_TYPES, 3)
-]
+ROW_MASKS = [sum(_bit(r, c) for c in range(BOARD)) for r in range(BOARD)]
+COL_MASKS = [sum(_bit(r, c) for r in range(BOARD)) for c in range(BOARD)]
+BORDER_MASK = sum(
+    _bit(r, c)
+    for r in range(BOARD)
+    for c in range(BOARD)
+    if r in (0, BOARD - 1) or c in (0, BOARD - 1)
+)
+H_PAIRS = FULL & ~COL_MASKS[BOARD - 1]
+V_PAIRS = FULL & ~ROW_MASKS[BOARD - 1]
 
 
 def _pc(x):
     return bin(x).count("1")
 
 
-def _to_bits(grid):
+def _positions(shape):
+    h, w = len(shape), len(shape[0])
+    cells = [(dy, dx) for dy, row in enumerate(shape) for dx, v in enumerate(row) if v]
+    out = []
+    for y in range(BOARD - h + 1):
+        for x in range(BOARD - w + 1):
+            mask = 0
+            for dy, dx in cells:
+                mask |= _bit(y + dy, x + dx)
+            out.append((mask, x, y))
+    return out
+
+
+POSITIONS = [_positions(piece.shape) for piece in PIECE_POOL]
+
+
+def _board_bits(grid):
     bits = 0
-    for y, row in enumerate(grid):
-        for x, cell in enumerate(row):
-            if cell:
-                bits |= 1 << (8 * y + x)
+    for r in range(BOARD):
+        for c in range(BOARD):
+            if grid[r][c]:
+                bits |= _bit(r, c)
     return bits
 
 
-def _clear(board):
-    cleared = 0
-    lines = 0
-    for m in ROW_MASKS:
-        if (board & m) == m:
-            cleared |= m
-            lines += 1
-    for m in COL_MASKS:
-        if (board & m) == m:
-            cleared |= m
-            lines += 1
-    return board & ~cleared, lines
+def _place(board, mask):
+    filled = board | mask
+    rows = [m for m in ROW_MASKS if filled & m == m]
+    cols = [m for m in COL_MASKS if filled & m == m]
+    for m in rows + cols:
+        filled &= ~m
+    return filled, len(rows) + len(cols)
 
 
-def _cheap(b, w=DEFAULT_WEIGHTS):
-    e = FULL & ~b
-    bl = ((b << 1) & FULL & ~COL0) | COL0
-    br = ((b >> 1) & ~COL7) | COL7
-    bu = ((b << 8) & FULL) | ROW0
-    bd = (b >> 8) | ROW7
-    pockets = _pc(e & ((bl & br & bu) | (bl & br & bd) | (bl & bu & bd) | (br & bu & bd)))
-    trans = (
-        _pc((b ^ (b >> 1)) & ~COL7)
-        + _pc(e & COL0) + _pc(e & COL7)
-        + _pc((b ^ (b >> 8)) & ROWS_0_6)
-        + _pc(e & ROW0) + _pc(e & ROW7)
-    )
-    occ = 64 - _pc(e)
-    return -w["OCC_W"] * occ - w["POCKET_W"] * pockets - w["TRANS_W"] * trans - w["BORDER_W"] * _pc(e & RING)
-
-
-def _alive(b):
-    return [any(not (b & m) for _, _, m in group) for group in POSES]
-
-
-def _fit_penalty(alive, w=DEFAULT_WEIGHTS):
-    fracs = [sum(alive[p] for p in group) / len(group) for group in PIECE_TYPES]
-    alive_fracs = [f for f in fracs if f > 0]
-    mean_alive = sum(alive_fracs) / len(alive_fracs) if alive_fracs else 0.0
-    mean_all = sum(fracs) / len(fracs)
-    dead = len(fracs) - len(alive_fracs)
-    return w["FIT_W"] * (1 - mean_alive) ** 3 + w["FIT_MEAN_W"] * (1 - mean_all) + w["DEAD_W"] * dead
+def _fits(board, pose):
+    return any((board & mask) == 0 for mask, _, _ in POSITIONS[pose])
 
 
 class _Budget(Exception):
@@ -127,28 +94,26 @@ class _Budget(Exception):
 
 
 def _tray_ok(board, poses):
-    budget = [DFS_BUDGET]
+    left = [DFS_BUDGET]
     seen = set()
 
     def rec(b, rem):
         if not rem:
             return True
-        key = (b, rem)
-        if key in seen:
+        if (b, rem) in seen:
             return False
-        seen.add(key)
-        budget[0] -= 1
-        if budget[0] < 0:
+        seen.add((b, rem))
+        left[0] -= 1
+        if left[0] < 0:
             raise _Budget
         for j, p in enumerate(rem):
             if j and rem[j - 1] == p:
                 continue
             rest = rem[:j] + rem[j + 1:]
-            for _, _, m in POSES[p]:
-                if b & m:
+            for mask, _, _ in POSITIONS[p]:
+                if b & mask:
                     continue
-                nb, _ = _clear(b | m)
-                if rec(nb, rest):
+                if rec(_place(b, mask)[0], rest):
                     return True
         return False
 
@@ -158,22 +123,92 @@ def _tray_ok(board, poses):
         return True
 
 
-def _hard_risk(b, samples):
-    risk = 0.0
-    for ms, weight in HARD_MULTISETS:
-        seen = {}
-        poses = []
-        for t in ms:
-            k = seen.get(t, 0)
-            seen[t] = k + 1
-            poses.append(samples[t][k])
-        if not _tray_ok(b, poses):
-            risk += weight
-    return risk
+def _orderings(ms):
+    return math.factorial(3) // math.prod(math.factorial(c) for c in Counter(ms).values())
 
 
-def _final_value(b, rank, w, samples):
-    return rank - _fit_penalty(_alive(b), w) - HARD_W * _hard_risk(b, samples)
+def _hard_multisets():
+    poses = [p for t in HARD_TYPES for p in PIECE_TYPES[t]]
+    out = []
+    for ms in combinations_with_replacement(poses, 3):
+        weight = float(_orderings(ms))
+        for p in ms:
+            weight /= len(HARD_TYPES) * len(PIECE_TYPES[PIECE_POOL[p].type_index])
+        out.append((ms, weight))
+    return out
+
+
+HARD_MULTISETS = _hard_multisets()
+
+
+def _hard_risk(board):
+    return sum(weight for ms, weight in HARD_MULTISETS if not _tray_ok(board, ms))
+
+
+def _shape_cost(board, w):
+    free = ~board & FULL
+    edges = _pc((board ^ (board >> 1)) & H_PAIRS) + _pc((board ^ (board >> BOARD)) & V_PAIRS)
+    # Poza planszą liczy się jak zajęte, żeby brzeg nie robił z pól przy ścianie dziur.
+    walled = (
+        (((board << 1) & FULL) | COL_MASKS[0])
+        & ((board >> 1) | COL_MASKS[BOARD - 1])
+        & (((board << BOARD) & FULL) | ROW_MASKS[0])
+        & ((board >> BOARD) | ROW_MASKS[BOARD - 1])
+    )
+    iso = _pc(walled & free)
+    empty_border = _pc(free & BORDER_MASK)
+    return (
+        w["OCC_W"] * _pc(board)
+        + w["ISO_W"] * iso
+        + w["EDGE_W"] * edges
+        + w["BORDER_W"] * empty_border
+    )
+
+
+def _cheap(board, lines, w):
+    return w["LINE_W"] * lines - _shape_cost(board, w)
+
+
+def _penalty(board, w):
+    dead = 0
+    fraction = 0.0
+    for group in PIECE_TYPES:
+        fits = sum(1 for p in group if _fits(board, p))
+        if fits == 0:
+            dead += 1
+        fraction += fits / len(group)
+    avg = fraction / len(PIECE_TYPES)
+    return (
+        _shape_cost(board, w)
+        + w["DEAD_W"] * dead
+        + w["FIT_W"] * (1 - avg) ** 3
+        + w["FIT_MEAN_W"] * (1 - avg)
+        + w["HARD_W"] * _hard_risk(board)
+    )
+
+
+def _beam(board, slots, pose_of, w):
+    states = [(board, 0, 0, ())]
+    for _ in slots:
+        children = {}
+        for b, used, lines, acts in states:
+            for s in slots:
+                bit = 1 << s
+                if used & bit:
+                    continue
+                for mask, x, y in POSITIONS[pose_of[s]]:
+                    if b & mask:
+                        continue
+                    nb, cleared = _place(b, mask)
+                    total = lines + cleared
+                    key = (nb, used | bit)
+                    score = _cheap(nb, total, w)
+                    old = children.get(key)
+                    if old is None or score > old[0]:
+                        children[key] = (score, nb, used | bit, total, acts + ((s, x, y),))
+        ranked = sorted(children.values(), key=lambda c: c[0], reverse=True)[:BEAM]
+        states = [c[1:] for c in ranked]
+    return states
 
 
 class SearchPolicy:
@@ -183,50 +218,18 @@ class SearchPolicy:
         self.w = {**DEFAULT_WEIGHTS, **(weights or {})}
 
     def reset(self, game_seed):
-        self.rng = random.Random(f"0:{game_seed}")  # jak w 67c8cbf, żeby ablacja różniła się tylko estymatorem
-        self.queue = []
+        pass
 
     def act(self, game, actions):
-        if self.queue and self.queue[0] in actions:
-            return self.queue.pop(0)
-        board = _to_bits(game.board.grid)
-        slots = [(i, p.index) for i, p in enumerate(game.pieces) if p is not None]
-        self.queue = list(self._plan(board, slots))
-        if self.queue and self.queue[0] in actions:
-            return self.queue.pop(0)
-        return actions[0]
-
-    def _plan(self, board, slots):
+        board = _board_bits(game.board.grid)
+        slots = [s for s, piece in enumerate(game.pieces) if piece is not None]
+        pose_of = {s: game.pieces[s].index for s in slots}
         w = self.w
-        samples = {t: [self.rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
-        full = (1 << len(slots)) - 1
-        states = {(board, 0): (0.0, 0, ())}
-        for _ in slots:
-            nxt = {}
-            for (b, used), (_, acc, moves) in states.items():
-                for si, (slot, pose) in enumerate(slots):
-                    bit = 1 << si
-                    if used & bit:
-                        continue
-                    for x, y, m in POSES[pose]:
-                        if b & m:
-                            continue
-                        nb, lines = _clear(b | m)
-                        nacc = acc + lines
-                        rank = w["LINE_W"] * nacc + _cheap(nb, w)
-                        key = (nb, used | bit)
-                        cur = nxt.get(key)
-                        if cur is None or rank > cur[0]:
-                            nxt[key] = (rank, nacc, moves + ((slot, x, y),))
-            if not nxt:
-                break
-            states = dict(sorted(nxt.items(), key=lambda kv: -kv[1][0])[:BEAM])
-
-        complete = [(key[0], value) for key, value in states.items() if key[1] == full]
-        if not complete:
-            return max(states.values(), key=lambda v: v[0])[2] if states else ()
-        free = 64 - _pc(board)
-        count = FINAL_CROWDED if free <= CROWDED_FREE else FINAL_OPEN
-        finals = sorted(complete, key=lambda c: -c[1][0])[:count]
-        best = max(finals, key=lambda c: _final_value(c[0], c[1][0], w, samples))
-        return best[1][2]
+        leaves = _beam(board, slots, pose_of, w)
+        if not leaves:
+            return actions[0]
+        free = BOARD * BOARD - _pc(board)
+        keep = FINAL_TIGHT if free <= TIGHT_FREE_CELLS else FINAL_SMALL
+        finalists = sorted(leaves, key=lambda leaf: _cheap(leaf[0], leaf[2], w), reverse=True)[:keep]
+        best = max(finalists, key=lambda leaf: w["LINE_W"] * leaf[2] - _penalty(leaf[0], w))
+        return best[3][0]
