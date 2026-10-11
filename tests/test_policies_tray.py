@@ -100,6 +100,21 @@ class TrayPlayableTest(unittest.TestCase):
     def test_tail_penalty_is_zero_on_empty_board(self):
         self.assertEqual(P.tail_penalty(0, P._mixed_trays(random.Random(4))), 0.0)
 
+    def test_next_value_is_max_of_value_minus_tail(self):
+        rng = random.Random(5)
+        mixed = P._mixed_trays(rng)
+        pairs = []
+        for _ in range(40):
+            density = rng.uniform(0.1, 0.5)
+            grid = _settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)])
+            b = P._to_bits(grid)
+            pairs.append((P.cheap(b, 0), b))
+        pairs.sort(key=lambda t: -t[0])
+        tails = [P.tail_penalty(b, mixed) for _, b in pairs]
+        self.assertTrue(any(tails))
+        expected = max(u - t for (u, _), t in zip(pairs, tails))
+        self.assertAlmostEqual(P._next_value(pairs, mixed), expected)
+
     def test_hard_share_matches_generator(self):
         gen = Generator(11)
         n = 30000

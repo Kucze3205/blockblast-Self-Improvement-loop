@@ -234,6 +234,30 @@ def plan(board, slots, width, cap, partial=False):
     return beam
 
 
+def _next_states(b, poses):
+    states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)[:2]
+    return sorted(((cheap(s[0], s[2]), s[0]) for s in states), key=lambda t: -t[0])
+
+
+def _next_risked(pairs, triples):
+    return sorted(((c - risk(b, triples), b) for c, b in pairs), key=lambda t: -t[0])
+
+
+def _next_value(pairs, mixed):
+    best = None
+    for u, b in pairs:
+        if best is not None and u <= best:
+            break
+        v = u - tail_penalty(b, mixed)
+        if best is None or v > best:
+            best = v
+    return -TRAY_FAIL if best is None else best
+
+
+def _top_value(pairs):
+    return pairs[0][0] if pairs else -TRAY_FAIL
+
+
 class SurvivalPolicy:
     name = "survival"
 
@@ -267,20 +291,19 @@ class SurvivalPolicy:
         best_move, best_total = None, None
         trays = [self._draw_tray() for _ in range(LOOK_TRAYS)]
         for first, (value, b) in contenders:
-            nxt = [self._next_value(b, triples, poses) for poses in trays]
-            total = value + sum(nxt) / len(nxt)
+            looks = [_next_states(b, poses) for poses in trays]
+            if best_total is not None and value + sum(_top_value(l) for l in looks) / LOOK_TRAYS <= best_total:
+                continue
+            looks = [_next_risked(l, triples) for l in looks]
+            if best_total is not None and value + sum(_top_value(l) for l in looks) / LOOK_TRAYS <= best_total:
+                continue
+            total = value + sum(_next_value(l, mixed) for l in looks) / LOOK_TRAYS
             if best_total is None or total > best_total:
                 best_move, best_total = first, total
         return best_move
 
     def _draw_tray(self):
         return [self.rng.choice(PIECE_TYPES[self.rng.randrange(N_TYPES)]) for _ in range(3)]
-
-    def _next_value(self, b, triples, poses):
-        states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)
-        if not states:
-            return -TRAY_FAIL
-        return max(cheap(s[0], s[2]) - risk(s[0], triples) for s in states[:2])
 
 
 def build(weights):
