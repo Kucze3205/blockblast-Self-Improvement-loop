@@ -11,8 +11,8 @@ import random
 from bitboard import BORDER, FULL, NOT_COL0, NOT_COL7, POSES, fit_mask, line_clear
 from pieces import PIECE_TYPES
 
-BEAM = 40
-BEAM_CAP = 80
+BEAM = 120
+BEAM_CAP = 160
 FINAL_SMALL = 8
 FINAL_LARGE = 20
 FINAL_FREE_CELLS = 22
