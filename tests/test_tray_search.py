@@ -7,13 +7,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import policies
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, PIECE_TYPES
 from policies import (
     _HARD_MULTISETS,
     _bitboard,
-    _clear_lines,
+    _dead_types,
     _hard_risk,
-    _perimeter,
+    _shape_cost,
     _tray_playable,
 )
 
@@ -54,6 +54,41 @@ def bits_to_grid(bits):
     return [[(bits >> (8 * y + x)) & 1 for x in range(8)] for y in range(8)]
 
 
+def ref_fits(grid, shape):
+    height, width = len(shape), len(shape[0])
+    return any(
+        all(not (cell and grid[y + dy][x + dx]) for dy, row in enumerate(shape) for dx, cell in enumerate(row))
+        for y in range(8 - height + 1)
+        for x in range(8 - width + 1)
+    )
+
+
+def ref_dead_types(grid):
+    return sum(1 for poses in PIECE_TYPES if not any(ref_fits(grid, PIECE_POOL[p].shape) for p in poses))
+
+
+def ref_shape_cost(grid):
+    occupied = sum(map(sum, grid))
+    edges = isolated = empty_border = 0
+    for y in range(8):
+        for x in range(8):
+            if x < 7 and grid[y][x] != grid[y][x + 1]:
+                edges += 1
+            if y < 7 and grid[y][x] != grid[y + 1][x]:
+                edges += 1
+            if grid[y][x]:
+                continue
+            if y in (0, 7) or x in (0, 7):
+                empty_border += 1
+            neighbours = ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1))
+            if all(not (0 <= ny < 8 and 0 <= nx < 8) or grid[ny][nx] for ny, nx in neighbours):
+                isolated += 1
+    return (
+        policies.TRAY_OCC_W * occupied + policies.TRAY_ISO_W * isolated
+        + policies.TRAY_EDGE_W * edges + policies.TRAY_BORDER_W * empty_border
+    )
+
+
 class TraySearchTest(unittest.TestCase):
     def setUp(self):
         self._budget = policies.TRAY_DFS_BUDGET
@@ -62,16 +97,21 @@ class TraySearchTest(unittest.TestCase):
     def tearDown(self):
         policies.TRAY_DFS_BUDGET = self._budget
 
-    def test_cleared_cells_do_not_add_perimeter(self):
-        pre = 0
-        for x in range(8):
-            pre |= 1 << (8 * 3 + x)
-        for y in (2, 4):
-            for x in range(1, 8):
-                pre |= 1 << (8 * y + x)
-        after, lines = _clear_lines(pre)
-        self.assertEqual(lines, 1)
-        self.assertEqual(_perimeter(after | (pre & ~after)), _perimeter(pre))
+    def test_shape_cost_matches_bruteforce(self):
+        rng = random.Random(5)
+        for _ in range(40):
+            grid = random_grid(rng, rng.choice((0.0, 0.2, 0.5, 0.8)))
+            self.assertAlmostEqual(_shape_cost(_bitboard(grid)), ref_shape_cost(grid))
+
+    def test_dead_types_matches_bruteforce(self):
+        rng = random.Random(9)
+        for _ in range(40):
+            grid = random_grid(rng, rng.choice((0.3, 0.5, 0.7)))
+            self.assertEqual(_dead_types(_bitboard(grid)), ref_dead_types(grid))
+
+    def test_dead_types_extremes(self):
+        self.assertEqual(_dead_types(0), 0)
+        self.assertEqual(_dead_types((1 << 64) - 1), len(PIECE_TYPES))
 
     def test_tray_playable_matches_bruteforce(self):
         rng = random.Random(3)

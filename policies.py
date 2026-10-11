@@ -83,8 +83,8 @@ def _immediate_gain(game, action):
 ROW_MASKS = [0xFF << (8 * y) for y in range(8)]
 COL_MASKS = [sum(1 << (8 * y + x) for y in range(8)) for x in range(8)]
 FULL = (1 << 64) - 1
-NOT_COL0 = FULL & ~COL_MASKS[0]
 NOT_COL7 = FULL & ~COL_MASKS[7]
+NOT_ROW7 = FULL & ~ROW_MASKS[7]
 BORDER = ROW_MASKS[0] | ROW_MASKS[7] | COL_MASKS[0] | COL_MASKS[7]
 _placements = {}
 
@@ -121,25 +121,25 @@ def _clear_lines(bits):
     return bits & ~cleared, lines
 
 
-def _perimeter(bits):
-    empty = FULL & ~bits
-    return (
-        (empty & COL_MASKS[0]).bit_count() + (empty & COL_MASKS[7]).bit_count()
-        + (empty & ROW_MASKS[0]).bit_count() + (empty & ROW_MASKS[7]).bit_count()
-        + (empty & (bits << 1) & NOT_COL0).bit_count() + (empty & (bits >> 1) & NOT_COL7).bit_count()
-        + (empty & (bits << 8)).bit_count() + (empty & (bits >> 8)).bit_count()
+def _shape_cost(board):
+    free = FULL & ~board
+    edges = (
+        ((board ^ (board >> 1)) & NOT_COL7).bit_count()
+        + ((board ^ (board >> 8)) & NOT_ROW7).bit_count()
     )
-
-
-def _enclosed(bits):
-    empty = FULL & ~bits
-    reach = empty & BORDER
-    while True:
-        grow = (reach | ((reach << 1) & NOT_COL0) | ((reach >> 1) & NOT_COL7)
-                | (reach << 8) | (reach >> 8)) & empty
-        if grow == reach:
-            return (empty & ~reach).bit_count()
-        reach = grow
+    # poza planszą liczy się jak zajęte
+    walled = (
+        (((board << 1) & FULL) | COL_MASKS[0])
+        & ((board >> 1) | COL_MASKS[7])
+        & (((board << 8) & FULL) | ROW_MASKS[0])
+        & ((board >> 8) | ROW_MASKS[7])
+    )
+    isolated = (walled & free).bit_count()
+    empty_border = (free & BORDER).bit_count()
+    return (
+        TRAY_OCC_W * board.bit_count() + TRAY_ISO_W * isolated
+        + TRAY_EDGE_W * edges + TRAY_BORDER_W * empty_border
+    )
 
 
 TRAY_BEAM = 40
@@ -148,9 +148,12 @@ TRAY_FINALS_OPEN = 8
 TRAY_CROWDED_FREE = 22
 TRAY_DFS_BUDGET = 400
 TRAY_LINE_W = 4.2
-TRAY_PERIMETER_W = 0.2
-TRAY_ENCLOSED_W = 0.75
-TRAY_RISK_W = 400.0
+TRAY_OCC_W = 1.4
+TRAY_ISO_W = 0.75
+TRAY_EDGE_W = 1.5
+TRAY_BORDER_W = 2.0
+TRAY_DEAD_W = 12.3
+TRAY_RISK_W = 500.0
 HARD_TYPES = (3, 4, 6, 7, 10)
 
 _POSE_MASKS = [list(_piece_placements(piece).values()) for piece in PIECE_POOL]
@@ -203,6 +206,13 @@ def _tray_playable(board, poses):
         return True
 
 
+def _dead_types(board):
+    return sum(
+        1 for poses in PIECE_TYPES
+        if not any((board & mask) == 0 for pose in poses for mask in _POSE_MASKS[pose])
+    )
+
+
 def _hard_risk(board):
     alive = {pose: any((board & mask) == 0 for mask in _POSE_MASKS[pose]) for pose in _HARD_POSES}
     return sum(
@@ -212,7 +222,7 @@ def _hard_risk(board):
 
 
 def _final_value(board, rank):
-    return rank - TRAY_ENCLOSED_W * _enclosed(board) - TRAY_RISK_W * _hard_risk(board)
+    return rank - TRAY_DEAD_W * _dead_types(board) - TRAY_RISK_W * _hard_risk(board)
 
 
 class SearchPolicy:
@@ -233,10 +243,10 @@ class SearchPolicy:
 
     def _plan(self, board, slots):
         full = (1 << len(slots)) - 1
-        states = {(board, 0): (0.0, 0, 0, ())}
+        states = {(board, 0): (0.0, 0, ())}
         for _ in slots:
             nxt = {}
-            for (b, used), (_rank, lines_acc, ghost, moves) in states.items():
+            for (b, used), (_rank, lines_acc, moves) in states.items():
                 for si, (slot, pose) in enumerate(slots):
                     bit = 1 << si
                     if used & bit:
@@ -244,25 +254,23 @@ class SearchPolicy:
                     for (x, y), mask in _piece_placements(PIECE_POOL[pose]).items():
                         if b & mask:
                             continue
-                        pre = b | mask
-                        after, lines = _clear_lines(pre)
-                        ghost_after = ghost | (pre & ~after)
+                        after, lines = _clear_lines(b | mask)
                         acc = lines_acc + lines
-                        rank = TRAY_LINE_W * acc - TRAY_PERIMETER_W * _perimeter(after | ghost_after)
+                        rank = TRAY_LINE_W * acc - _shape_cost(after)
                         key = (after, used | bit)
                         current = nxt.get(key)
                         if current is None or rank > current[0]:
-                            nxt[key] = (rank, acc, ghost_after, moves + ((slot, x, y),))
+                            nxt[key] = (rank, acc, moves + ((slot, x, y),))
             if not nxt:
                 break
             states = dict(sorted(nxt.items(), key=lambda kv: -kv[1][0])[:TRAY_BEAM])
         complete = [(key[0], value) for key, value in states.items() if key[1] == full]
         if not complete:
-            return max(states.values(), key=lambda v: v[0])[3] if states else ()
+            return max(states.values(), key=lambda v: v[0])[2] if states else ()
         free = 64 - board.bit_count()
         count = TRAY_FINALS_CROWDED if free <= TRAY_CROWDED_FREE else TRAY_FINALS_OPEN
         finals = sorted(complete, key=lambda c: -c[1][0])[:count]
-        return max(finals, key=lambda c: _final_value(c[0], c[1][0]))[1][3]
+        return max(finals, key=lambda c: _final_value(c[0], c[1][0]))[1][2]
 
 
 def build(weights):
