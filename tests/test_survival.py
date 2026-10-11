@@ -11,7 +11,7 @@ from bitboard import POSES, fit_mask, line_clear  # noqa: E402
 from board import Board  # noqa: E402
 from game import Game  # noqa: E402
 from pieces import PIECE_POOL  # noqa: E402
-from survival import SurvivalPolicy, _occupancy  # noqa: E402
+from survival import BEAM, BEAM_CAP, SurvivalPolicy, _keep, _occupancy  # noqa: E402
 
 
 def _random_board(rng, fill):
@@ -78,6 +78,24 @@ class SurvivalPolicyTest(unittest.TestCase):
         policy.reset(0)
         actions = game.available_actions()
         self.assertIn(policy.act(game, actions), actions)
+
+
+class KeepTest(unittest.TestCase):
+    @staticmethod
+    def _states(scores):
+        return [(score, 0, 0, 0, None) for score in scores]
+
+    def test_cuts_to_beam_without_ties(self):
+        ordered = self._states([-float(i) for i in range(BEAM + 20)])
+        self.assertEqual(len(_keep(ordered)), BEAM)
+
+    def test_keeps_whole_tie_group_at_cut(self):
+        ordered = self._states([0.0] * (BEAM + 5) + [-1.0] * 10)
+        self.assertEqual(len(_keep(ordered)), BEAM + 5)
+
+    def test_tie_extension_is_capped(self):
+        ordered = self._states([0.0] * (BEAM_CAP + 30))
+        self.assertEqual(len(_keep(ordered)), BEAM_CAP)
 
 
 if __name__ == "__main__":

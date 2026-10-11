@@ -12,6 +12,7 @@ from bitboard import BORDER, FULL, NOT_COL0, NOT_COL7, POSES, fit_mask, line_cle
 from pieces import PIECE_TYPES
 
 BEAM = 40
+BEAM_CAP = 80
 FINAL_SMALL = 8
 FINAL_LARGE = 20
 FINAL_FREE_CELLS = 22
@@ -67,6 +68,17 @@ def _cheap(occ):
     return -(W_OCC * occ.bit_count() + W_ISO * iso + W_EDGE * edges + W_BORDER * border)
 
 
+def _keep(ordered):
+    """Obcina wiązkę do BEAM bez przecinania remisu: kolejność wstawiania nie rozstrzyga remisu."""
+    if len(ordered) <= BEAM:
+        return ordered
+    cut = ordered[BEAM - 1][0]
+    end = BEAM
+    while end < min(len(ordered), BEAM_CAP) and ordered[end][0] == cut:
+        end += 1
+    return ordered[:end]
+
+
 def _search(occ, pieces):
     """Wiązka po kolejnościach i pozycjach klocków tacki; zwraca (stany, czy pełne)."""
     beam = [(0.0, occ, 0, 0, None)]
@@ -90,7 +102,7 @@ def _search(occ, pieces):
                     m ^= low
         if not children:
             break
-        beam = sorted(children.values(), key=lambda s: -s[0])[:BEAM]
+        beam = _keep(sorted(children.values(), key=lambda s: -s[0]))
     return beam, bool(beam) and beam[0][3].bit_count() == len(pieces)
 
 
@@ -148,8 +160,11 @@ class SurvivalPolicy:
             _score, _board, _lines, _used, (j, low) = max(beam, key=lambda s: s[0])
         else:
             final = FINAL_LARGE if (FULL & ~occ).bit_count() <= FINAL_FREE_CELLS else FINAL_SMALL
+            cut = beam[min(final, len(beam)) - 1][0]
             best = None
-            for score, board, _lines, _used, first in beam[:final]:
+            for score, board, _lines, _used, first in beam:
+                if score < cut:
+                    break
                 value = score - _risk(board, sampled)
                 if best is None or value > best[0]:
                     best = (value, first)
