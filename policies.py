@@ -7,7 +7,7 @@ co polityka umie, a nie jak wypada w trakcie nauki (#8).
 import random
 
 from board import Board
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, PIECE_TYPES
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 
@@ -138,49 +138,78 @@ def _value(board, lines):
     return 2.0 * lines - 3.0 * isolated + squares
 
 
-def _completable(board, pieces):
-    """Czy wszystkie klocki z listy mieszczą się na planszy w dowolnej kolejności."""
-    if not pieces:
-        return True
-    if len(pieces) == 1:
-        return any((board & pm) == 0 for _, _, pm in _PLACEMENTS[pieces[0]])
-    for i, pid in enumerate(pieces):
-        rest = pieces[:i] + pieces[i + 1:]
-        for _, _, pm in _PLACEMENTS[pid]:
-            if (board & pm) == 0:
-                nxt, _ = _place(board, pm)
-                if _completable(nxt, rest):
-                    return True
-    return False
+_POSE_ANCHORS = [
+    sum(1 << (_N * y + x) for y in range(_N - len(p.shape) + 1) for x in range(_N - len(p.shape[0]) + 1))
+    for p in PIECE_POOL
+]
+_POSE_SHIFTS = [
+    [_N * dy + dx for dy, row in enumerate(p.shape) for dx, cell in enumerate(row) if cell]
+    for p in PIECE_POOL
+]
+_POSE_WEIGHT = [0.0] * len(PIECE_POOL)
+for _members in PIECE_TYPES:
+    for _pid in _members:
+        _POSE_WEIGHT[_pid] = 1.0 / (len(PIECE_TYPES) * len(_members))
+
+_TRAY_BEAM = (12, 6)
 
 
-class TrayAwarePolicy:
-    """Ocena planszy po jednym ruchu; ruchy, po których reszta tacki nie mieści się, odpadają."""
+def _fit_probability(empty):
+    """P(losowy klocek generatora mieści się na planszy): typ 1/15, potem poza 1/n."""
+    q = 0.0
+    for pid, anchors in enumerate(_POSE_ANCHORS):
+        for shift in _POSE_SHIFTS[pid]:
+            anchors &= empty >> shift
+            if not anchors:
+                break
+        if anchors:
+            q += _POSE_WEIGHT[pid]
+    return q
 
-    name = "tray-aware"
+
+def _tray_scores(board, tray):
+    states = [(board, tray, None, 0)]
+    for depth in range(len(tray)):
+        children = []
+        for b, rest, root, cleared in states:
+            for k, (j, pid) in enumerate(rest):
+                left = rest[:k] + rest[k + 1:]
+                for x, y, pm in _PLACEMENTS[pid]:
+                    if b & pm:
+                        continue
+                    nxt, lines = _place(b, pm)
+                    children.append((_value(nxt, lines), nxt, left, root or (j, x, y), cleared + lines))
+        if depth + 1 < len(tray):
+            children.sort(key=lambda c: c[0], reverse=True)
+            del children[_TRAY_BEAM[depth]:]
+        states = [(nxt, left, root, cleared) for _, nxt, left, root, cleared in children]
+    scores = {}
+    for nxt, _, root, cleared in states:
+        key = (1.0 - (1.0 - _fit_probability(~nxt & _FULL)) ** 3, _value(nxt, cleared))
+        if root not in scores or key > scores[root]:
+            scores[root] = key
+    return scores
+
+
+class TrayFitPolicy:
+    """Wiązka po kolejnościach tacki; liść oceniany szansą, że następna tacka ma mieszczący się klocek."""
+
+    name = "tray-fit"
 
     def reset(self, game_seed):
         pass
 
     def act(self, game, actions):
         board = _board_mask(game.board.grid)
-        best, best_value = None, None
-        safe, safe_value = None, None
-        for action in actions:
-            idx, x, y = action
-            nxt, lines = _place(board, _MASK_AT[game.pieces[idx].index][(x, y)])
-            value = _value(nxt, lines)
-            if best_value is None or value > best_value:
-                best, best_value = action, value
-            if safe_value is None or value > safe_value:
-                rest = tuple(
-                    p.index for j, p in enumerate(game.pieces)
-                    if p is not None and j != idx
-                )
-                if _completable(nxt, rest):
-                    safe, safe_value = action, value
-        return safe if safe is not None else best
+        tray = tuple((j, p.index) for j, p in enumerate(game.pieces) if p is not None)
+        scores = _tray_scores(board, tray)
+        if scores:
+            return max(scores, key=scores.get)
+        return max(
+            actions,
+            key=lambda a: _value(*_place(board, _MASK_AT[game.pieces[a[0]].index][(a[1], a[2])])),
+        )
 
 
 def build(weights):
-    return TrayAwarePolicy()
+    return TrayFitPolicy()
