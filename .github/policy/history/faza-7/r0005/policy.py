@@ -52,4 +52,6 @@ def solve(question):
             if record < global_best - gap:
                 continue
         packet.append(tip)
+    if not packet and can_open:
+        return [None]
     return packet

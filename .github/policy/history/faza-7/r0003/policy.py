@@ -15,7 +15,7 @@ EPS = 0.002       # minimalna poprawa rekordu łańcucha, by liczyła się jako 
 GAP = 0.03        # łańcuch, którego rekord jest o tyle gorszy od najlepszego w drzewie, jest porzucany
 GAP_PER_ROUND = 0.01   # tyle luzu więcej na każdą pozostałą rundę
 NEAR = 0.01       # łańcuch z rekordem w tej odległości od najlepszego nie jest zamykany za zastój
-OPEN_ROOTS = 2    # tyle korzeni otwieramy na starcie; paczka kosztuje najdroższy węzeł
+
 
 
 def _stalled(nodes):
@@ -30,8 +30,9 @@ def solve(question):
     obs = question.observed()
     legal = set(a for a in question.legal_actions() if a is not None)
     can_open = None in question.legal_actions()
+    width = question.max_parallelism
     if not obs:
-        return [None] * OPEN_ROOTS if can_open else []
+        return [None] * width if can_open else []
     chains = {}
     for o in obs:
         chains.setdefault(o["lancuch"], []).append(o)
@@ -52,4 +53,7 @@ def solve(question):
             if record < global_best - gap:
                 continue
         packet.append(tip)
-    return packet
+    # wolne miejsca w paczce: nowe łańcuchy tylko na początku drzewa
+    if can_open and question.round <= 1:
+        packet += [None] * (width - len(packet))
+    return packet[:width]
