@@ -169,8 +169,17 @@ def survival_fraction(after, trays):
     return sum(valuation.completable(after, tray) for tray in trays) / len(trays)
 
 
+def _moves(occ, pieces):
+    for n, (idx, key) in enumerate(pieces):
+        mask, shifts = valuation.placements(key)
+        for s in shifts:
+            pm = mask << s
+            if not occ & pm:
+                yield (idx, s % 8, s // 8), valuation.clear_full(occ | pm), pieces[:n] + pieces[n + 1:]
+
+
 class RiskPolicy(NTuplePolicy):
-    """Przy ostatnim klocku tacki: P(następna tacka da się położyć) razy wartość, na najlepszych kandydatach."""
+    """Wiązka po całej tacce; koniec tacki oceniany przez P(następna tacka da się położyć) razy V."""
 
     name = "risk"
 
@@ -184,19 +193,45 @@ class RiskPolicy(NTuplePolicy):
         self.rng = random.Random(f"risk:{game_seed}")
 
     def act(self, game, actions):
-        if sum(1 for piece in game.pieces if piece is not None) != 1:
-            return super().act(game, actions)
         occ = valuation.occupancy(game.board.grid)
-        afters = [_after(game, occ, action) for action in actions]
-        values = [valuation.value(self.table, after) for after in afters]
-        order = sorted(range(len(actions)), key=lambda i: -values[i])[: self.top]
+        pieces = tuple(
+            (idx, valuation.shape_key(piece.shape))
+            for idx, piece in enumerate(game.pieces)
+            if piece is not None
+        )
+        ends = self._tray_ends(occ, pieces)
+        if not ends:
+            return max(actions, key=lambda action: valuation.value(self.table, _after(game, occ, action)))
         trays = [_sample_tray(self.rng) for _ in range(self.samples)]
-        best, best_score = order[0], None
-        for i in order:
-            score = survival_fraction(afters[i], trays) * max(values[i], 0.0)
+        best, best_score = None, None
+        for value, move, after in ends[: self.top]:
+            # P ≤ 1, więc wynik nie przekracza V: niższe V nie zmieni wyboru.
+            if best_score is not None and value <= best_score:
+                break
+            score = survival_fraction(after, trays) * max(value, 0.0)
             if best_score is None or score > best_score:
-                best, best_score = i, score
-        return actions[best]
+                best, best_score = move, score
+        return best
+
+    def _tray_ends(self, occ, pieces):
+        beam = [(occ, pieces, None)]
+        while beam:
+            children = []
+            for state, rest, first in beam:
+                for move, after, left in _moves(state, rest):
+                    children.append(
+                        (valuation.value(self.table, after), move if first is None else first, after, left)
+                    )
+            children.sort(key=lambda child: -child[0])
+            if children and not children[0][3]:
+                return [(value, move, after) for value, move, after, _ in children]
+            beam = []
+            for value, move, after, left in children:
+                if valuation.completable(after, tuple(key for _, key in left)):
+                    beam.append((after, left, move))
+                    if len(beam) == self.beam:
+                        break
+        return []
 
 
 def build(weights):

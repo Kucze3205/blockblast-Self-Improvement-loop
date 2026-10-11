@@ -173,6 +173,55 @@ class TestRisk(unittest.TestCase):
             self.assertEqual(valuation.completable(occ, keys), board_completable(board, pieces))
 
 
+class TestTrayPlan(unittest.TestCase):
+    @staticmethod
+    def _table(seed):
+        rng = random.Random(seed)
+        return [rng.uniform(-0.01, 0.01) for _ in range(valuation.TABLE_SIZE)]
+
+    def test_ends_are_legal_first_moves_sorted_by_value(self):
+        table = self._table(12)
+        policy = RiskPolicy(table)
+        game = Game(seed=3)
+        occ = valuation.occupancy(game.board.grid)
+        pieces = tuple(
+            (idx, valuation.shape_key(piece.shape))
+            for idx, piece in enumerate(game.pieces)
+            if piece is not None
+        )
+        ends = policy._tray_ends(occ, pieces)
+        self.assertTrue(ends)
+        actions = game.available_actions()
+        values = [value for value, _, _ in ends]
+        self.assertEqual(values, sorted(values, reverse=True))
+        for value, move, after in ends:
+            self.assertIn(move, actions)
+            self.assertAlmostEqual(value, valuation.value(table, after))
+
+    def test_chosen_move_keeps_tray_completable_when_possible(self):
+        policy = RiskPolicy(self._table(11))
+        for seed in range(4):
+            game = Game(seed=seed)
+            policy.reset(seed)
+            for _ in range(60):
+                actions = game.available_actions()
+                if not actions:
+                    break
+                occ = valuation.occupancy(game.board.grid)
+                survivors = [
+                    action
+                    for action in actions
+                    if policies._tray_survives(game, action[0], policies._after(game, occ, action))
+                ]
+                chosen = policy.act(game, actions)
+                if survivors:
+                    self.assertIn(chosen, survivors)
+                _, _, done, reason = game.step(chosen)
+                self.assertNotEqual(reason, "wrong_placement")
+                if done:
+                    break
+
+
 class TestBuildAndPolicy(unittest.TestCase):
     def test_missing_weights_fall_back(self):
         self.assertIsInstance(build(None), GreedyPolicy)
