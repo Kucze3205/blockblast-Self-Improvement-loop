@@ -12,6 +12,7 @@ from policies import (
     _HARD_MULTISETS,
     _bitboard,
     _dead_types,
+    _fit_prob,
     _hard_risk,
     _shape_cost,
     _tray_playable,
@@ -67,6 +68,13 @@ def ref_dead_types(grid):
     return sum(1 for poses in PIECE_TYPES if not any(ref_fits(grid, PIECE_POOL[p].shape) for p in poses))
 
 
+def ref_fit_prob(grid):
+    return sum(
+        sum(1 for p in poses if ref_fits(grid, PIECE_POOL[p].shape)) / len(poses)
+        for poses in PIECE_TYPES
+    ) / len(PIECE_TYPES)
+
+
 def ref_shape_cost(grid):
     occupied = sum(map(sum, grid))
     edges = isolated = empty_border = 0
@@ -112,6 +120,16 @@ class TraySearchTest(unittest.TestCase):
     def test_dead_types_extremes(self):
         self.assertEqual(_dead_types(0), 0)
         self.assertEqual(_dead_types((1 << 64) - 1), len(PIECE_TYPES))
+
+    def test_fit_prob_matches_bruteforce(self):
+        rng = random.Random(11)
+        for _ in range(40):
+            grid = random_grid(rng, rng.choice((0.3, 0.5, 0.7)))
+            self.assertAlmostEqual(_fit_prob(_bitboard(grid)), ref_fit_prob(grid))
+
+    def test_fit_prob_extremes(self):
+        self.assertAlmostEqual(_fit_prob(0), 1.0)
+        self.assertAlmostEqual(_fit_prob((1 << 64) - 1), 0.0)
 
     def test_tray_playable_matches_bruteforce(self):
         rng = random.Random(3)

@@ -154,6 +154,7 @@ TRAY_EDGE_W = 1.5
 TRAY_BORDER_W = 2.0
 TRAY_DEAD_W = 12.3
 TRAY_RISK_W = 500.0
+TRAY_FIT_W = 400.0
 HARD_TYPES = (3, 4, 6, 7, 10)
 
 _POSE_MASKS = [list(_piece_placements(piece).values()) for piece in PIECE_POOL]
@@ -213,6 +214,13 @@ def _dead_types(board):
     )
 
 
+def _fit_prob(board):
+    return sum(
+        sum(1 for pose in poses if any((board & mask) == 0 for mask in _POSE_MASKS[pose])) / len(poses)
+        for poses in PIECE_TYPES
+    ) / len(PIECE_TYPES)
+
+
 def _hard_risk(board):
     alive = {pose: any((board & mask) == 0 for mask in _POSE_MASKS[pose]) for pose in _HARD_POSES}
     return sum(
@@ -222,7 +230,10 @@ def _hard_risk(board):
 
 
 def _final_value(board, rank):
-    return rank - TRAY_DEAD_W * _dead_types(board) - TRAY_RISK_W * _hard_risk(board)
+    # klocki tacki są losowane niezależnie: P(żaden nie pasuje) = (1 - f)^3
+    unfit = 1 - _fit_prob(board)
+    return (rank - TRAY_DEAD_W * _dead_types(board) - TRAY_RISK_W * _hard_risk(board)
+            - TRAY_FIT_W * unfit ** 3)
 
 
 class SearchPolicy:
