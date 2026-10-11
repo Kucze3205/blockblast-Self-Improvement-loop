@@ -4,9 +4,10 @@ Polityki grające, których używa benchmark.
 Wszystkie są deterministyczne przy zadanym seedzie partii — benchmark mierzy,
 co polityka umie, a nie jak wypada w trakcie nauki (#8).
 """
+import itertools
+import math
 import random
 
-from board import Board
 from pieces import PIECE_POOL, PIECE_TYPES
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
@@ -59,208 +60,177 @@ class ModelPolicy:
         return tuple(move)
 
 
-BEAM = 24
-FINAL = 16
-TOP = 5
-SAMPLES = 8
-Q_W = 66.0
-TRAY_W = 400.0
-POCKET_W = 6.0
-TRANS_W = 1.0
-LINE_W = 10.0
 N = 8
 FULL = (1 << (N * N)) - 1
-ROW_BITS = [((1 << N) - 1) << (N * r) for r in range(N)]
-COL_BITS = [sum(1 << (N * r + c) for r in range(N)) for c in range(N)]
+ROWS = [0xFF << (N * r) for r in range(N)]
+COLS = [sum(1 << (c + N * r) for r in range(N)) for c in range(N)]
+NOT_COL0 = FULL & ~COLS[0]
+NOT_COL7 = FULL & ~COLS[N - 1]
+NOT_ROW7 = FULL & ~ROWS[N - 1]
+BORDER = ROWS[0] | ROWS[N - 1] | COLS[0] | COLS[N - 1]
+
+HARD_TYPES = (3, 4, 6, 7, 10)
+N_TYPES = len(PIECE_TYPES)
+BEAM = 120
+BEAM_CAP = 160
+LOOK_BEAM = 40
+LOOK_TRAYS = 4
+LOOK_TOP = 3
+FINAL_K = 8
+FINAL_K_TIGHT = 20
+TIGHT_FREE = 22
+TRAY_FAIL = 400.0
+MIX_TRAYS = 64
 
 
-def _fits(grid, shape, x, y):
-    for dy, row in enumerate(shape):
-        for dx, cell in enumerate(row):
-            if cell and grid[y + dy][x + dx]:
-                return False
-    return True
+def _placements(piece):
+    h, w = len(piece.shape), len(piece.shape[0])
+    base = sum(1 << (r * N + c) for r, row in enumerate(piece.shape) for c, v in enumerate(row) if v)
+    return [(base << (y * N + x), x, y, y + h, x + w) for y in range(N + 1 - h) for x in range(N + 1 - w)]
 
 
-def _positions(grid, shape):
-    ph, pw = len(shape), len(shape[0])
-    return [
-        (x, y)
-        for y in range(N - ph + 1)
-        for x in range(N - pw + 1)
-        if _fits(grid, shape, x, y)
-    ]
+PLACEMENTS = [_placements(p) for p in PIECE_POOL]
 
+HARD_TRIPLES = []
+for _combo in itertools.combinations_with_replacement(HARD_TYPES, 3):
+    _perms = 6
+    for _t in set(_combo):
+        _perms //= math.factorial(_combo.count(_t))
+    HARD_TRIPLES.append((_perms / 125.0, _combo))
 
-def _place(grid, shape, x, y):
-    g = [row[:] for row in grid]
-    for dy, row in enumerate(shape):
-        for dx, cell in enumerate(row):
-            if cell:
-                g[y + dy][x + dx] = 1
-    rows = [r for r in range(N) if all(g[r])]
-    cols = [c for c in range(N) if all(g[r][c] for r in range(N))]
-    for r in rows:
-        g[r] = [0] * N
-    for c in cols:
-        for r in range(N):
-            g[r][c] = 0
-    return g, len(rows) + len(cols)
-
-
-def _pockets(grid):
-    seen = [[False] * N for _ in range(N)]
-    count = 0
-    for sy in range(N):
-        for sx in range(N):
-            if grid[sy][sx] or seen[sy][sx]:
-                continue
-            seen[sy][sx] = True
-            stack, size = [(sy, sx)], 0
-            while stack:
-                cy, cx = stack.pop()
-                size += 1
-                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
-                    if 0 <= ny < N and 0 <= nx < N and not grid[ny][nx] and not seen[ny][nx]:
-                        seen[ny][nx] = True
-                        stack.append((ny, nx))
-            if size < 3:
-                count += 1
-    return count
-
-
-def _trans(grid):
-    t = 0
-    for r in range(N):
-        row = [1] + grid[r] + [1]
-        t += sum(row[i] != row[i + 1] for i in range(N + 1))
-    for c in range(N):
-        col = [1] + [grid[r][c] for r in range(N)] + [1]
-        t += sum(col[i] != col[i + 1] for i in range(N + 1))
-    return t
-
-
-def _fits_anywhere(grid, shape):
-    ph, pw = len(shape), len(shape[0])
-    for y in range(N - ph + 1):
-        for x in range(N - pw + 1):
-            if _fits(grid, shape, x, y):
-                return True
-    return False
-
-
-def _piece_fail_prob(grid):
-    fail = 0.0
-    for poses in PIECE_TYPES:
-        bad = sum(1 for i in poses if not _fits_anywhere(grid, PIECE_POOL[i].shape))
-        fail += bad / len(poses)
-    return fail / len(PIECE_TYPES)
-
-
-def _piece_bits(shape):
-    h, w = len(shape), len(shape[0])
-    cells = [dy * N + dx for dy, row in enumerate(shape) for dx, cell in enumerate(row) if cell]
-    valid = sum(1 << (y * N + x) for y in range(N - h + 1) for x in range(N - w + 1))
-    return cells, valid, sum(1 << off for off in cells)
-
-
-PIECE_BITS = [_piece_bits(p.shape) for p in PIECE_POOL]
+_pc = int.bit_count
 
 
 def _to_bits(grid):
-    return sum(1 << (r * N + c) for r in range(N) for c in range(N) if grid[r][c])
+    b = 0
+    for y, row in enumerate(grid):
+        for x, cell in enumerate(row):
+            if cell:
+                b |= 1 << (y * N + x)
+    return b
 
 
-def _clear_bits(board):
-    rows = [r for r in range(N) if (board & ROW_BITS[r]) == ROW_BITS[r]]
-    cols = [c for c in range(N) if (board & COL_BITS[c]) == COL_BITS[c]]
-    for r in rows:
-        board &= ~ROW_BITS[r]
-    for c in cols:
-        board &= ~COL_BITS[c]
-    return board
+def _clear(b, y0, y1, x0, x1):
+    kill = 0
+    lines = 0
+    for r in range(y0, y1):
+        if (b & ROWS[r]) == ROWS[r]:
+            kill |= ROWS[r]
+            lines += 1
+    for c in range(x0, x1):
+        if (b & COLS[c]) == COLS[c]:
+            kill |= COLS[c]
+            lines += 1
+    return (b & ~kill) if kill else b, lines
 
 
-def _tray_ok(board, tray):
+def cheap(b, lines):
+    e = FULL & ~b
+    near = ((e >> 1) & NOT_COL7) | ((e << 1) & NOT_COL0) | (e >> N) | ((e << N) & FULL)
+    iso = _pc(e & ~near)
+    border = _pc(e & BORDER)
+    inner = _pc((b ^ (b >> 1)) & NOT_COL7) + _pc((b ^ (b >> N)) & NOT_ROW7)
+    return -1.4 * _pc(b) - 0.75 * iso - 1.5 * inner - 2.0 * border + 4.2 * lines
+
+
+def _fits(b, i):
+    return any(not m & b for m, _x, _y, _y1, _x1 in PLACEMENTS[i])
+
+
+def _tray_ok(b, tray):
     """Czy wszystkie klocki tacki (indeksy PIECE_POOL) da się ułożyć w jakiejkolwiek kolejności."""
-    seen = set()
-
-    def dfs(b, left):
-        if not left:
-            return True
-        key = (b, left)
-        if key in seen:
-            return False
-        seen.add(key)
-        free = ~b & FULL
-        for j, idx in enumerate(tray):
-            if not (left >> j) & 1:
-                continue
-            cells, valid, mask = PIECE_BITS[idx]
-            anchors = valid
-            for off in cells:
-                anchors &= free >> off
-            while anchors:
-                low = anchors & -anchors
-                anchors ^= low
-                if dfs(_clear_bits(b | (mask << (low.bit_length() - 1))), left & ~(1 << j)):
+    if not tray:
+        return True
+    for j, i in enumerate(tray):
+        if i in tray[:j]:
+            continue
+        rest = tray[:j] + tray[j + 1:]
+        for m, x, y, y1, x1 in PLACEMENTS[i]:
+            if not m & b:
+                nb, _ = _clear(b | m, y, y1, x, x1)
+                if _tray_ok(nb, rest):
                     return True
-        return False
-
-    return dfs(board, (1 << len(tray)) - 1)
+    return False
 
 
 def _sample_tray(rng):
     return [rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3)]
 
 
-def _plan(grid, slots):
-    beam = [(0.0, 0, grid, ())]
-    for _ in range(len(slots)):
+def _hard_triples(rng):
+    draws = {t: [rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
+    triples = []
+    for w, combo in HARD_TRIPLES:
+        used = {}
+        poses = []
+        for t in combo:
+            k = used.get(t, 0)
+            used[t] = k + 1
+            poses.append(draws[t][k])
+        triples.append((w, tuple(poses)))
+    return triples
+
+
+def _mixed_trays(rng):
+    trays = [_sample_tray(rng) for _ in range(MIX_TRAYS)]
+    return [t for t in trays if any(PIECE_POOL[i].type_index not in HARD_TYPES for i in t)]
+
+
+def tail_penalty(b, trays):
+    if not trays:
+        return 0.0
+    return TRAY_FAIL * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays)
+
+
+def risk(b, triples):
+    shares = []
+    dead = 0
+    for idxs in PIECE_TYPES:
+        alive = sum(1 for i in idxs if _fits(b, i))
+        shares.append(alive / len(idxs))
+        if alive == 0:
+            dead += 1
+    live = [s for s in shares if s > 0]
+    mean_live = sum(live) / len(live) if live else 0.0
+    mean_all = sum(shares) / N_TYPES
+    hard = 0.0
+    for w, poses in triples:
+        if not _tray_ok(b, poses):
+            hard += w
+    miss_live = 1.0 - mean_live
+    miss_all = 1.0 - mean_all
+    return TRAY_FAIL * miss_live ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * hard
+
+
+def plan(board, slots, width, cap, partial=False):
+    beam = [(board, 0, 0, None)]
+    for _ in slots:
         children = {}
-        for _, lines_total, g, moves in beam:
-            used = {m[0] for m in moves}
-            for slot, shape in slots:
-                if slot in used:
+        for b, used, lines, first in beam:
+            for k, (sid, pi) in enumerate(slots):
+                bit = 1 << k
+                if used & bit:
                     continue
-                for x, y in _positions(g, shape):
-                    ng, lines = _place(g, shape, x, y)
-                    key = (frozenset(used | {slot}), tuple(map(tuple, ng)))
-                    lt = lines_total + lines
-                    sc = LINE_W * lt - TRANS_W * _trans(ng)
-                    if key not in children or children[key][0] < sc:
-                        children[key] = (sc, lt, ng, moves + ((slot, x, y),))
+                for m, x, y, y1, x1 in PLACEMENTS[pi]:
+                    if m & b:
+                        continue
+                    nb, cl = _clear(b | m, y, y1, x, x1)
+                    nl = lines + cl
+                    # Liczba linii w kluczu: ta sama plansza z inną liczbą linii ma inną wartość w cheap.
+                    key = (nb, used | bit, nl)
+                    if key not in children:
+                        children[key] = (nb, used | bit, nl, first or (sid, x, y))
         if not children:
-            return []
-        beam = sorted(children.values(), key=lambda t: t[0], reverse=True)[:BEAM]
+            return beam if partial else []
+        scored = sorted(((cheap(s[0], s[2]), s) for s in children.values()), key=lambda t: -t[0])
+        if len(scored) > width:
+            cut = scored[width - 1][0]
+            keep = width
+            while keep < min(cap, len(scored)) and scored[keep][0] == cut:
+                keep += 1
+            scored = scored[:keep]
+        beam = [s for _, s in scored]
     return beam
-
-
-def _choose(plans, trays):
-    ranked = []
-    for sc, _, g, moves in sorted(plans, key=lambda t: t[0], reverse=True)[:FINAL]:
-        total = sc - POCKET_W * _pockets(g) - Q_W * (1 - (1 - _piece_fail_prob(g)) ** 3)
-        ranked.append((total, g, moves))
-    ranked.sort(key=lambda t: t[0], reverse=True)
-    best_total, best_move = None, None
-    for total, g, moves in ranked[:TOP]:
-        bits = _to_bits(g)
-        dead = sum(1 for tray in trays if not _tray_ok(bits, tray))
-        total -= TRAY_W * dead / len(trays)
-        if best_total is None or total > best_total:
-            best_total, best_move = total, moves[0]
-    return best_move
-
-
-def _greedy_move(game, actions):
-    best, best_val = actions[0], None
-    for action in actions:
-        idx, x, y = action
-        g, lines = _place(game.board.grid, game.pieces[idx].shape, x, y)
-        val = LINE_W * lines - TRANS_W * _trans(g) - POCKET_W * _pockets(g)
-        if best_val is None or val > best_val:
-            best, best_val = action, val
-    return best
 
 
 class SurvivalPolicy:
@@ -270,15 +240,46 @@ class SurvivalPolicy:
         self.rng = random.Random(0)
 
     def reset(self, game_seed):
-        self.rng = random.Random(f"tray:{game_seed}")
+        self.rng = random.Random(f"beam:{game_seed}")
 
     def act(self, game, actions):
-        slots = [(i, p.shape) for i, p in enumerate(game.pieces) if p is not None]
-        plans = _plan(game.board.grid, slots)
-        if plans:
-            trays = [_sample_tray(self.rng) for _ in range(SAMPLES)]
-            return _choose(plans, trays)
-        return _greedy_move(game, actions)
+        slots = [(idx, p.index) for idx, p in enumerate(game.pieces) if p is not None]
+        base = _to_bits(game.board.grid)
+        finals = plan(base, slots, BEAM, BEAM_CAP, partial=True)
+        if _pc(finals[0][1]) < len(slots):
+            return max(finals, key=lambda s: cheap(s[0], s[2]))[3]
+
+        triples = _hard_triples(self.rng)
+        mixed = _mixed_trays(self.rng)
+        scored = sorted(((cheap(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
+        k = FINAL_K_TIGHT if N * N - _pc(base) <= TIGHT_FREE else FINAL_K
+        cut = scored[min(k, len(scored)) - 1][0]
+        best_by_move = {}
+        for score, (b, _used, _lines, first) in scored:
+            if score < cut:
+                break
+            value = score - risk(b, triples) - tail_penalty(b, mixed)
+            if first not in best_by_move or value > best_by_move[first][0]:
+                best_by_move[first] = (value, b)
+
+        contenders = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
+        best_move, best_total = None, None
+        trays = [self._draw_tray() for _ in range(LOOK_TRAYS)]
+        for first, (value, b) in contenders:
+            nxt = [self._next_value(b, triples, poses) for poses in trays]
+            total = value + sum(nxt) / len(nxt)
+            if best_total is None or total > best_total:
+                best_move, best_total = first, total
+        return best_move
+
+    def _draw_tray(self):
+        return [self.rng.choice(PIECE_TYPES[self.rng.randrange(N_TYPES)]) for _ in range(3)]
+
+    def _next_value(self, b, triples, poses):
+        states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)
+        if not states:
+            return -TRAY_FAIL
+        return max(cheap(s[0], s[2]) - risk(s[0], triples) for s in states[:2])
 
 
 def build(weights):

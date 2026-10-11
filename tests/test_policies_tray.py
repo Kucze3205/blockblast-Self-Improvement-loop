@@ -10,6 +10,47 @@ import policies as P
 from game import Game
 from pieces import PIECE_POOL
 
+N = 8
+
+
+def _fits(grid, shape, x, y):
+    for dy, row in enumerate(shape):
+        for dx, cell in enumerate(row):
+            if cell and grid[y + dy][x + dx]:
+                return False
+    return True
+
+
+def _positions(grid, shape):
+    ph, pw = len(shape), len(shape[0])
+    return [
+        (x, y)
+        for y in range(N - ph + 1)
+        for x in range(N - pw + 1)
+        if _fits(grid, shape, x, y)
+    ]
+
+
+def _place(grid, shape, x, y):
+    g = [row[:] for row in grid]
+    for dy, row in enumerate(shape):
+        for dx, cell in enumerate(row):
+            if cell:
+                g[y + dy][x + dx] = 1
+    rows = [r for r in range(N) if all(g[r])]
+    cols = [c for c in range(N) if all(g[r][c] for r in range(N))]
+    for r in rows:
+        g[r] = [0] * N
+    for c in cols:
+        for r in range(N):
+            g[r][c] = 0
+    return g, len(rows) + len(cols)
+
+
+def _settle(grid):
+    """Usuwa pełne linie, których gra nie zostawia między ruchami."""
+    return _place(grid, [[0]], 0, 0)[0]
+
 
 def _reference_ok(grid, tray):
     seen = set()
@@ -25,8 +66,8 @@ def _reference_ok(grid, tray):
             if not (left >> j) & 1:
                 continue
             shape = PIECE_POOL[idx].shape
-            for x, y in P._positions(g, shape):
-                ng, _ = P._place(g, shape, x, y)
+            for x, y in _positions(g, shape):
+                ng, _ = _place(g, shape, x, y)
                 if dfs(ng, left & ~(1 << j)):
                     return True
         return False
@@ -39,7 +80,7 @@ class TrayPlayableTest(unittest.TestCase):
         rng = random.Random(7)
         for _ in range(150):
             density = rng.uniform(0.1, 0.5)
-            grid = [[int(rng.random() < density) for _ in range(8)] for _ in range(8)]
+            grid = _settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)])
             tray = P._sample_tray(rng)
             self.assertEqual(P._tray_ok(P._to_bits(grid), tray), _reference_ok(grid, tray))
 
@@ -50,6 +91,13 @@ class TrayPlayableTest(unittest.TestCase):
     def test_full_board_takes_nothing(self):
         one_cell = next(p.index for p in PIECE_POOL if p.name == "1x1")
         self.assertFalse(P._tray_ok(P.FULL, [one_cell]))
+
+    def test_mixed_trays_have_a_non_hard_piece(self):
+        for tray in P._mixed_trays(random.Random(3)):
+            self.assertTrue(any(PIECE_POOL[i].type_index not in P.HARD_TYPES for i in tray))
+
+    def test_tail_penalty_is_zero_on_empty_board(self):
+        self.assertEqual(P.tail_penalty(0, P._mixed_trays(random.Random(4))), 0.0)
 
     def test_policy_plays_legal_moves(self):
         game = Game(1)
