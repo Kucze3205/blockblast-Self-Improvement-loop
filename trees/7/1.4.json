@@ -2,16 +2,25 @@
  "rodzic": "1.3",
  "rodzic_sha": "37c066548123fb2a52bedb5e226f0032c0ace72c",
  "kolejnosc": 16,
- "sha": "37c066548123fb2a52bedb5e226f0032c0ace72c",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "0a43caf6aad7408e65ab5fc956d8559bcc9ad66b",
+ "stan": "ocena w toku",
+ "gist": "Ryzyko tacek z dwoma trudnymi klockami w skali HARD_W, przy <= 40 wolnych polach",
+ "notatki": [
+  "Ryzyko tacek z dwoma trudnymi klockami w skali HARD_W, przy <= 40 wolnych polach\n\nMechanizm: do kary liścia dokładne ryzyko niegrywalnej tacki z dwoma klockami z HARD_TYPES\ni jednym z pozostałych typów. Multizbiorów 3672 (17 póz trudnych w parach z powtórzeniami,\nrazy 24 pozostałe). Waga = 27 * P(multizbiór) z generatora (1/(15*n_typu) na klocek,\nuporządkowania). 27 = 1/P(trzy trudne), więc skala jest ta sama co dla trzech trudnych.\nKara HARD_W * suma wag niegrywalnych, tylko gdy wolnych pól <= MIXED_MAX_FREE = 40.\nTrzy trudne klocki, DFS z budżetem 400 i wartość HARD_W bez zmian.\n\nDowód z historii:\n- Węzeł 7/1.3 (37c0665, 0.983) liczy tylko trzy trudne klocki. Pomiar modelu na 431 planszach\n  (partie seed 1000-1001, nie wynik): masa niegrywalnych tacek na planszach z 23-40 wolnymi\n  polami to 0.00176 dla dwóch trudnych i 0.00126 dla trzech; powyżej 40 wolnych pól 0.00010\n  i 0.00015. Najwięcej masy jest więc poza modelem.\n- Koszt: 3672 DFS na liść to 30-34 ms. Bez bramki to około 4x na ruch. Plansze z <= 22 wolnymi\n  polami nie wystąpiły w 631 ruchach (dwie partie).\n- Lokalnie 92 ms na ruch bez członu, 222 ms z nim (2.4x). Smoke: 3 partie (seedy 1-3, 300\n  ruchów) bez wyjątków; ta próbka nie jest pomiarem wyniku. Testy 9/9.\n\nDlaczego to nie powtórka:\n- 3/3.4 (0.910, za wolna 55.7 min) liczył dokładnie wszystkie 15 typów, 12341 multizbiorów.\n  Tu jest tylko 3672 multizbiorów z dwoma trudnymi klockami, z bramką po wolnych polach.\n- 5/5.2 (0.977) liczył mieszane ryzyko próbkowaniem 16 tacek z karą 500*P*mean_fit^3.\n  Rozdzielczość 1/16, zero w 317 z 323 stanów. Tu wartość dokładna, w skali punktów kary.\n- Nie strojenie HARD_W: jego skala zostaje, zmienia się tylko masa, którą kara obejmuje.\n\nRyzyko:\n- Na planszach z 23-40 wolnymi polami suma kary za trudne tacki rośnie z ok. 17 do ok. 41\n  pkt (2.4x). Łańcuch 4 (4.2 -> 4.3, 0.926 -> 0.877) pokazał, że mocniejsza kara może\n  zaszkodzić, choć to inna baza.\n- Wcześniejsza diagnostyka: model przewiduje 2-3x więcej przegranych niż realizacja (nie\n  wyjaśnione). Jeśli model zawyża, ta zmiana zawyża dalej.\n- Wynik niezmierzony. Ten commit nie twierdzi o poprawie.\n\nCo dalej:\n- zrobione: ten commit (węzeł 7/1.4, rodzic 1.3 = 37c0665)\n- następny krok: ocena zewnętrzna, porównanie z 1.3 (0.983). Jeśli wynik spadnie, MIXED_MAX_FREE = 0\n  daje dokładnie 1.3, więc różnicę da się zawęzić do tej jednej zmiany.\n- czego nie powtarzać: pełnego zbioru 15 typów (3/3.4), próbkowania tacek (5/5.2, 7/1.2),\n  zmiany HARD_W bez zmiany masy (5/4.3).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 45,
+  "usd": 4.2207,
+  "minuty": 35.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T03:05:32Z",
+   "koniec": "2026-10-11T03:40:57Z",
+   "tury": 45,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
