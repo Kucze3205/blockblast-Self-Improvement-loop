@@ -17,6 +17,7 @@ FINAL_TIGHT = 20
 TIGHT_FREE_CELLS = 22
 DFS_BUDGET = 400
 HARD_TYPES = (4, 6, 7, 10, 9)
+MIXED_MAX_FREE = 40
 
 DEFAULT_WEIGHTS = {
     "LINE_W": 4.2,
@@ -139,10 +140,36 @@ def _hard_multisets():
 
 
 HARD_MULTISETS = _hard_multisets()
+HARD_SCALE = (len(PIECE_TYPES) / len(HARD_TYPES)) ** 3
 
 
 def _hard_risk(board):
     return sum(weight for ms, weight in HARD_MULTISETS if not _tray_ok(board, ms))
+
+
+def _mixed_weight(ms):
+    weight = HARD_SCALE * _orderings(ms)
+    for p in ms:
+        weight /= len(PIECE_TYPES) * len(PIECE_TYPES[PIECE_POOL[p].type_index])
+    return weight
+
+
+def _mixed_multisets():
+    hard = sorted({p for t in HARD_TYPES for p in PIECE_TYPES[t]})
+    other = [p for p in range(len(PIECE_POOL)) if p not in hard]
+    out = []
+    for pair in combinations_with_replacement(hard, 2):
+        for x in other:
+            ms = tuple(sorted(pair + (x,)))
+            out.append((ms, _mixed_weight(ms)))
+    return out
+
+
+MIXED_MULTISETS = _mixed_multisets()
+
+
+def _mixed_risk(board):
+    return sum(weight for ms, weight in MIXED_MULTISETS if not _tray_ok(board, ms))
 
 
 def _shape_cost(board, w):
@@ -178,12 +205,16 @@ def _penalty(board, w):
             dead += 1
         fraction += fits / len(group)
     avg = fraction / len(PIECE_TYPES)
+    hard = _hard_risk(board)
+    # Przy wielu wolnych polach masa mieszana jest pomijalna, a koszt DFS na liść nie.
+    if BOARD * BOARD - _pc(board) <= MIXED_MAX_FREE:
+        hard += _mixed_risk(board)
     return (
         _shape_cost(board, w)
         + w["DEAD_W"] * dead
         + w["FIT_W"] * (1 - avg) ** 3
         + w["FIT_MEAN_W"] * (1 - avg)
-        + w["HARD_W"] * _hard_risk(board)
+        + w["HARD_W"] * hard
     )
 
 

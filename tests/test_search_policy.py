@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import search_policy as sp
 from board import Board
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, PIECE_TYPES
 from policies import build
 
 
@@ -122,6 +122,18 @@ class SearchPolicyTests(unittest.TestCase):
 
     def test_hard_multisets_are_probabilities(self):
         self.assertAlmostEqual(sum(weight for _, weight in sp.HARD_MULTISETS), 1.0)
+
+    def test_mixed_multisets_hold_two_hard_pieces(self):
+        hard = {p for t in sp.HARD_TYPES for p in PIECE_TYPES[t]}
+        h, n = len(hard), len(PIECE_POOL) - len(hard)
+        self.assertEqual(len(sp.MIXED_MULTISETS), h * (h + 1) // 2 * n)
+        for ms, _ in sp.MIXED_MULTISETS:
+            self.assertEqual(sum(p in hard for p in ms), 2)
+        self.assertAlmostEqual(sum(weight for _, weight in sp.MIXED_MULTISETS), 6.0)
+
+    def test_mixed_risk_on_full_board_is_total_weight(self):
+        total = sum(weight for _, weight in sp.MIXED_MULTISETS)
+        self.assertAlmostEqual(sp._mixed_risk(sp.FULL), total)
 
     def test_policy_plays_legal_moves(self):
         policy = build(None)
