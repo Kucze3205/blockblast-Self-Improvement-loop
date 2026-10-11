@@ -9,7 +9,7 @@ from multiprocessing import Pool
 
 import valuation
 from game import Game
-from policies import NTuplePolicy
+from policies import EVAL_BEAM, NTuplePolicy
 
 CAP = 500
 
@@ -17,7 +17,7 @@ CAP = 500
 def play(job):
     table, seed, epsilon = job
     rng = random.Random(seed)
-    policy = NTuplePolicy(table)
+    policy = NTuplePolicy(table, beam=EVAL_BEAM)
     game = Game(seed=seed)
     visited = []
     while not game.done and game.placements < CAP:
