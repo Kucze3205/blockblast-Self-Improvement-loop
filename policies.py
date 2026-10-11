@@ -10,10 +10,14 @@ import random
 
 import valuation
 from board import Board
+from pieces import PIECE_POOL, PIECE_TYPES
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 NTUPLE_FILE = "ntuple.json"
 EVAL_BEAM = 4
+RISK_SAMPLES = 16
+RISK_TOP = 8
+POOL_KEYS = [valuation.shape_key(piece.shape) for piece in PIECE_POOL]
 
 
 class RandomPolicy:
@@ -157,6 +161,44 @@ class NTuplePolicy:
         return rng.choice(actions)
 
 
+def _sample_tray(rng):
+    return tuple(POOL_KEYS[rng.choice(rng.choice(PIECE_TYPES))] for _ in range(3))
+
+
+def survival_fraction(after, trays):
+    return sum(valuation.completable(after, tray) for tray in trays) / len(trays)
+
+
+class RiskPolicy(NTuplePolicy):
+    """Przy ostatnim klocku tacki: P(następna tacka da się położyć) razy wartość, na najlepszych kandydatach."""
+
+    name = "risk"
+
+    def __init__(self, table, beam=EVAL_BEAM, samples=RISK_SAMPLES, top=RISK_TOP):
+        super().__init__(table, beam=beam)
+        self.samples = samples
+        self.top = top
+        self.rng = random.Random(0)
+
+    def reset(self, game_seed):
+        self.rng = random.Random(f"risk:{game_seed}")
+
+    def act(self, game, actions):
+        if sum(1 for piece in game.pieces if piece is not None) != 1:
+            return super().act(game, actions)
+        occ = valuation.occupancy(game.board.grid)
+        afters = [_after(game, occ, action) for action in actions]
+        values = [valuation.value(self.table, after) for after in afters]
+        order = sorted(range(len(actions)), key=lambda i: -values[i])[: self.top]
+        trays = [_sample_tray(self.rng) for _ in range(self.samples)]
+        best, best_score = order[0], None
+        for i in order:
+            score = survival_fraction(afters[i], trays) * max(values[i], 0.0)
+            if best_score is None or score > best_score:
+                best, best_score = i, score
+        return actions[best]
+
+
 def build(weights):
     if weights is None:
         return GreedyPolicy()
@@ -164,4 +206,4 @@ def build(weights):
     if not os.path.exists(path):
         return GreedyPolicy()
     with open(path, encoding="utf-8") as fh:
-        return NTuplePolicy(valuation.load_table(json.load(fh)), beam=EVAL_BEAM)
+        return RiskPolicy(valuation.load_table(json.load(fh)), beam=EVAL_BEAM)
