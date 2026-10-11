@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from board import Board
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, PIECE_TYPES
 from policies import build
 from tray_search import (
     HARD_MULTISETS,
@@ -18,12 +18,15 @@ from tray_search import (
     W_BORDER,
     W_ISO,
     W_LINE,
+    W_MATCH_CUBE,
+    W_MATCH_LIN,
     W_OCC,
     W_TRANS,
     _dead_tray_prob,
     _fit,
     _joint_playable,
     _leaf,
+    _match_penalty,
     _pockets,
     _settle,
     _transitions,
@@ -39,6 +42,15 @@ def board_from(grid):
     board = Board()
     board.grid = [row[:] for row in grid]
     return board
+
+
+def brute_fits(grid, piece):
+    board = board_from(grid)
+    return any(
+        board.can_place_piece(piece, x, y)
+        for y in range(8 - len(piece.shape) + 1)
+        for x in range(8 - len(piece.shape[0]) + 1)
+    )
 
 
 def brute_playable(grid, pieces):
@@ -141,6 +153,18 @@ class TestRiskAgainstEngine(unittest.TestCase):
                         if a in dead or b in dead or c in dead:
                             expect += SLOT_P[a] * SLOT_P[b] * SLOT_P[c]
             self.assertAlmostEqual(_dead_tray_prob(occ), expect, places=12)
+
+    def test_match_penalty_matches_enumeration(self):
+        rng = random.Random(7)
+        for _ in range(6):
+            grid = random_grid(rng, rng.random() * 0.6)
+            fraction = sum(
+                sum(brute_fits(grid, PIECE_POOL[p]) for p in poses) / len(poses)
+                for poses in PIECE_TYPES
+            ) / len(PIECE_TYPES)
+            lack = 1 - fraction
+            expect = W_MATCH_CUBE * lack ** 3 + W_MATCH_LIN * lack
+            self.assertAlmostEqual(_match_penalty(occupancy(grid)), expect, places=9)
 
     def test_joint_playable_matches_engine(self):
         rng = random.Random(5)

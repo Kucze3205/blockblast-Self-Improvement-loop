@@ -21,6 +21,7 @@ W_OCC, W_ISO, W_LINE = 1.4, 0.75, 4.2
 W_TRANS, W_BORDER = 1.5, 2.0
 W_DEAD = 66.0  # 12.3 za w pełni martwy typ = 66 * P(tacka ma martwy klocek)
 W_HARD = 400.0
+W_MATCH_CUBE, W_MATCH_LIN = 400.0, 80.0
 JOINT_BUDGET = 200
 
 
@@ -124,6 +125,14 @@ def _dead_tray_prob(occ):
     return 1 - (1 - q) ** 3
 
 
+def _match_penalty(occ):
+    fraction = 0.0
+    for poses in PIECE_TYPES:
+        fraction += sum(1 for p in poses if _fit(occ, p)) / len(poses)
+    lack = 1 - fraction / len(PIECE_TYPES)
+    return W_MATCH_CUBE * lack ** 3 + W_MATCH_LIN * lack
+
+
 def _joint_playable(occ, poses, budget):
     if not poses:
         return True
@@ -200,7 +209,7 @@ class TraySearchPolicy:
         width = 20 if 64 - occ.bit_count() <= 22 else 8
         best_value, best_first = None, None
         for score, _lines, o2, _used, first in states[:width]:
-            value = score - W_DEAD * _dead_tray_prob(o2) - W_HARD * _hard_risk(o2)
+            value = score - W_DEAD * _dead_tray_prob(o2) - W_HARD * _hard_risk(o2) - _match_penalty(o2)
             if best_value is None or value > best_value:
                 best_value, best_first = value, first
         slot, anchor = best_first
