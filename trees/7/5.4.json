@@ -2,16 +2,25 @@
  "rodzic": "5.3",
  "rodzic_sha": "a727e5c833114b5eff2c146be99e56c15646dd73",
  "kolejnosc": 20,
- "sha": "a727e5c833114b5eff2c146be99e56c15646dd73",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "6cc90d92338297a7715e5a1a1589b8641ab1063d",
+ "stan": "ocena w toku",
+ "gist": "Ryzyko nieułożenia tacki liczone po pozach mieszczących się na liściu (węzeł 5.4)",
+ "notatki": [
+  "Ryzyko nieułożenia tacki liczone po pozach mieszczących się na liściu (węzeł 5.4)\n\nMechanizm: liść 5.3 karał W_HARD=500 za P(tacka z trudnych typów się nie układa). Tacka losowana była niezależnie od planszy, a ryzyko liczyło tylko tacki złożone wyłącznie z trudnych typów (około 3,7% tacek). Teraz _tray_risk(liść) to P(tacka się nie układa), gdy każdy z trzech klocków jest jednostajnie wybrany spośród póz mieszczących się na tym liściu: f póz, wielozbiory C(f+2,3), waga = liczba porządków / f^3, sprawdzenie tacki jak dotąd (budżet 400). W_TRAY=500 zostaje, bez strojenia.\n\nDowód z historii i pomiarów lokalnych:\n- Ewaluator 5.3: 46 przegranych z 1200 partii (3,8%).\n- Lokalnie ta sama polityka przy i.i.d. z generator.py: 23 przegrane z 60 partii (38%). Jednostajnie po 41 pozach: 7 z 24 (29%).\n- Losowanie po pozach mieszczących się na planszy (źródło B w docs §3.3): 2 z 24 (seeds 1-24), 2 z 24 (seeds 25-48). Model „cała tacka grywalna w sekwencji”: 0 z 24.\n- Z 23 przegranych przy i.i.d. 22 ma klocek trudny, 18 zawiera square3, a 18 ma klocek spoza trudnych typów, którego 5.3 nie liczy. Ryzyko z 5.3 pomija więc większość przegranych.\n\nDlaczego to nie powtórka: nie próbkowanie (1.2 z próbkami 0.918, 1.1 dokładnie 0.949). Najbliższe: łańcuch 4 (.historia/7/4.patch, _hard_risk z alive) pomija multizbiory z martwą pozą bez renormalizacji wag; węzły 4.2 i 4.3 dały 0.926 i 0.877. Tu rozkład zależy od planszy liścia i jest renormalizowany przez f^3.\n\nRyzyko:\n- Generator ewaluatora nie jest znany. Tempo przegranych wskazuje generator świadomy planszy, ale to hipoteza, nie pomiar. Jeśli ewaluator losuje i.i.d., ten węzeł może wypaść gorzej niż 5.3.\n- Koszt: 68 ms na ruch lokalnie (4 partie, 2000 ruchów); 5.3 w swojej notatce 44 ms. Proporcjonalnie do 5.3 (2,5 min) czas oceny to ok. 3,9 min; limit jest powyżej 8,9 min.\n- W_TRAY nie strojone; skala ryzyka się zmieniła (f^-3 zamiast wag po 5 typach).\n- Wynik gry nie jest zmierzony. Testy: 27 OK (test_search_policy, test_engine). Nowe: ryzyko 0 na pustej planszy, 1 na pełnej, zgodność z wyliczeniem po uporządkowanych trójkach na planszy z jednym wolnym rzędem.\n\nCo dalej:\n- zrobione: a727e5c (5.3), ten commit (5.4)\n- następny krok: ocena 5.4 poza agentem. Jeśli nie przebije 0.985, sprawdzić odsetek przegranych u ewaluatora względem hipotezy generatora świadomego planszy, zanim dołoży się składników.\n- czego nie powtarzać: ryzyka po rozkładzie i.i.d. przy 38% przegranych lokalnie i 3,8% u ewaluatora; próbkowania tacek.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 67,
+  "usd": 3.9744,
+  "minuty": 28.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T03:05:37Z",
+   "koniec": "2026-10-11T03:34:05Z",
+   "tury": 67,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
