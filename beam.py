@@ -33,7 +33,6 @@ def _placements(piece):
 
 
 PLACEMENTS = [_placements(p) for p in PIECE_POOL]
-POSE_P = [1.0 / (N_TYPES * len(PIECE_TYPES[p.type_index])) for p in PIECE_POOL]
 
 HARD_TRIPLES = []
 for _combo in itertools.combinations_with_replacement(HARD_TYPES, 3):
@@ -115,22 +114,26 @@ def _hard_triples(rng):
 
 
 def risk(b, triples):
-    q = 0.0
+    shares = []
     dead = 0
     for idxs in PIECE_TYPES:
         alive = 0
         for i in idxs:
             if _fits(b, i):
-                q += POSE_P[i]
                 alive += 1
+        shares.append(alive / len(idxs))
         if alive == 0:
             dead += 1
+    live = [s for s in shares if s > 0]
+    mean_live = sum(live) / len(live) if live else 0.0
+    mean_all = sum(shares) / N_TYPES
     hard = 0.0
     for w, poses in triples:
         if not _tray_ok(b, poses):
             hard += w
-    miss = 1.0 - q
-    return TRAY_FAIL * miss ** 3 + 80.0 * miss + 12.3 * dead + TRAY_FAIL * hard
+    miss_live = 1.0 - mean_live
+    miss_all = 1.0 - mean_all
+    return TRAY_FAIL * miss_live ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * hard
 
 
 def plan(board, slots, width, cap, partial=False):
