@@ -2,16 +2,25 @@
  "rodzic": "4.2",
  "rodzic_sha": "eeab59e1652d60dbb4731cd0d6d46b7ec2f1de20",
  "kolejnosc": 14,
- "sha": "eeab59e1652d60dbb4731cd0d6d46b7ec2f1de20",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "98d2488775489a4f678962ad834a88a519b0398c",
+ "stan": "ocena w toku",
+ "gist": "Wagi trudnych tacek sumują się do 1 jak w węźle 1.1, nie do 1/27",
+ "notatki": [
+  "Wagi trudnych tacek sumują się do 1 jak w węźle 1.1, nie do 1/27\n\nMechanizm:\n- HARD_MULTISETS: wagi multizbiorów trzech trudnych póz dzielone przez HARD_MASS**3 (HARD_MASS = 1/3, czyli suma SLOT_P pięciu trudnych typów), więc suma wag = 1 zamiast 1/27\n- W_HARD 400 bez zmian; kara W_HARD * ryzyko rośnie 27 razy względem 4.2\n- wagi takie same jak w 1.1: 286 multizbiorów z 11 trudnych póz, waga = liczba uporządkowań * iloczyn 1/(5*n_typu)\n\nDowód z historii:\n- 1.1 = 0.949: suma wag = 1 (test) przy tej samej parametryzacji, co teraz\n- 2.2 = 0.973 (2.patch): W_HARD 500 * średnia z 16 próbkowanych trudnych tacek, czyli skala 1\n- drzewo 5 (najlepsze 0.985), węzeł 5/4.3: waga perms/125 bez zmian, suma 1\n- 4.1 i 4.2 mają wagi z cdf20b1 w skali 1/27; 4.2 = 0.926, czyli 0.047 pod 2.2 i 0.023 pod 1.1\n\nDlaczego to nie powtórka:\n- nie zmieniam W_HARD ani liścia; poprawiam błąd wdrożenia znaleziony w kodzie przez porównanie z 1.1 i 5/4.3\n- na gałęzi 4 żadna próba nie miała tej skali: 4.1 mierzył szerokość wiązki, 4.2 liść\n\nRyzyko:\n- wynik niezmierzony; rozstrzyga ocena\n- kara za trudne tacki może teraz przesunąć wybory; na 54 stanach przed ruchem (co 10. ruch, seedy 11-13) mediana W_HARD * ryzyko = 0,90 pkt, w starej skali 0,033; ogon nie zmierzony\n- BEAM 120 i brak kary za dopasowanie (łańcuchy 1 i 2, W_MATCH w 2.patch) zostają, więc wynik 4.3 nie oddzieli efektu skali od BEAM 120 i braku tej kary\n- koszt jednego ruchu nie zależy od wag; smoke: 14,1 ms średnio, p95 21,6 ms, max 34,2 ms na 537 ruchach; limit shardu nie sprawdzony lokalnie\n\nTesty: tests/test_tray_search.py 9 z 9. Test sumy 1/27 zastąpiony testem sumy 1 (test_hard_multisets_are_conditional_on_hard_trays), usunięte nieużywane importy HARD_TYPES i PIECE_TYPES. Smoke: seedy 11-13, 537 ruchów, 0 nielegalnych, bez wyjątków.\n\nCo dalej:\n- zrobione: 31efc7d (węzeł 4.1, 0.454), eeab59e (węzeł 4.2, 0.926), ten commit (węzeł 4.3)\n- następny krok: po ocenie 4.3 kara za dopasowanie z 2.patch (W_MATCH_CUBE 400, W_MATCH_LIN 80) jako osobna próba; BEAM 40 dopiero jako ablacja\n- czego nie powtarzać: wag trudnych tacek w skali 1/27 (cdf20b1, eeab59e), bo zaniżają karę 27 razy względem 1.1, 2.2 i drzewa 5\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 38,
+  "usd": 2.6568,
+  "minuty": 11.2
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T02:06:46Z",
+   "koniec": "2026-10-11T02:17:55Z",
+   "tury": 38,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
