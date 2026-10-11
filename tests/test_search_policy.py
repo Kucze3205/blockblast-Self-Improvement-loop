@@ -116,6 +116,15 @@ class SearchPolicyTests(unittest.TestCase):
         center = sp._place(0, sp._bit(3, 3))[0]
         self.assertNotEqual(sp._cheap(corner, 0), sp._cheap(center, 0))
 
+    def test_beam_keeps_deepest_layer_when_tray_does_not_fit(self):
+        checker = sum(sp._bit(r, c) for r in range(8) for c in range(8) if (r + c) % 2)
+        square2 = next(p.index for p in PIECE_POOL if p.name == "square2")
+        single = next(p.index for p in PIECE_POOL if p.name == "1x1")
+        states = sp._beam(checker, [0, 1], {0: square2, 1: single})
+        self.assertTrue(states)
+        for _, _, _, acts in states:
+            self.assertEqual(len(acts), 1)
+
     def test_policy_plays_legal_moves(self):
         policy = build(None)
         game = Game(seed=5)

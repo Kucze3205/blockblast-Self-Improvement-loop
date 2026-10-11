@@ -148,6 +148,8 @@ def _beam(board, slots, pose_of):
                     old = children.get(key)
                     if old is None or score > old[0]:
                         children[key] = (score, nb, used | bit, total, acts + ((s, x, y),))
+        if not children:
+            break
         ranked = sorted(children.values(), key=lambda c: c[0], reverse=True)[:BEAM]
         states = [c[1:] for c in ranked]
     return states
@@ -166,8 +168,6 @@ class SearchPolicy:
         hard_trays = [self._hard_tray() for _ in range(RISK_TRAYS)]
 
         leaves = _beam(board, slots, pose_of)
-        if not leaves:
-            return actions[0]
 
         free = BOARD * BOARD - board.bit_count()
         keep = FINAL_TIGHT if free <= TIGHT_FREE_CELLS else FINAL_SMALL
