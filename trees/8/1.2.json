@@ -2,16 +2,25 @@
  "rodzic": "1.1",
  "rodzic_sha": "3f4c30bf5a9edf0a03752f41ccccb87a29ce382d",
  "kolejnosc": 3,
- "sha": "3f4c30bf5a9edf0a03752f41ccccb87a29ce382d",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "48720cb58cfe8cc7322e25acc7bc0dd47666a904",
+ "stan": "ocena w toku",
+ "gist": "Kandydaci końcowi i wiązka nie przecinają remisu na granicy cięcia",
+ "notatki": [
+  "Kandydaci końcowi i wiązka nie przecinają remisu na granicy cięcia\n\nWęzeł 1.2 (rodzic 1.1). Mechanizm: _keep w _search tnie wiązkę do BEAM=40,\nale zachowuje całą grupę stanów o wyniku równym wynikowi na granicy, najwyżej\ndo BEAM_CAP=80. W act kandydaci końcowi (FINAL_SMALL 8, FINAL_LARGE 20) to\nwszystkie stany o wyniku nie niższym niż na granicy finału, a nie pierwsze\n`final` w kolejności wstawiania. Dotąd kolejność wstawiania (wcześniejszy klocek\ntacki, niższy bit kotwicy) decydowała, które remisowe stany trafią do kary ryzyka.\n\nDowód (pomiar diagnostyczny, nie ocena; seedy 1-4, limit 300, kod sprzed zmiany):\ngranica finałowa przecina remis w 372 z 942 ruchów z kompletną wiązką (39,5%),\nremis na szczycie wśród kandydatów w 138 (14,6%). Drzewo 7, węzeł 2.2 (4260a7e)\nznalazł ten sam błąd w innej postaci: przy rankingu tylko zajętością remis\nwszystkich liści wynosił 49%, a finał w całości w grupie remisu 62%; ranking\nz kształtem to zmniejszył. Baza 1.1 ma już kształt w _cheap, więc tutaj liczy\nsię remis na granicy, nie remis wszystkich liści.\n\nDlaczego to nie powtórka: nie zmieniam klucza sortowania (5/3.2, sortowanie bez\nrozmiaru postawionych klocków: 0,972) ani zasięgu wiązki (4/2.2 i 4/3.2\nposzerzały wiązkę do 80 i 100: 0,878 i 0,895 wobec 0,901, oba za wolne).\nBEAM zostaje 40; do 80 dochodzą tylko stany o wyniku równym granicy, zwykle\nkilka na głębokość. Zmienia się wybór, nie zasięg.\n\nRyzyko: wynik nieznany, mierzy go ocena. Na seedach 1-4 583 z 944 ruchów różni\nsię od 3f4c30b, więc zmiana nie jest no-op. Czas: 6,08 ms/ruch wobec 5,63 (+8%),\nmaks. 24,3 ms wobec 19,3 ms. Limitu czasu nie znam (config niedostępny);\n1.1 zmieścił się przy 0,9 min. Testy: tests/test_survival.py 7/7, w tym KeepTest.\n\nCo dalej:\n- zrobione: 1.1 (3f4c30b), odtworzenie 5/4.3, s_sym 0,975 w ocenie drzewa 8.\n- następny krok: ocena 1.2 (ta zmiana). Jeśli nie lepiej niż 1.1 (SE około 0,004),\n  osobny węzeł z HARD_TYPES = [4, 6, 7, 10, 9] na bazie 1.1.\n- czego nie powtarzać: samego poszerzania wiązki; strojenia W_HARD na tym samym\n  estymatorze.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 79,
+  "usd": 4.5607,
+  "minuty": 19.9
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T04:57:29Z",
+   "koniec": "2026-10-11T05:17:21Z",
+   "tury": 79,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
