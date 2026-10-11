@@ -1,4 +1,4 @@
-"""Trening wag n-krotek metodą Monte Carlo na partiach własnej gry (ε-zachłanna polityka)."""
+"""Trening wag n-krotek metodą TD(0) na partiach własnej gry (ε-zachłanna polityka)."""
 import argparse
 import json
 import os
@@ -70,7 +70,11 @@ def main(argv=None):
             ]
             for visited, length in pool.map(play, jobs):
                 for t, occ in enumerate(visited):
-                    valuation.learn(table, occ, (length - t - 1) / CAP, args.alpha)
+                    if t + 1 < len(visited):
+                        target = 1 / CAP + valuation.value(table, visited[t + 1])
+                    else:
+                        target = 0.0
+                    valuation.learn(table, occ, target, args.alpha)
                 episodes += 1
                 recent.append(length)
             if episodes // args.save_every != bucket:
