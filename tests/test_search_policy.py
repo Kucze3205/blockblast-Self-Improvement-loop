@@ -1,4 +1,5 @@
 """Testy bitowych pomocników polityki wiązkowej względem silnika gry (board.py, game.py)."""
+import itertools
 import os
 import random
 import sys
@@ -116,13 +117,16 @@ class SearchPolicyTests(unittest.TestCase):
         center = sp._place(0, sp._bit(3, 3))[0]
         self.assertNotEqual(sp._cheap(corner, 0), sp._cheap(center, 0))
 
-    def test_hard_trays_are_a_distribution(self):
-        self.assertEqual(len(sp.HARD_TRAYS), 969)
-        self.assertAlmostEqual(sum(w for _, w in sp.HARD_TRAYS), 1.0)
+    def test_tray_risk_extremes(self):
+        self.assertEqual(sp._tray_risk(0), 0.0)
+        self.assertEqual(sp._tray_risk(sp.FULL), 1.0)
 
-    def test_hard_risk_extremes(self):
-        self.assertEqual(sp._hard_risk(0), 0.0)
-        self.assertAlmostEqual(sp._hard_risk(sp.FULL), 1.0)
+    def test_tray_risk_matches_ordered_enumeration(self):
+        grid = [[1 if r < 7 else 0 for _ in range(8)] for r in range(8)]
+        bits = sp._board_bits(grid)
+        fit = [p for p in range(len(PIECE_POOL)) if sp._fits(bits, p)]
+        misses = sum(1 for t in itertools.product(fit, repeat=3) if not _brute_tray_fits(grid, list(t)))
+        self.assertAlmostEqual(sp._tray_risk(bits), misses / len(fit) ** 3)
 
     def test_beam_keeps_deepest_layer_when_tray_does_not_fit(self):
         checker = sum(sp._bit(r, c) for r in range(8) for c in range(8) if (r + c) % 2)
@@ -145,7 +149,7 @@ class SearchPolicyTests(unittest.TestCase):
             finalists = sorted(leaves, key=lambda leaf: sp._cheap(leaf[0], leaf[2]), reverse=True)[:8]
             naive = max(
                 finalists,
-                key=lambda leaf: sp.W_LINE * leaf[2] - (sp._base_penalty(leaf[0]) + sp.W_HARD * sp._hard_risk(leaf[0])),
+                key=lambda leaf: sp.W_LINE * leaf[2] - (sp._base_penalty(leaf[0]) + sp.W_TRAY * sp._tray_risk(leaf[0])),
             )
             self.assertIs(sp._choose_leaf(finalists), naive)
 

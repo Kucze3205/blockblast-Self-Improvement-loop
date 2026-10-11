@@ -1,4 +1,4 @@
-"""Polityka wiązkowa po tacce: plan postawień na tackę, liść z karą za zajętość i ryzyko trudnych tacek."""
+"""Polityka wiązkowa po tacce: plan postawień na tackę, liść z karą za zajętość i ryzyko nieułożenia następnej tacki."""
 import itertools
 import math
 from collections import Counter
@@ -12,7 +12,6 @@ BEAM = 40
 FINAL_SMALL = 8
 FINAL_TIGHT = 20
 TIGHT_FREE_CELLS = 22
-HARD_TYPES = [4, 6, 7, 10, 9]
 TRAY_BUDGET = 400
 
 W_LINE = 4.2
@@ -23,7 +22,7 @@ W_BORDER = 2.0
 W_DEAD = 12.3
 W_MATCH_CUBE = 400.0
 W_MATCH_LIN = 80.0
-W_HARD = 500.0
+W_TRAY = 500.0
 
 
 def _bit(r, c):
@@ -54,15 +53,6 @@ for _piece in PIECE_POOL:
                 mask |= _bit(y + dy, x + dx)
             _options.append((mask, x, y))
     POSITIONS.append(_options)
-
-
-HARD_POSES = sorted(p for t in HARD_TYPES for p in PIECE_TYPES[t])
-HARD_SHARE = {p: 1 / (len(HARD_TYPES) * len(PIECE_TYPES[t])) for t in HARD_TYPES for p in PIECE_TYPES[t]}
-HARD_TRAYS = [
-    (poses, math.factorial(3) // math.prod(math.factorial(c) for c in Counter(poses).values())
-     * math.prod(HARD_SHARE[p] for p in poses))
-    for poses in itertools.combinations_with_replacement(HARD_POSES, 3)
-]
 
 
 def _board_bits(grid):
@@ -124,8 +114,15 @@ def _tray_fits(board, poses, limit=math.inf):
         return True
 
 
-def _hard_risk(board):
-    return sum(weight for poses, weight in HARD_TRAYS if not _tray_fits(board, poses, TRAY_BUDGET))
+def _tray_risk(board):
+    fit = [p for p in range(len(PIECE_POOL)) if _fits(board, p)]
+    if not fit:
+        return 1.0
+    misses = 0
+    for poses in itertools.combinations_with_replacement(fit, 3):
+        if not _tray_fits(board, poses, TRAY_BUDGET):
+            misses += math.factorial(3) // math.prod(math.factorial(c) for c in Counter(poses).values())
+    return misses / len(fit) ** 3
 
 
 def _shape_cost(board):
@@ -204,7 +201,7 @@ def _choose_leaf(finalists):
         if best_value is not None and bound < best_value:
             break
         leaf = finalists[i]
-        value = W_LINE * leaf[2] - (base + W_HARD * _hard_risk(leaf[0]))
+        value = W_LINE * leaf[2] - (base + W_TRAY * _tray_risk(leaf[0]))
         if best_value is None or value > best_value or (value == best_value and i < best_i):
             best_value, best_i = value, i
     return finalists[best_i]
