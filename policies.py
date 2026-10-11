@@ -13,6 +13,7 @@ from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 NTUPLE_FILE = "ntuple.json"
+EVAL_BEAM = 4
 
 
 class RandomPolicy:
@@ -100,8 +101,9 @@ class NTuplePolicy:
 
     name = "ntuple"
 
-    def __init__(self, table):
+    def __init__(self, table, beam=1):
         self.table = table
+        self.beam = beam
 
     def reset(self, game_seed):
         pass
@@ -111,10 +113,41 @@ class NTuplePolicy:
         afters = [_after(game, occ, action) for action in actions]
         values = [valuation.value(self.table, after) for after in afters]
         order = sorted(range(len(actions)), key=lambda i: -values[i])
+        kept = []
         for i in order:
-            if _tray_survives(game, actions[i][0], afters[i]):
+            if not _tray_survives(game, actions[i][0], afters[i]):
+                continue
+            if self.beam == 1:
                 return actions[i]
-        return actions[order[0]]
+            kept.append(i)
+            if len(kept) == self.beam:
+                break
+        if not kept:
+            return actions[order[0]]
+        best = max(kept, key=lambda i: self._future(game, actions[i][0], afters[i]))
+        return actions[best]
+
+    def _future(self, game, idx, after):
+        rest = [j for j, p in enumerate(game.pieces) if p is not None and j != idx]
+        if not rest:
+            return valuation.value(self.table, after)
+        best = None
+        for j in rest:
+            others = tuple(
+                valuation.shape_key(game.pieces[k].shape) for k in rest if k != j
+            )
+            mask, shifts = valuation.placements(valuation.shape_key(game.pieces[j].shape))
+            for s in shifts:
+                pm = mask << s
+                if after & pm:
+                    continue
+                nxt = valuation.clear_full(after | pm)
+                if others and not valuation.completable(nxt, others):
+                    continue
+                v = valuation.value(self.table, nxt)
+                if best is None or v > best:
+                    best = v
+        return best
 
     def explore(self, game, actions, rng):
         occ = valuation.occupancy(game.board.grid)
@@ -131,4 +164,4 @@ def build(weights):
     if not os.path.exists(path):
         return GreedyPolicy()
     with open(path, encoding="utf-8") as fh:
-        return NTuplePolicy(valuation.load_table(json.load(fh)))
+        return NTuplePolicy(valuation.load_table(json.load(fh)), beam=EVAL_BEAM)

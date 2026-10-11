@@ -12,7 +12,7 @@ import valuation
 from board import Board
 from game import Game
 from pieces import PIECE_POOL
-from policies import NTUPLE_FILE, GreedyPolicy, NTuplePolicy, build
+from policies import EVAL_BEAM, NTUPLE_FILE, GreedyPolicy, NTuplePolicy, build
 
 FULL = (1 << 64) - 1
 
@@ -129,26 +129,28 @@ class TestBuildAndPolicy(unittest.TestCase):
                 json.dump(valuation.dump_table(table), fh)
             policy = build(tmp)
         self.assertIsInstance(policy, NTuplePolicy)
+        self.assertEqual(policy.beam, EVAL_BEAM)
         self.assertAlmostEqual(policy.table[5], 0.25)
 
     def test_act_and_explore_return_legal_actions(self):
         rng = random.Random(5)
         table = [rng.uniform(-0.01, 0.01) for _ in range(valuation.TABLE_SIZE)]
-        policy = NTuplePolicy(table)
-        for seed in range(3):
-            game = Game(seed=seed)
-            policy.reset(seed)
-            for _ in range(60):
-                actions = game.available_actions()
-                if not actions:
-                    break
-                chosen = policy.act(game, actions)
-                self.assertIn(chosen, actions)
-                self.assertIn(policy.explore(game, actions, rng), actions)
-                _, _, done, reason = game.step(chosen)
-                self.assertNotEqual(reason, "wrong_placement")
-                if done:
-                    break
+        for beam in (1, EVAL_BEAM):
+            policy = NTuplePolicy(table, beam=beam)
+            for seed in range(3):
+                game = Game(seed=seed)
+                policy.reset(seed)
+                for _ in range(60):
+                    actions = game.available_actions()
+                    if not actions:
+                        break
+                    chosen = policy.act(game, actions)
+                    self.assertIn(chosen, actions)
+                    self.assertIn(policy.explore(game, actions, rng), actions)
+                    _, _, done, reason = game.step(chosen)
+                    self.assertNotEqual(reason, "wrong_placement")
+                    if done:
+                        break
 
 
 if __name__ == "__main__":
