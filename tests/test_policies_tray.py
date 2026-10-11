@@ -93,30 +93,29 @@ class TrayPlayableTest(unittest.TestCase):
         one_cell = next(p.index for p in PIECE_POOL if p.name == "1x1")
         self.assertFalse(P._tray_ok(P.FULL, [one_cell]))
 
-    def test_tail_trays_follow_their_strata(self):
-        tail = P._tail_trays(random.Random(3))
-        self.assertAlmostEqual(sum(w for w, _ in tail), 1.0)
-        for (pools, n), (_, trays) in zip(P.TAIL_STRATA, tail):
-            self.assertEqual(len(trays), n)
-            for tray in trays:
-                types = [PIECE_POOL[i].type_index for i in tray]
-                self.assertTrue(all(t in pool for t, pool in zip(types, pools)))
+    def test_mixed_trays_have_a_non_hard_piece(self):
+        for tray in P._mixed_trays(random.Random(3)):
+            self.assertTrue(any(PIECE_POOL[i].type_index not in P.HARD_TYPES for i in tray))
 
     def test_tail_penalty_is_zero_on_empty_board(self):
-        self.assertEqual(P.tail_penalty(0, P._tail_trays(random.Random(4))), 0.0)
+        self.assertEqual(P.tail_penalty(0, P._mixed_trays(random.Random(4))), 0.0)
 
-    def test_stratum_shares_match_generator(self):
-        gen = Generator(11)
-        n = 30000
-        s1 = s2 = 0
-        for _ in range(n):
-            types = [p.type_index for p in gen.next_pieces()]
-            s1 += (types.count(P.SQ3_TYPE) == 1
-                   and sum(t in P.PARTNER_TYPES for t in types) == 1
-                   and sum(t in P.EASY_TYPES for t in types) == 1)
-            s2 += types.count(P.SQ3_TYPE) == 2 and sum(t in P.EASY_TYPES for t in types) == 1
-        self.assertAlmostEqual(s1 / n, P._mixed_share(P.TAIL_STRATA[0][0]) * (1 - P.HARD_SHARE), delta=0.004)
-        self.assertAlmostEqual(s2 / n, P._mixed_share(P.TAIL_STRATA[1][0]) * (1 - P.HARD_SHARE), delta=0.002)
+    def test_next_value_equals_unpruned_max(self):
+        rng = random.Random(9)
+        triples = P._hard_triples(rng)
+        mixed = P._mixed_trays(rng)
+        hits = 0
+        for _ in range(40):
+            density = rng.uniform(0.1, 0.5)
+            b = P._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
+            poses = P._sample_tray(rng)
+            states = P._next_states(b, poses)
+            if not states:
+                continue
+            hits += 1
+            expected = max(P.cheap(s[0], s[2]) - P.risk(s[0], triples) - P.tail_penalty(s[0], mixed) for s in states)
+            self.assertEqual(P._next_value(states, triples, mixed), expected)
+        self.assertGreater(hits, 0)
 
     def test_hard_share_matches_generator(self):
         gen = Generator(11)
