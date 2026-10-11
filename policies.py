@@ -70,8 +70,21 @@ NOT_ROW7 = FULL & ~ROWS[N - 1]
 BORDER = ROWS[0] | ROWS[N - 1] | COLS[0] | COLS[N - 1]
 
 HARD_TYPES = (3, 4, 6, 7, 10)
+SQ3_TYPE = 7
+PARTNER_TYPES = tuple(t for t in HARD_TYPES if t != SQ3_TYPE)
 N_TYPES = len(PIECE_TYPES)
+EASY_TYPES = tuple(t for t in range(N_TYPES) if t not in HARD_TYPES)
 HARD_SHARE = (len(HARD_TYPES) / N_TYPES) ** 3
+SQ3_POOL = (SQ3_TYPE,)
+# Próbka waży najwyżej ok. 6,5 pkt; żadna warstwa nie skacze od pojedynczej porażki.
+TAIL_STRATA = (
+    ((SQ3_POOL, PARTNER_TYPES, EASY_TYPES), 5),
+    ((SQ3_POOL, SQ3_POOL, EASY_TYPES), 1),
+    ((PARTNER_TYPES, PARTNER_TYPES, EASY_TYPES), 10),
+    ((SQ3_POOL, EASY_TYPES, EASY_TYPES), 6),
+    ((PARTNER_TYPES, EASY_TYPES, EASY_TYPES), 23),
+    ((EASY_TYPES, EASY_TYPES, EASY_TYPES), 19),
+)
 BEAM = 120
 BEAM_CAP = 160
 LOOK_BEAM = 40
@@ -81,7 +94,6 @@ FINAL_K = 8
 FINAL_K_TIGHT = 20
 TIGHT_FREE = 22
 TRAY_FAIL = 400.0
-MIX_TRAYS = 64
 
 
 def _placements(piece):
@@ -172,15 +184,23 @@ def _hard_triples(rng):
     return triples
 
 
-def _mixed_trays(rng):
-    trays = [_sample_tray(rng) for _ in range(MIX_TRAYS)]
-    return [t for t in trays if any(PIECE_POOL[i].type_index not in HARD_TYPES for i in t)]
+def _mixed_share(pools):
+    share = len(set(itertools.permutations(pools)))
+    for pool in pools:
+        share *= len(pool) / N_TYPES
+    return share / (1 - HARD_SHARE)
 
 
-def tail_penalty(b, trays):
-    if not trays:
-        return 0.0
-    return TRAY_FAIL * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays)
+def _tail_trays(rng):
+    tail = []
+    for pools, n in TAIL_STRATA:
+        trays = [[rng.choice(PIECE_TYPES[rng.choice(pool)]) for pool in pools] for _ in range(n)]
+        tail.append((_mixed_share(pools), trays))
+    return tail
+
+
+def tail_penalty(b, tail):
+    return TRAY_FAIL * sum(w * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays) for w, trays in tail)
 
 
 def risk(b, triples):
@@ -243,17 +263,6 @@ def _next_risked(pairs, triples):
     return sorted(((c - risk(b, triples), b) for c, b in pairs), key=lambda t: -t[0])
 
 
-def _next_value(pairs, mixed):
-    best = None
-    for u, b in pairs:
-        if best is not None and u <= best:
-            break
-        v = u - tail_penalty(b, mixed)
-        if best is None or v > best:
-            best = v
-    return -TRAY_FAIL if best is None else best
-
-
 def _top_value(pairs):
     return pairs[0][0] if pairs else -TRAY_FAIL
 
@@ -275,7 +284,7 @@ class SurvivalPolicy:
             return max(finals, key=lambda s: cheap(s[0], s[2]))[3]
 
         triples = _hard_triples(self.rng)
-        mixed = _mixed_trays(self.rng)
+        tail = _tail_trays(self.rng)
         scored = sorted(((cheap(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
         k = FINAL_K_TIGHT if N * N - _pc(base) <= TIGHT_FREE else FINAL_K
         cut = scored[min(k, len(scored)) - 1][0]
@@ -283,7 +292,7 @@ class SurvivalPolicy:
         for score, (b, _used, _lines, first) in scored:
             if score < cut:
                 break
-            value = score - risk(b, triples) - tail_penalty(b, mixed)
+            value = score - risk(b, triples) - tail_penalty(b, tail)
             if first not in best_by_move or value > best_by_move[first][0]:
                 best_by_move[first] = (value, b)
 
@@ -295,9 +304,7 @@ class SurvivalPolicy:
             if best_total is not None and value + sum(_top_value(l) for l in looks) / LOOK_TRAYS <= best_total:
                 continue
             looks = [_next_risked(l, triples) for l in looks]
-            if best_total is not None and value + sum(_top_value(l) for l in looks) / LOOK_TRAYS <= best_total:
-                continue
-            total = value + sum(_next_value(l, mixed) for l in looks) / LOOK_TRAYS
+            total = value + sum(_top_value(l) for l in looks) / LOOK_TRAYS
             if best_total is None or total > best_total:
                 best_move, best_total = first, total
         return best_move

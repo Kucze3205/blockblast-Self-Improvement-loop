@@ -93,27 +93,30 @@ class TrayPlayableTest(unittest.TestCase):
         one_cell = next(p.index for p in PIECE_POOL if p.name == "1x1")
         self.assertFalse(P._tray_ok(P.FULL, [one_cell]))
 
-    def test_mixed_trays_have_a_non_hard_piece(self):
-        for tray in P._mixed_trays(random.Random(3)):
-            self.assertTrue(any(PIECE_POOL[i].type_index not in P.HARD_TYPES for i in tray))
+    def test_tail_trays_follow_their_strata(self):
+        tail = P._tail_trays(random.Random(3))
+        self.assertAlmostEqual(sum(w for w, _ in tail), 1.0)
+        for (pools, n), (_, trays) in zip(P.TAIL_STRATA, tail):
+            self.assertEqual(len(trays), n)
+            for tray in trays:
+                types = [PIECE_POOL[i].type_index for i in tray]
+                self.assertTrue(all(t in pool for t, pool in zip(types, pools)))
 
     def test_tail_penalty_is_zero_on_empty_board(self):
-        self.assertEqual(P.tail_penalty(0, P._mixed_trays(random.Random(4))), 0.0)
+        self.assertEqual(P.tail_penalty(0, P._tail_trays(random.Random(4))), 0.0)
 
-    def test_next_value_is_max_of_value_minus_tail(self):
-        rng = random.Random(5)
-        mixed = P._mixed_trays(rng)
-        pairs = []
-        for _ in range(40):
-            density = rng.uniform(0.1, 0.5)
-            grid = _settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)])
-            b = P._to_bits(grid)
-            pairs.append((P.cheap(b, 0), b))
-        pairs.sort(key=lambda t: -t[0])
-        tails = [P.tail_penalty(b, mixed) for _, b in pairs]
-        self.assertTrue(any(tails))
-        expected = max(u - t for (u, _), t in zip(pairs, tails))
-        self.assertAlmostEqual(P._next_value(pairs, mixed), expected)
+    def test_stratum_shares_match_generator(self):
+        gen = Generator(11)
+        n = 30000
+        s1 = s2 = 0
+        for _ in range(n):
+            types = [p.type_index for p in gen.next_pieces()]
+            s1 += (types.count(P.SQ3_TYPE) == 1
+                   and sum(t in P.PARTNER_TYPES for t in types) == 1
+                   and sum(t in P.EASY_TYPES for t in types) == 1)
+            s2 += types.count(P.SQ3_TYPE) == 2 and sum(t in P.EASY_TYPES for t in types) == 1
+        self.assertAlmostEqual(s1 / n, P._mixed_share(P.TAIL_STRATA[0][0]) * (1 - P.HARD_SHARE), delta=0.004)
+        self.assertAlmostEqual(s2 / n, P._mixed_share(P.TAIL_STRATA[1][0]) * (1 - P.HARD_SHARE), delta=0.002)
 
     def test_hard_share_matches_generator(self):
         gen = Generator(11)
