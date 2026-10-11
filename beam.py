@@ -124,16 +124,13 @@ def risk(b, triples):
         shares.append(alive / len(idxs))
         if alive == 0:
             dead += 1
-    live = [s for s in shares if s > 0]
-    mean_live = sum(live) / len(live) if live else 0.0
     mean_all = sum(shares) / N_TYPES
     hard = 0.0
     for w, poses in triples:
         if not _tray_ok(b, poses):
             hard += w
-    miss_live = 1.0 - mean_live
     miss_all = 1.0 - mean_all
-    return TRAY_FAIL * miss_live ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * hard
+    return TRAY_FAIL * miss_all ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * hard
 
 
 def plan(board, slots, width, cap, partial=False):
