@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "69a4cfffc6b28682cb583e9d9df8b3089191d961",
+ "stan": "ocena w toku",
+ "gist": "Dodaj policies.build: wiązka po całej tacce z ryzykiem klocka bez miejsca",
+ "notatki": [
+  "Dodaj policies.build: wiązka po całej tacce z ryzykiem klocka bez miejsca\n\nMechanizm: SurvivalPolicy planuje wszystkie klocki tacki beamem (BEAM 24) na\nzwykłych listach. Ocena w wiązce = 10 * linie - 1 * przejścia pusto/pełno w\nwierszach i kolumnach. Finaliści (FINAL 16) są karani za kieszenie mniejsze\nniż 3 pola (6 pkt) i za ryzyko nieułożenia następnej tacki:\n1 - (1 - q)^3, gdzie q = P(pojedynczy klocek z generatora nie mieści się),\nliczone dokładnie z rozkładu typ 1/15, poza 1/n (waga 300). Wykonywany jest\npierwszy ruch planu; gdy plan nie istnieje, awaryjnie wybierany jest ruch\npo ocenie cech jednego postawienia.\n\nDowód z historii: drzewa 1-8 próbkowały ryzyko tacek (16-40 losowych) albo\nliczyły multizbiory trudnych typów. Węzeł 8/1.6 (0.993) próbkuje pozy\ntrudnych tacek co ruch. Dokładne q dla pojedynczego klocka to idea z 5/2.2\n(0.981); tu nowe jest to, że jest finalistycznym ryzykiem w planie całej\ntacki, a wybór finalistów uwzględnia kieszenie.\nSmoke, 6 partii (seedy 1-6, limit 500): przeżycie 289, 232, 500, 500, 500, 109,\n11 ms na ruch. Wcześniejsze wersje na seedach 1-3 (limit 200): tylko linie\ni wolne pola -> 26-83 postawienia; przejścia + próbkowane ryzyko (12 tacek,\nFINAL 6) -> 59, 194, 500, 224. Przegrane wynikają z braku wolnego 3x3, gdy\nw tacce jest square3.\n\nDlaczego to nie powtórka: nie używam próbkowania tacek jako głównego\nsygnału ryzyka (7/1.3, 7/2.3) ani multizbiorów trudnych typów; ryzyko jest\ndokładne i działa tylko na finalistach.\n\nRyzyko:\n- wynik niezmierzony; mierzy go ocena. Smoke to 6 partii, nie ocena.\n- tests/test_engine.py: 16 z 17 przechodzi. Jedyny błąd to brak tkinter w\n  środowisku (test_agent_accepts_epsilon_zero, import agent/helper), poza\n  policies.py.\n- build ignoruje weights; w repo nie ma katalogu weights/ ani bench/.\n- czas: 11 ms na ruch w smoke; próg oceny w historii to ok. 8.9 min,\n  a 12.1 min daje \"za wolna\". Oceny czasu nie zmierzyłem.\n\nCo dalej:\n- zrobione: ten commit (węzeł 9.1 na korzeniu).\n- następny krok: ocena 9.1. Jeśli wynik nie przekroczy progu, nie zwiększaj\n  BEAM ani FINAL bez pomiaru czasu.\n- czego nie powtarzać: ocenianie wiązki samymi liniami i wolnymi polami\n  (ta próba, przegrane już po kilkudziesięciu postawieniach).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 54,
+  "usd": 2.1099,
+  "minuty": 9.2
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T10:27:30Z",
+   "koniec": "2026-10-11T10:36:42Z",
+   "tury": 54,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
