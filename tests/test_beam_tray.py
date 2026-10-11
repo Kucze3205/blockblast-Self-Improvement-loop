@@ -99,6 +99,24 @@ class TrayPlayableTest(unittest.TestCase):
     def test_tail_penalty_is_zero_on_empty_board(self):
         self.assertEqual(B.tail_penalty(0, B._mixed_trays(random.Random(4))), 0.0)
 
+    def test_next_value_equals_unpruned_max(self):
+        rng = random.Random(11)
+        policy = B.BeamPolicy()
+        for _ in range(12):
+            density = rng.uniform(0.2, 0.5)
+            b = B._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
+            poses = B._sample_tray(rng)
+            triples = B._hard_triples(rng)
+            mixed = B._mixed_trays(rng)
+            states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
+            expected = -B.TRAY_FAIL
+            if states:
+                expected = max(
+                    B.cheap(s[0], s[2]) - B.risk(s[0], triples) - B.tail_penalty(s[0], mixed)
+                    for s in states[:2]
+                )
+            self.assertEqual(policy._next_value(b, triples, mixed, poses), expected)
+
     def test_policy_plays_legal_moves(self):
         game = Game(1)
         policy = policies.build(None)

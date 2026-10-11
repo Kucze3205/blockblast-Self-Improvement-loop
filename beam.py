@@ -218,14 +218,23 @@ class BeamPolicy:
         best_move, best_total = None, None
         trays = [_sample_tray(self.rng) for _ in range(LOOK_TRAYS)]
         for first, (value, b) in contenders:
-            nxt = [self._next_value(b, triples, poses) for poses in trays]
+            nxt = [self._next_value(b, triples, mixed, poses) for poses in trays]
             total = value + sum(nxt) / len(nxt)
             if best_total is None or total > best_total:
                 best_move, best_total = first, total
         return best_move
 
-    def _next_value(self, b, triples, poses):
+    def _next_value(self, b, triples, mixed, poses):
         states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)
         if not states:
             return -TRAY_FAIL
-        return max(cheap(s[0], s[2]) - risk(s[0], triples) for s in states[:2])
+        ranked = sorted(
+            ((cheap(s[0], s[2]) - risk(s[0], triples), s[0]) for s in states[:2]),
+            reverse=True,
+        )
+        best = -math.inf
+        for value, nb in ranked:
+            if value <= best:
+                break
+            best = max(best, value - tail_penalty(nb, mixed))
+        return best
