@@ -2,16 +2,25 @@
  "rodzic": "1.5",
  "rodzic_sha": "5afb21856e70e3287825e864544e73c452834962",
  "kolejnosc": 9,
- "sha": "5afb21856e70e3287825e864544e73c452834962",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "acfd118b01f9dd1f0508ef947d6d8fe207fdd471",
+ "stan": "ocena w toku",
+ "gist": "Przegląd następnej tacki: 4 losowe tacki zamiast 3 (węzeł 1.6)",
+ "notatki": [
+  "Przegląd następnej tacki: 4 losowe tacki zamiast 3 (węzeł 1.6)\n\nMechanizm: LOOK_TRAYS 3 -> 4 w przeglądzie następnej tacki. Reszta bez zmian: BEAM 120,\nBEAM_CAP 160, LOOK_BEAM 40, LOOK_TOP 3, LOOK_FINAL 2, kara 400 za nieułożenie tacki,\nryzyko trudnych tacek z pozami próbkowanymi co ruch.\n\nDowód z historii: węzeł 1.5 (5afb218, 0.990) wybiera spośród trzech kandydatów, a jego\nnotatka wskazuje szum wyboru jako słabość: trzy losowe tacki na krok. Czwarta tacka\nzmniejsza błąd próbkowania o ok. 13% (sqrt(3/4)). Diagnostyka 1.5 pokazuje też, że\nprzegląd nie obniża prawdopodobieństwa nieułożenia następnej tacki (3.35e-3 wobec\n3.39e-3 dla wyboru jednego ruchu), więc źródło zysku 1.5 jest niejasne. Ta próba testuje,\nczy wynik jest ograniczony szumem.\n\nDlaczego to nie powtórka: nie wracam do 16 losowych tacek jako ryzyka (7/1.3 i 7/2.3\nzastąpiły je dokładnym i ważonym ryzykiem). Próbki zostają tylko w wartości następnej\ntacki, a liczba zmienia się o jeden krok.\n\nOdrzucone przed commitem (smoke, 3 partie, nie ocena): LOOK_TRAYS 6 z LOOK_BEAM 24\ndało +35% czasu ruchu i jedną przegraną (seed 2, game_over przy 217 postawieniach).\nWęższa wiązka przeglądu może gubić jedyne pełne ułożenie tacki.\n\nRyzyko:\n- wynik niezmierzony; mierzy go ocena.\n- czas: smoke 3 partie, 42.9 ms na ruch przy 3 tackach, 54.6 ms przy 4 (+27%). Szacunek\n  oceny ok. 6.1 * 1.27 = 7.8 min, poniżej znanego progu 8.9 min (12.1 min: za wolna).\n  Maszyna dziś jest wolniejsza niż przy 1.5 (43 ms wobec 22 ms w notatce), więc\n  porównuję tylko stosunek.\n- testy: tests/test_survival.py 7/7. Smoke bez wyjątków, 3/3 partie dochodzą do 500.\n\nCo dalej:\n- zrobione: ten commit (węzeł 1.6 na bazie 1.5).\n- następny krok: ocena 1.6. Jeśli nie wyżej niż 1.5 (SE około 0,002-0,004), nie\n  stroję dalej liczby tacek; wybieram inny mechanizm.\n- czego nie powtarzać: LOOK_BEAM 24 przy wielu tackach (koszt +35%, przegrana w smoke);\n  losowych 16 tacek jako ryzyka (7/1.3, 7/2.3); średniej wartości liścia (5/1.1).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 25,
+  "usd": 2.1354,
+  "minuty": 18.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T07:07:53Z",
+   "koniec": "2026-10-11T07:25:50Z",
+   "tury": 25,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
