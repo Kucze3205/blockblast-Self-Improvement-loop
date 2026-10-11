@@ -146,9 +146,11 @@ def plan(board, slots, width, cap, partial=False):
                     if m & b:
                         continue
                     nb, cl = _clear(b | m, y, y1, x, x1)
-                    key = (nb, used | bit)
+                    nl = lines + cl
+                    # linie w kluczu: ta sama plansza z inną liczbą linii ma inną wartość w cheap
+                    key = (nb, used | bit, nl)
                     if key not in children:
-                        children[key] = (nb, used | bit, lines + cl, first or (sid, x, y))
+                        children[key] = (nb, used | bit, nl, first or (sid, x, y))
         if not children:
             return beam if partial else []
         scored = sorted(((cheap(s[0], s[2]), s) for s in children.values()), key=lambda t: -t[0])
