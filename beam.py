@@ -24,6 +24,9 @@ FINAL_K = 8
 FINAL_K_TIGHT = 20
 TIGHT_FREE = 22
 TRAY_FAIL = 400.0
+MIX_TRAYS = 64
+# P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
+P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
 
 
 def _placements(piece):
@@ -99,6 +102,10 @@ def _tray_ok(b, poses):
     return False
 
 
+def _sample_tray(rng):
+    return [rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3)]
+
+
 def _hard_triples(rng):
     draws = {t: [rng.choice(PIECE_TYPES[t]) for _ in range(3)] for t in HARD_TYPES}
     triples = []
@@ -113,6 +120,17 @@ def _hard_triples(rng):
     return triples
 
 
+def _mixed_trays(rng):
+    trays = [_sample_tray(rng) for _ in range(MIX_TRAYS)]
+    return [t for t in trays if any(PIECE_POOL[i].type_index not in HARD_TYPES for i in t)]
+
+
+def tail_penalty(b, trays):
+    if not trays:
+        return 0.0
+    return TRAY_FAIL * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays)
+
+
 def risk(b, triples):
     shares = []
     dead = 0
@@ -124,13 +142,16 @@ def risk(b, triples):
         shares.append(alive / len(idxs))
         if alive == 0:
             dead += 1
+    live = [s for s in shares if s > 0]
+    mean_live = sum(live) / len(live) if live else 0.0
     mean_all = sum(shares) / N_TYPES
     hard = 0.0
     for w, poses in triples:
         if not _tray_ok(b, poses):
             hard += w
+    miss_live = 1.0 - mean_live
     miss_all = 1.0 - mean_all
-    return TRAY_FAIL * miss_all ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * hard
+    return TRAY_FAIL * miss_live ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * P_HARD * hard
 
 
 def plan(board, slots, width, cap, partial=False):
@@ -181,6 +202,7 @@ class BeamPolicy:
             return max(finals, key=lambda s: cheap(s[0], s[2]))[3]
 
         triples = _hard_triples(self.rng)
+        mixed = _mixed_trays(self.rng)
         scored = sorted(((cheap(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
         k = FINAL_K_TIGHT if 64 - _pc(base) <= TIGHT_FREE else FINAL_K
         cut = scored[min(k, len(scored)) - 1][0]
@@ -188,22 +210,19 @@ class BeamPolicy:
         for score, (b, _used, _lines, first) in scored:
             if score < cut:
                 break
-            value = score - risk(b, triples)
+            value = score - risk(b, triples) - tail_penalty(b, mixed)
             if first not in best_by_move or value > best_by_move[first][0]:
                 best_by_move[first] = (value, b)
 
         contenders = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
         best_move, best_total = None, None
-        trays = [self._draw_tray() for _ in range(LOOK_TRAYS)]
+        trays = [_sample_tray(self.rng) for _ in range(LOOK_TRAYS)]
         for first, (value, b) in contenders:
             nxt = [self._next_value(b, triples, poses) for poses in trays]
             total = value + sum(nxt) / len(nxt)
             if best_total is None or total > best_total:
                 best_move, best_total = first, total
         return best_move
-
-    def _draw_tray(self):
-        return [self.rng.choice(PIECE_TYPES[self.rng.randrange(N_TYPES)]) for _ in range(3)]
 
     def _next_value(self, b, triples, poses):
         states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)
