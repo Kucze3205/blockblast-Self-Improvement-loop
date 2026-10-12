@@ -77,9 +77,9 @@ def _immediate_gain(game, action):
     return gain
 
 
-BEAM = 40
-REVIEW = 3
-DRAWS = 8
+BEAM = 120
+REVIEW = 8
+DRAWS = 64
 DEATH = 400
 FULL = (1 << 64) - 1
 ROWS = [0xFF << (8 * r) for r in range(8)]
