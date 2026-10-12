@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "52b6fab39bcd179ad62fa81f86ea53ecf7702b05",
+ "stan": "ocena w toku",
+ "gist": "Dodaje policies.build: wiązka po tacce z ryzykiem następnej tacki",
+ "notatki": [
+  "Dodaje policies.build: wiązka po tacce z ryzykiem następnej tacki\n\nMechanizm: build(weights) zwraca TraySearchPolicy. Wiązka 40 po sekwencjach\n3 klocków tacki na bitboardach (dokładne kolejności i pozycje, czyszczenie\nlinii w trakcie). Pula finalistów: 8 najlepszych wg krawędzi plus najlepszy\nfinalista dla każdej liczby wyczyszczonych linii. Wartość liścia: +8 za linię,\n−2 za wolne pole obwodu liczone przed czyszczeniem, −12,3 za martwy typ,\n−400·(P(żaden z 3 nie pasuje) + ułamek próbek 64 wspólnych tacek, których nie\nda się dokończyć), −80·(1 − P(wszystkie 3 pasują)). Ruch zawsze z listy\nlegalnych; brak finalisty daje actions[0].\nDowód z historii: policies.build nie istniało, więc ocena dawała 0. Składniki\nwartości z notatek 9/2.4 i 9/2.6 (9/2.6: s_sym 0.99589, 16 przegranych;\n13/2.4: 0.9910, wiązka 40, finaliści 8). Testy: zgodność dokończalności z\nbrute force na Board, pula zawiera ruch czyszczący, legalność na prawdziwych\ngrach, powtarzalność przy tym samym seedzie.\nDlaczego to nie powtórka: 9/2.6 nie ma kodu w repo, więc to odbudowa z\nnotatek, nie nowa próba mechanizmu. Nowe względem notatek: krawędź liczona\nprzed czyszczeniem (po czyszczeniu każda linia z brzegiem wyglądała jak strata,\nwięc finaliści jej nie widzieli), premia za linię, pula z najlepszym ruchem\ndla każdej liczby linii.\nRyzyko: wynik niezmierzony. Smoke: 264 ruchy bez nielegalnego ruchu, średnio\n14 ms na ruch, p99 47 ms. Kilka lokalnych partii kończy się wcześnie (23–121\npostawień). To nie jest ocena, ale sygnał, że ta wersja może być słaba. Pominięto\nwagę 1/27 z 9/2.4, bo jej dokładnego znaczenia nie odtworzono z notatek.\ntests/test_engine.py ma jeden błąd środowiskowy: model.py importuje turtle, a w\ntym środowisku nie ma tkinter. Nie zmieniano.\nCo dalej: zrobione: 2c15ca6 (bitboard, testy zgodności), ten commit (build i\ntray_search). Następny krok: po wyniku oceny, jeśli słabo, patrzeć na plansze\nprzegranych i wybrać mechanizm nieobecny w notatkach 9 i 13, np. kara za dziury\nw wiązce. Nie powtarzać: usuwania krawędzi (9/2.3), wagi 1/27 bez kary za\ndopasowanie (7/4.2, 7/4.3), liczenia krawędzi po czyszczeniu linii (ten\ncommit naprawia ten błąd).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaje bitboard 8x8 zgodny z Board, bez zmiany zachowania agenta\n\nMechanizm: plansza jako jeden int (bit y*8+x), maski wszystkich pozycji\nkażdej z 41 poz, stawianie i czyszczenie linii przez maski wierszy i kolumn.\nDowód z historii: najlepsze węzły drzewa 9 (9/2.6, s_sym 0.99589) i 13\n(13/2.4, 0.9910) liczyły przeszukanie na bitboardach dla szybkości; bez tego\nbeam nie mieści się w czasie ruchu. Test porównuje legalność i czyszczenie\nlinii z Board.can_place_piece, Board.place_piece i check_full_lines na 360\nlosowych planszach.\nDlaczego to nie powtórka: w gałęzi trees/14/2 nie było żadnego kodu poprzednich\nwęzłów (ich SHA nie ma w repo), a ten moduł jest jedynie warstwą do odczytu.\nRyzyko: brak wpływu na wynik; sprawdzono tylko zgodność z Board, nie ocenę.\nCo dalej: zrobione: bitboard.py + tests/test_bitboard.py (ten commit). Następny\nkrok: tray_search.py, czyli beam po sekwencjach 3 klocków z wartością liścia\n(E, martwe typy, ryzyko następnej tacki). Nie powtarzać: wyjmowania E (9/2.3)\ni wag 1/27 bez kary za dopasowanie (7/4.2, 7/4.3).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 73,
+  "usd": 4.4931,
+  "minuty": 18.9
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T17:36:39Z",
+   "koniec": "2026-10-12T17:55:31Z",
+   "tury": 73,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
