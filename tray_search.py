@@ -1,7 +1,10 @@
-"""Przeszukanie tacki na bitboardach: przycięte kotwice na klocek, pełne kombinacje, ryzyko następnej tacki."""
+"""Przeszukanie tacki na bitboardach: wiązka po wszystkich kotwicach, ryzyko następnej tacki na finalistach."""
 from pieces import PIECE_POOL, PIECE_TYPES
 
-K_PER_PIECE = 4
+BEAM_WIDTH = 40
+FINALISTS = 8
+FINALISTS_TIGHT = 20
+TIGHT_FREE_CELLS = 22
 OCC_W = 1.4
 LINE_W = 4.2
 ISO_W = 0.75
@@ -15,7 +18,6 @@ ROW = [0xFF << (8 * r) for r in range(8)]
 COL = [sum(1 << (8 * r + c) for r in range(8)) for c in range(8)]
 NOT_COL0 = FULL ^ COL[0]
 NOT_COL7 = FULL ^ COL[7]
-EDGE = ROW[0] | ROW[7] | COL[0] | COL[7]
 
 N_POSES = len(PIECE_POOL)
 N_TYPES = len(PIECE_TYPES)
@@ -55,11 +57,6 @@ def _bits(mask):
         low = mask & -mask
         yield low.bit_length() - 1
         mask ^= low
-
-
-def _touch(bb):
-    near = ((bb << 1) & NOT_COL0) | ((bb >> 1) & NOT_COL7) | (bb << 8) | (bb >> 8)
-    return (FULL ^ bb) & (near | EDGE)
 
 
 def _isolated(bb):
@@ -111,45 +108,61 @@ def sample_trays(rng):
     return [tuple(rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3)) for _ in range(SAMPLES)]
 
 
-def _leaf_value(bb, lines, samples):
-    unplaceable = sum(not _completable(bb, tray) for tray in samples) / len(samples)
-    return (-OCC_W * bb.bit_count() + LINE_W * lines - ISO_W * _isolated(bb)
-            - TRANS_W * _transitions(bb) - DEAD_W * _dead_types(bb) - DEATH_W * unplaceable)
+def _unplaceable(bb, samples):
+    return sum(not _completable(bb, tray) for tray in samples) / len(samples)
 
 
-def _enumerate(bb, rem, lines, first, depth, alive, dead):
-    if not rem:
-        alive.append((bb, lines, first))
-        return
-    free = FULL ^ bb
-    touch = _touch(bb)
-    expanded = False
-    for k, (tray_idx, pose) in enumerate(rem):
-        anchors = _fits(free, pose)
-        if not anchors:
-            continue
-        expanded = True
-        pattern = POSE_PATTERN[pose]
-        ranked = sorted(_bits(anchors), key=lambda a: -((pattern << a) & touch).bit_count())
-        rest = rem[:k] + rem[k + 1:]
-        for a in ranked[:K_PER_PIECE]:
-            nb, nl = _place(bb, pose, a)
-            _enumerate(nb, rest, lines + nl, first or (tray_idx, a), depth + 1, alive, dead)
-    if not expanded:
-        dead.append((depth, first))
+def _cheap_value(bb, lines):
+    return -OCC_W * bb.bit_count() + LINE_W * lines - ISO_W * _isolated(bb) - TRANS_W * _transitions(bb)
 
 
 def best_move(bb, tray, samples):
-    alive, dead = [], []
-    _enumerate(bb, tray, 0, None, 0, alive, dead)
-    if not alive:
+    tray = tuple(tray)
+    beam = [(bb, tray, None, 0)]
+    ends, dead = [], []
+    while beam:
+        children = []
+        for board, rem, first, lines in beam:
+            free = FULL ^ board
+            for k, (slot, pose) in enumerate(rem):
+                anchors = _fits(free, pose)
+                if not anchors:
+                    continue
+                rest = rem[:k] + rem[k + 1:]
+                for anchor in _bits(anchors):
+                    nxt, cleared = _place(board, pose, anchor)
+                    total = lines + cleared
+                    move = first or (slot, anchor)
+                    if not rest:
+                        ends.append((_cheap_value(nxt, total), nxt, move))
+                    elif not any(_fits(FULL ^ nxt, other) for _, other in rest):
+                        dead.append((len(tray) - len(rest), move))
+                    else:
+                        children.append((_cheap_value(nxt, total), nxt, rest, total, move))
+        children.sort(key=lambda child: child[0], reverse=True)
+        beam, seen = [], set()
+        for _, nxt, rest, total, move in children:
+            if (nxt, rest) in seen:
+                continue
+            seen.add((nxt, rest))
+            beam.append((nxt, rest, move, total))
+            if len(beam) == BEAM_WIDTH:
+                break
+
+    if not ends:
         return max(dead, key=lambda leaf: leaf[0])[1]
-    cache = {}
-    best_value, best_first = None, None
-    for leaf_bb, lines, first in alive:
-        key = (leaf_bb, lines)
-        if key not in cache:
-            cache[key] = _leaf_value(leaf_bb, lines, samples)
-        if best_value is None or cache[key] > best_value:
-            best_value, best_first = cache[key], first
-    return best_first
+    width = FINALISTS_TIGHT if 64 - bb.bit_count() <= TIGHT_FREE_CELLS else FINALISTS
+    ends.sort(key=lambda end: end[0], reverse=True)
+    finalists, boards = [], set()
+    for end in ends:
+        if end[1] not in boards:
+            boards.add(end[1])
+            finalists.append(end)
+            if len(finalists) == width:
+                break
+    best_score, best = None, None
+    for value, nxt, move in finalists:
+        score = value - DEAD_W * _dead_types(nxt) - DEATH_W * _unplaceable(nxt, samples)
+        if best_score is None or score > best_score:
+            best_score, best = score, move
+    return best
