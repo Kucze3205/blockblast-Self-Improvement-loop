@@ -59,13 +59,26 @@ class ModelPolicy:
         return tuple(move)
 
 
-BEAM_WIDTH = 3
-RISK_FINALISTS = 3
-RISK_SAMPLES = 10
+BEAM_WIDTH = 40
+RISK_FINALISTS = 8
+RISK_FINALISTS_TIGHT = 20
+TIGHT_FREE_CELLS = 22
 DEATH_PENALTY = 1000.0
+FULL = (1 << 64) - 1
 ROW_MASKS = [0xFF << (8 * r) for r in range(8)]
 COL_MASKS = [sum(1 << (8 * r + c) for r in range(8)) for c in range(8)]
 LINE_MASKS = ROW_MASKS + COL_MASKS
+EDGE_MASK = ROW_MASKS[0] | ROW_MASKS[7] | COL_MASKS[0] | COL_MASKS[7]
+# Maski krawędzi, żeby przesunięcie bitowe nie zawijało się na sąsiedni wiersz.
+NOT_LAST_COL = 0x7F7F7F7F7F7F7F7F
+NOT_FIRST_COL = 0xFEFEFEFEFEFEFEFE
+NOT_LAST_ROW = 0x00FFFFFFFFFFFFFF
+NOT_FIRST_ROW = 0xFFFFFFFFFFFFFF00
+POSE_PROBS = [
+    (idx, 1.0 / (len(PIECE_TYPES) * len(pose_indices)))
+    for pose_indices in PIECE_TYPES
+    for idx in pose_indices
+]
 
 
 def _poses(piece):
@@ -109,22 +122,26 @@ def _fits(board, piece_index):
 
 
 def _value(board, lines):
-    agg = holes = bump = 0
-    prev = 0
-    for x in range(8):
-        top = None
-        for y in range(8):
-            if (board >> (y * 8 + x)) & 1:
-                if top is None:
-                    top = y
-            elif top is not None:
-                holes += 1
-        height = 0 if top is None else 8 - top
-        agg += height
-        if x:
-            bump += abs(height - prev)
-        prev = height
-    return 4.0 * lines - 0.5 * agg - 0.8 * holes - 0.3 * bump
+    # Bez grawitacji czyszczenie nie opuszcza stosu, więc wysokości i dziury od osi y karałyby czyszczenie.
+    empty = FULL & ~board
+    has_empty_neighbour = (
+        ((empty >> 1) & NOT_LAST_COL)
+        | ((empty << 1) & NOT_FIRST_COL)
+        | (empty >> 8)
+        | ((empty << 8) & NOT_FIRST_ROW)
+    )
+    isolated = empty & ~has_empty_neighbour
+    transitions = (
+        ((board ^ (board >> 1)) & NOT_LAST_COL).bit_count()
+        + ((board ^ (board >> 8)) & NOT_LAST_ROW).bit_count()
+    )
+    return (
+        4.2 * lines
+        - 1.4 * board.bit_count()
+        - 0.75 * isolated.bit_count()
+        - 1.5 * transitions
+        - 2.0 * (empty & EDGE_MASK).bit_count()
+    )
 
 
 class TrayBeamPolicy:
@@ -133,51 +150,52 @@ class TrayBeamPolicy:
     name = "tray-beam"
 
     def reset(self, game_seed):
-        self.rng = random.Random(f"risk:{game_seed}")
+        pass
 
     def act(self, game, actions):
-        board = _to_bits(game.board.grid)
+        root = _to_bits(game.board.grid)
         slots = tuple(i for i, piece in enumerate(game.pieces) if piece is not None)
-        frontier = [(board, slots, None)]
+        frontier = [(root, slots, None, 0)]
         tray_ends = []
         dead_ends = []
         while frontier:
             children = []
-            for b, rem, first in frontier:
+            for b, rem, first, lines_so_far in frontier:
                 for slot in rem:
                     rest = tuple(s for s in rem if s != slot)
                     for x, y, mask in POSES[game.pieces[slot].index]:
                         if b & mask:
                             continue
                         nb, lines = _place_and_clear(b, mask)
+                        total = lines_so_far + lines
                         move = first or (slot, x, y)
                         if not rest:
-                            tray_ends.append((_value(nb, lines), nb, move))
+                            tray_ends.append((_value(nb, total), nb, move))
                         elif not any(_fits(nb, game.pieces[s].index) for s in rest):
-                            dead_ends.append((_value(nb, lines), nb, move))
+                            dead_ends.append((_value(nb, total), nb, move))
                         else:
-                            children.append((_value(nb, lines), nb, rest, move))
+                            children.append((_value(nb, total), nb, rest, total, move))
             children.sort(key=lambda e: e[0], reverse=True)
-            frontier = [(nb, rest, move) for _, nb, rest, move in children[:BEAM_WIDTH]]
+            frontier = [(nb, rest, move, total) for _, nb, rest, total, move in children[:BEAM_WIDTH]]
 
         if not tray_ends:
             return max(dead_ends, key=lambda e: e[0])[2]
 
+        free = 64 - root.bit_count()
+        finalists = RISK_FINALISTS_TIGHT if free <= TIGHT_FREE_CELLS else RISK_FINALISTS
         tray_ends.sort(key=lambda e: e[0], reverse=True)
         best_move, best_score = None, None
-        for value, nb, move in tray_ends[:RISK_FINALISTS]:
-            score = value - DEATH_PENALTY * self._death_rate(nb)
+        for value, nb, move in tray_ends[:finalists]:
+            score = value - DEATH_PENALTY * _death_rate(nb)
             if best_score is None or score > best_score:
                 best_move, best_score = move, score
         return best_move
 
-    def _death_rate(self, board):
-        deaths = 0
-        for _ in range(RISK_SAMPLES):
-            tray = [self.rng.choice(self.rng.choice(PIECE_TYPES)) for _ in range(3)]
-            if not any(_fits(board, idx) for idx in tray):
-                deaths += 1
-        return deaths / RISK_SAMPLES
+
+def _death_rate(board):
+    # Trzy klocki losowane niezależnie: tacka martwa, gdy żaden z nich się nie mieści.
+    miss = sum(prob for idx, prob in POSE_PROBS if not _fits(board, idx))
+    return miss ** 3
 
 
 def build(weights=None):
