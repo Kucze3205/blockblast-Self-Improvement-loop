@@ -2,16 +2,25 @@
  "rodzic": "2.2",
  "rodzic_sha": "6eb7a68860b8b01136d036a1f79cf46a5e643580",
  "kolejnosc": 6,
- "sha": "6eb7a68860b8b01136d036a1f79cf46a5e643580",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "317908a5e0ea1ecc4b64259df397e1a9156e047e",
+ "stan": "ocena w toku",
+ "gist": "Polityka: kara za ogon z próbek następnej tacki",
+ "notatki": [
+  "Polityka: kara za ogon z próbek następnej tacki\n\nMechanizm:\nWynik finalisty = wartość − ryzyko − 400·udział martwych próbek. Próbka to losowa następna tacka z osobnego ziarna (`ogon:<seed>`, 64 na ruch). Martwa to taka, której nie da się ułożyć na planszy po danym finaliście (`_completable`, przeszukanie klocków z domykaniem linii). Przegląd (`_review`) bez zmian: nieukładalne próbki nadal są pomijane bez dodatkowej kary, bo karę niesie ogon.\n\nDowód z historii:\n- 9/1.3 (0,9889): ogon dołożony do planera bitowego z 9/2.2 (0,987), zysk +0,002 przy członie trudnych tacek.\n- 9/2.6 (0,9959): ogon zostaje, a przegląd pomija nieukładalne próbki bez podwójnej kary.\n- Diagnostyka 9/1.3: około 82% martwej masy leży w tackach mieszanych, których człon hard nie szacuje. Nasz risk to 2000·p³ przy założeniu, że klocki są niezależne i padają tylko wtedy, gdy żaden nie mieści się od razu. Nie widzi tacek, które padają w trakcie układania.\n\nDlaczego to nie powtórka:\nW 6eb7a68 martwe następne tacki były pomijane w przeglądzie i nigdzie nie karane poza p³, więc ruchy zostawiające takie tacki nie miały kary. Tu kara jest, a przegląd i ryzyko zostają jak w 6eb7a68. Ogonu nie było jeszcze w tym łańcuchu.\n\nRyzyka:\n- Wynik niezmierzony, ocenia ewaluator. Lokalnie: testy policies 11/11 (bitboard 5/5), 3 partie, 447 ruchów, 0 nielegalnych, act średnio 17,2 ms, maks. 44,2 ms.\n- TAIL_WEIGHT=400 i TAIL_DRAWS=64 przeniesione z drzewa 9 bez kalibracji na naszej skali (wartość 4 za linię, −1 za przejście, risk 2000·p³).\n- Podwójne liczenie: tacki całkowicie martwe są karane w risk (p³) i w ogonie. Drzewo 9 wyłączało tacki samo-twarde z ogona; tu tego nie ma. Jeśli wynik spadnie, to pierwsze podejrzenie.\n- Limit czasu nieczytelny: `.github` i `scripts` to urządzenia znakowe w tym środowisku, więc `limit_shardu_s` nie da się sprawdzić.\n\nCo dalej:\n- zrobione: 6eb7a68 (przegląd), ten commit (ogon).\n- następny krok: ocena tego commitu względem 6eb7a68 (0,827). Nie dokładać parametrów przed wynikiem.\n- czego nie powtarzać: przeglądu, który pomija martwe tacki bez żadnej kary (6eb7a68).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 34,
+  "usd": 2.1028,
+  "minuty": 8.8
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T13:01:13Z",
+   "koniec": "2026-10-12T13:10:00Z",
+   "tury": 34,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
