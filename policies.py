@@ -19,6 +19,7 @@ SCREEN_TOP = 16
 SCREEN_SAMPLES = 16
 REFINE_TOP = 3
 REFINE_SAMPLES = 256
+REVIEW_SAMPLES = 4
 POOL_KEYS = [valuation.shape_key(piece.shape) for piece in PIECE_POOL]
 
 
@@ -211,11 +212,19 @@ class RiskPolicy(NTuplePolicy):
             key=lambda item: -item[0],
         )
         best, best_score = None, None
-        for _, value, move, after in screened[:REFINE_TOP]:
-            score = survival_fraction(after, trays) * max(value, 0.0)
+        for _, _, move, after in screened[:REFINE_TOP]:
+            score = survival_fraction(after, trays) * self._review(after, trays[:REVIEW_SAMPLES])
             if best_score is None or score > best_score:
                 best, best_score = move, score
         return best
+
+    def _review(self, after, trays):
+        values = []
+        for tray in trays:
+            ends = self._tray_ends(after, tuple(enumerate(tray)))
+            if ends:
+                values.append(max(ends[0][0], 0.0))
+        return sum(values) / len(values) if values else 0.0
 
     def _tray_ends(self, occ, pieces):
         beam = [(occ, pieces, None)]

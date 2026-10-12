@@ -221,6 +221,13 @@ class TestTrayPlan(unittest.TestCase):
                 if done:
                     break
 
+    def test_review_is_best_next_value_on_feasible_tray_and_zero_otherwise(self):
+        policy = RiskPolicy([0.01] * valuation.TABLE_SIZE)
+        tray = (valuation.shape_key([[1]]),) * 3
+        best = policy._tray_ends(0, tuple(enumerate(tray)))[0][0]
+        self.assertAlmostEqual(policy._review(0, [tray]), best)
+        self.assertEqual(policy._review(FULL, [tray]), 0.0)
+
 
 class TestBuildAndPolicy(unittest.TestCase):
     def test_missing_weights_fall_back(self):
