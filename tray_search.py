@@ -75,8 +75,8 @@ def _finishable(board, left, failed):
 def tray_finals(board, pieces, width=None):
     """Plansze po całej tacce z pierwszym ruchem do każdej z nich, od najmniej zajętej.
 
-    pieces: lista (indeks w game.pieces, kształt). Pośrednie stany wiązki są ograniczone
-    do `width` najmniej zajętych; None oznacza pełny przegląd.
+    pieces: lista (indeks w game.pieces, kształt). Pośrednie stany są ograniczone do
+    `width` najmniej zajętych osobno dla każdej reszty tacki; None oznacza pełny przegląd.
     """
     left = tuple(sorted(pieces, key=lambda item: item[1]))
     frontier = {(board, tuple(k for _, k in left)): (None, left)}
@@ -96,10 +96,25 @@ def tray_finals(board, pieces, width=None):
                     else:
                         finals.setdefault(nb, move)
         frontier = nxt
-        if width is not None and len(frontier) > width:
-            kept = sorted(frontier.items(), key=lambda item: popcount(item[0][0]))[:width]
-            frontier = dict(kept)
-    return sorted(finals.items(), key=lambda item: popcount(item[0]))
+        if width is not None:
+            frontier = _beam(frontier, width)
+    return sorted(finals.items(), key=lambda item: _rank(item[0]))
+
+
+def _rank(board):
+    # Remisy po zajętości rozstrzyga hash planszy, nie kolejność wyliczenia (lewy górny róg).
+    return popcount(board), (board * 0x9E3779B97F4A7C15) & 0xFFFFFFFFFFFFFFFF
+
+
+def _beam(frontier, width):
+    groups = {}
+    for state, value in frontier.items():
+        groups.setdefault(state[1], []).append((state, value))
+    kept = {}
+    for members in groups.values():
+        members.sort(key=lambda item: _rank(item[0][0]))
+        kept.update(members[:width])
+    return kept
 
 
 def from_grid(grid):

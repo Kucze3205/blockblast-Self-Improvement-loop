@@ -114,6 +114,11 @@ class TrayFinalsTest(unittest.TestCase):
                 probe.grid = [row[:] for row in grid]
                 self.assertTrue(probe.can_place_piece(Piece(shapes[idx], "ref", -1), x, y))
 
+    def test_beam_does_not_prefer_top_left(self):
+        tray = [(0, shape_key([[1]])), (1, shape_key([[1, 1]])), (2, shape_key([[1, 1, 1]]))]
+        rows = {move[2] for _, move in tray_finals(0, tray, 40)}
+        self.assertGreater(len(rows), 1)
+
 
 class RiskTest(unittest.TestCase):
     def test_fits_matches_engine_for_all_poses(self):
