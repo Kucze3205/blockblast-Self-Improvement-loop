@@ -2,16 +2,25 @@
  "rodzic": "2.3",
  "rodzic_sha": "1a3be883799a53dabab4ccfe98217988e9c347b0",
  "kolejnosc": 7,
- "sha": "1a3be883799a53dabab4ccfe98217988e9c347b0",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "8c5071bfb46d320f57857079fd75939245430286",
+ "stan": "ocena w toku",
+ "gist": "Wybór zakończenia tacki: ekran 16 kandydatów, 256 próbek dla trzech",
+ "notatki": [
+  "Wybór zakończenia tacki: ekran 16 kandydatów, 256 próbek dla trzech\n\nMechanizm: RiskPolicy.act przesiewa 16 zakończeń tacki o najwyższym V\nułamkiem P z 16 wspólnych próbek następnej tacki. Trzy najlepsze wg\nP16 × V dostają 256 próbek (te same dla wszystkich trzech) i wybrany\nzostaje ruch o największym P256 × V. Wcześniej 8 zakończeń po V dostawało\npo 16 próbek.\n\nDowód z historii (pomiary, nie wynik oceny):\n- Ułamek nieudanych losowych tacek na planszy po jednej partii (seed 7,\n  policy z 2.3): 0,13% po 40 postawieniach, 0% po 80, 4,9% po 120.\n  Ryzyko zależy od stanu planszy, a przy K=16 krok to 6%, więc różnic\n  poniżej tego progu nie widać.\n- Diagnostyka 12 partii 2.3 (seedy 101-112): 10 kończy się w środku tacki,\n  0 na granicy tacki, a w tych partiach 19 decyzji nie miało ułożenia\n  całej tacki (fallback do max V).\n- Kandydaci do ryzyka brani były wyłącznie po V (top-8), więc ruch o\n  mniejszym ryzyku mógł nie trafić do przeglądu.\n\nDlaczego to nie powtórka: to nie strojenie K ani top. Zmienia się\nrozdział prób: szeroki przegląd tanią miarą, dokładna ocena wąskiego\nzbioru. 2.2 i 2.3 używały K=16 dla wszystkich ośmiu kandydatów.\n\nRyzyko:\n- Koszt decyzji ok. 17,5 ms (było ok. 2 ms). Na seedach 1-3: 483 decyzje,\n  0 nielegalnych ruchów. Czas oceny 2.3 to 0,3 min, więc spodziewam się\n  kilku minut. Limit czasu nieznany (config nieczytelny w tej piaskownicy).\n- 256 próbek to rozdzielczość ok. 0,4%. Ryzyko rzędu 0,1% nadal nie jest\n  widoczne.\n- Lokalnie 2.3 (HEAD przed tą zmianą) na seedach 1-40: 35 przegranych,\n  średnie przeżycie 231. Ocena 2.3 podaje 383/1200 przegranych i średnio\n  417. Greedy lokalnie: 40/40 przegranych. Rozbieżność nie wyjaśniona, a\n  liczby lokalne nie opisują nowego kodu.\n- tests/test_ntuple.py: 14 OK. test_engine pada na braku tkinter (jak\n  wcześniej).\n\nCo dalej:\n- zrobione: 1a3be88 (wiązka po tacce, 2.3), ten commit (ekran + 256).\n- następny krok: ocena tego commitu. Jeśli nie przebije 0.834, sprawdzić,\n  czy przegrane nadal to tacki bez ułożenia (diagnostyka jak wyżej, bez\n  zmiany oceny). Kolejny kandydat: dostroić V na polityce RiskPolicy\n  (TD od weights/ntuple.json), bo V trenowano na NTuplePolicy z 2-ply, a\n  ocenia RiskPolicy.\n- nie powtarzać: strojenia K i top bez zmiany mechanizmu; trening 1-ply.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 53,
+  "usd": 3.5171,
+  "minuty": 16.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-11T23:52:12Z",
+   "koniec": "2026-10-12T00:08:10Z",
+   "tury": 53,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
