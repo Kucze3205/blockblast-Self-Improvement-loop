@@ -14,7 +14,7 @@ from pieces import PIECE_POOL, PIECE_TYPES
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 NTUPLE_FILE = "ntuple.json"
-EVAL_BEAM = 4
+EVAL_BEAM = 8
 SCREEN_TOP = 16
 SCREEN_SAMPLES = 16
 REFINE_TOP = 3
