@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "e25b29cf955ca78c7bb8132cd4d2b1cbefe90627",
+ "stan": "ocena w toku",
+ "gist": "Dodaj build(weights): polityka przeszukująca tackę z ryzykiem następnej tacki na bitboardach",
+ "notatki": [
+  "Dodaj build(weights): polityka przeszukująca tackę z ryzykiem następnej tacki na bitboardach\n\nMechanizm: TrayPolicy dla każdego ruchu bierze legalne akcje z gry i przycina je po\nquick = (4·linie − izolowane, kontakt z planszą i krawędzią); szerokość 8 na korzeniu,\n3 i 2 na kolejnych poziomach tacki. Liść po wyczerpaniu tacki ma klucz\n(1 − (1 − q)³, mobilność, −izolowane, punkty). q to dokładne prawdopodobieństwo, że\nlosowy klocek mieści się na planszy: suma P = 1/(15·|typ|) po 41 pozach, zgodnie z\ngeneratorem. Mobilność to oczekiwana liczba miejsc dla losowego klocka.\n\nDowód: w HEAD nie było policies.build (grep), więc ocena dawała 0 niezależnie od\nstrategii. Bitboardy sprawdzone względem symulatora na losowych planszach: 0\nrozbieżności w 4920 sprawdzeniach kotwic, 14034 czyszczeniach linii, 120 izolowanych\nkomórkach i 120 liściach. tests/test_engine.py: 16 zaliczonych, 1 nie przeszedł przez\nbrak tkinter w teście agenta (poza zmienianym plikiem). Czas: 3 partie kontrolne,\nśrednio 1,48 ms na ruch, najdłuższy ruch 6,39 ms. Wynik NIE jest zmierzony.\n\nDlaczego to nie powtórka: ryzyko tacki jest analityczne (bez próbkowania tacek jak\nw poprzedniku z CRN), przeszukiwanie obejmuje całą tackę z przycinaniem po kontakcie,\na liście działają na bitboardach. Nie kopiuje beamu z 8/1.6.\n\nRyzyko: w 3 partiach kontrolnych gra kończyła się przed limitem 500 ruchów (łącznie\n275 ruchów). To nie jest pomiar wyniku ani dowód jakości, ale polityka może być\nwyraźnie słabsza od rekordu. Wagi nie były strojone. Horyzont to jedna tacka.\n\nCo dalej: zmierzyć ocenę. Jeśli wynik będzie niski, następny krok to ranking korzeni\npo mobilności zamiast po kontakcie (~60 µs na kandydata, mieści się w budżecie\nczasu). Progów nie stroić bez pomiaru.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 41,
+  "usd": 3.2714,
+  "minuty": 15.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T03:56:34Z",
+   "koniec": "2026-10-12T04:11:38Z",
+   "tury": 41,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
