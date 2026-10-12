@@ -8,6 +8,7 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
+from tray_search import TraySearchPolicy
 
 
 class RandomPolicy:
@@ -56,6 +57,10 @@ class ModelPolicy:
         grid, shapes, numeric, _ = self.agent.get_state(game)
         move = self.agent.get_action((grid, shapes, numeric), epsilon=0.0)
         return tuple(move)
+
+
+def build(weights=None):
+    return TraySearchPolicy()
 
 
 def _immediate_gain(game, action):
