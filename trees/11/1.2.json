@@ -2,16 +2,25 @@
  "rodzic": "1.1",
  "rodzic_sha": "e25b29cf955ca78c7bb8132cd4d2b1cbefe90627",
  "kolejnosc": 3,
- "sha": "e25b29cf955ca78c7bb8132cd4d2b1cbefe90627",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "75037146cb919ff154ae3f28219132b1ecb6f6f4",
+ "stan": "ocena w toku",
+ "gist": "Przycinaj tackę po miejscu pozostałych klocków i oceniaj ostatni klocek w całości",
+ "notatki": [
+  "Przycinaj tackę po miejscu pozostałych klocków i oceniaj ostatni klocek w całości\n\nMechanizm: w _search i w korzeniu kandydaci są sortowani po _order = (room, linie,\nminus izolowane), gdzie room to suma anchors pozostałych klocków tacki na planszy po\npostawieniu. Dawniej sortowanie szło po quick = (4·linie − izolowane, kontakt), które\nnie wiedziało, czy reszta tacki się zmieści. Ostatni klocek tacki (jeden w puli) jest\noceniany przez _leaf dla każdego legalnego postawienia, bez limitu szerokości.\nSzerokości korzenia (8) i poziomu środkowego (3) zostają.\n\nDowód z historii: w 11/1.1 przegrało 526 z 1200 partii, a straty rozkładają się od 20 do\n450 ruchów, więc to nie ogon. W trzech wczesnych przegranych partiach kontrolnych\n(ziarna 11, 15, 37) plansza miała 29–43 puste pola, rozdrobnione na kieszenie, a\nizolowane pola wynosiły 0 we wszystkich trzech. Kara za izolowane nie widzi tego\nproblemu, a w kluczu stoi po mobilności, więc rozstrzyga tylko przy remisie mobilności.\nQuick przycinał wszystkie legalne postawienia pierwszego klocka do 8 po kontakcie,\nnie po tym, co zostaje w tacce.\n\nDlaczego to nie powtórka: zmienia się kryterium przycinania (miejsce dla reszty\ntacki zamiast kontaktu) i ocena ostatniego klocka. Nie wprowadzam próbkowania\nnastępnej tacki (CRN) i nie kopiuję kodu z drzew 8–9, bo go nie mam w repozytorium.\n\nRyzyko: koszt ruchu wzrósł. Trzy partie kontrolne (ziarna 101–103, do 150 ruchów):\n257 ruchów, średnio 5,7 ms, najdłuższy 25,9 ms, bez wyjątków i z legalnym ruchem za\nkażdym razem. tests/test_engine.py: 16 zaliczonych, 1 nie przeszedł przez brak tkinter\n(jak w 11/1.1, poza zmienianym plikiem). Wynik NIE jest zmierzony. Szerokości nie\nstroiłem.\n\nCo dalej: zmierzyć ocenę. Jeśli wynik będzie niski, sprawdzić, czy room nie premiuje\nrozkładania klocków zamiast czyszczenia linii; wtedy linie przed room. Następny krok,\njeśli węzeł będzie dobry: przegląd następnej tacki na wspólnych losowaniach. Nie wracać\ndo quick ani do kontaktu jako kryterium przycinania. Zrobione: przepisane przycinanie\ni ocena ostatniego klocka, baza e25b29c.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 40,
+  "usd": 2.2248,
+  "minuty": 9.7
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T08:58:25Z",
+   "koniec": "2026-10-12T09:08:06Z",
+   "tury": 40,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
