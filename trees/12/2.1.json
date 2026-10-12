@@ -2,16 +2,27 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "b752608d1467c33c249d4a7222896a68c2cf086f",
+ "stan": "ocena w toku",
+ "gist": "Polityka: gdy wiązka nie domyka tacki, wybieraj najwięcej postawień",
+ "notatki": [
+  "Polityka: gdy wiązka nie domyka tacki, wybieraj najwięcej postawień\n\nMechanizm: gdy wiązka (4,3) nie domknie żadnej tacki, act zwracał actions[0].\nTeraz _survive_longest wybiera ruch z największą liczbą postawień z tej tacki\n(dokładny DFS _placements_left z wczesnym wyjściem), a przy remisie większe\nfit po ruchu. Gdy wiązka domknie tackę, wybór się nie zmienia.\n\nDowód: seed 11 z diagnozy (diag_81). Tacka 1x1, beam4-1, beam5-1 przed 81.\nruchem: pełne przeszukanie daje 3 postawienia, actions[0] dawał 2 i tacka\numarła. Test test_move_completes_tray_that_beam_misses był czerwony (2 != 3)\nprzed zmianą, a teraz przechodzi. Seedy 12 i 13 z tej diagnozy nie wynikały\nz tego błędu (tacka miała już optymalne postawienia), więc ich nie adresuje.\n\nDlaczego to nie powtórka: to poprawka konkretnego błędu w bazie ab397c8, nie\nnowy mechanizm. Ta sama idea (najdłuższa sekwencja postawień zamiast\nactions[0]) była w drzewie 9, węzeł 2.1, a podobna (ostatnia warstwa wiązki\nzamiast actions[0]) w drzewie 7, węzeł 5.3 i w drzewie 11, węzeł 2.2. Tamte\nwęzły zmieniały też inne rzeczy, więc ich efektu nie wyizolowano. Wagi i\nszerokość wiązki zostają bez zmian: drzewo 6, węzeł 5.3 uznał wiązkę 12 za\nbłąd (przywrócono 40), a w drzewie 4 poszerzenie wiązki (węzły 2.2 i 3.2)\nskończyło się \"za wolna\" przy ok. 57 min.\n\nRyzyko: wynik nieznany, oceny nie mierzę. Lokalnie w 20 partiach: 2513 ruchów,\n0 wrong_placement, act średnio 1.10 ms, max 7.05 ms. Fallback wystąpił w 71\nz 5249 ruchów (40 partii). Dokończenie tacki istniało w 5 z 71, a actions[0]\ndawał mniej postawień z tacki niż wybrany ruch w 4 z 71. Efekt powinien być\nmały. Fallback nie patrzy na następną tackę.\n\nCo dalej:\n- zrobione: b5584c8 (maski kotwic zgodne z Board), ab397c8 (wiązka po tacce,\n  build(weights)), ten commit (wybór fallbacku po postawieniach).\n- następny krok: ocena tego commitu. Jeśli wynik nie ruszy, kolejna próba to\n  baza ab397c8 z przeglądem następnej tacki (element z drzewa 9, węzeł 2.1),\n  a nie kolejna zmiana fallbacku.\n- czego nie powtarzać: poprawek fallbacku jako głównej dźwigni (drzewo 7,\n  węzeł 2.3: 0 z 8 dokończeń; tutaj 5 z 71).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Polityka build(weights): wiązka po tacce z kontrolą klocka bez miejsca\n\nMechanizm:\n- build(weights) zwraca TrayBeamPolicy; wagi są ignorowane. act przeszukuje\n  wszystkie legalne ruchy tacki wiązką szerokości 4, potem 3. Po każdym\n  postawieniu sprawdza dokładnie na maskach, czy któryś z pozostałych klocków\n  się mieści; jeśli nie, gałąź umiera.\n- Liść to koniec tacki. Wartość = f planszy (szansa, że losowy klocek mieści\n  się gdziekolwiek), z tie-break M * 1e-5. Maksymalizacja f jest tym samym co\n  minimalizacja (1-f)^3, czyli ryzyka, że następna tacka nie ma żadnego klocka.\n- Koszt: 36 do 472 wywołań fit_masks na ruch. Zmierzone w 3 partiach\n  kontrolnych (bez oceny wyniku): średnio 0.91 ms, najgorszy ruch 4.8 ms.\n\nDowód z historii:\n- 9/1.1 (wiązka po całej tacce z ryzykiem klocka bez miejsca): s_sym 0.950.\n  9/2.1 (przegląd następnej tacki na próbkach, CRN): 0.963. Najlepszy węzeł\n  9/2.6 (0.996) doszedł przez kolejne dostrajanie kar za ogon.\n- Kodu tych prób w repo nie ma, więc powyższe opiera się na notatkach.\n\nDlaczego to nie powtórka:\n- Szkielet (wiązka + klocek bez miejsca) jest ten sam co 9/1.1. Różnica:\n  liść to dokładne f zamiast przeglądu na próbkach, a M to tylko tie-break,\n  nie człon z drzewa 4. Nie ma kar za ogon, martwe mieszane tacki ani przejścia.\n\nRyzyko:\n- Wynik niezmierzony; ocenia ewaluator.\n- Liść nie widzi śmierci w środku następnej tacki, którą CRN w drzewie 9\n  łapał. Może to być gorsze od 9/2.x.\n- W 3 partiach kontrolnych (seedy 11-13) łącznie było 363 postawienia, czyli\n  gry kończyły się krótko. To nie jest wynik, tylko sygnał, że f jako jedyny\n  człon liścia może być za krótkowzroczny.\n\nCo dalej:\n- zrobione: b5584c8 (bitboard i testy), ten commit (policies.build,\n  TrayBeamPolicy, tests/test_policies.py).\n- następny krok: zdiagnozować plansze w chwili śmierci w partiach kontrolnych\n  (zapełnienie, dziury, brak pasujących pól) i dopiero wtedy wybrać mechanizm\n  spoza listy z drzew 1-11 (sprawdzić INDEKS-y przed wyborem).\n- czego nie powtarzać: dokładania kolejnej kary za ogon lub przegląd na\n  próbkach bez diagnozy śmierci.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Bitboard: maski kotwic i postawienie klocka zgodne z Board\n\nMechanizm:\n- fit_masks liczy dla każdej z 41 poz maskę kotwic, na których cały klocek\n  mieści się na wolnych polach. Wolne pola przesuwa się raz dla każdego\n  przesunięcia (dy, dx) z pozy, a maska pozy to AND przesunięć jej komórek.\n- fit_stats daje f (szansę, że losowy klocek mieści się gdziekolwiek, z wagami\n  generatora: typ jednostajnie, potem poza) i M (oczekiwaną liczbę kotwic).\n- place stawia pozę i czyści pełne wiersze i kolumny na jednej liczbie\n  całkowitej. Zakłada, że ruch jest legalny.\n\nDowód z historii:\n- Bitboardy i ryzyko następnej tacki były w drzewie 8 (korzeń 0.773) i 9\n  (korzeń 9/1.1 0.950, najlepszy węzeł 9/2.6 0.996). Kodu tamtych prób w repo\n  nie ma, więc warstwę trzeba odtworzyć. Tu sprawdzana jest zgodność z Board,\n  a nie z notatkami.\n\nDlaczego to nie powtórka:\n- To tylko geometria. Nie wybiera jeszcze ruchu, więc nie powtarza żadnej\n  strategii z poprzednich drzew.\n\nRyzyko:\n- Wynik niezmierzony. HEAD nie ma policies.build, więc ocena najpewniej\n  daje 0 do czasu następnego commitu.\n- place nie sprawdza legalności; wywołujący musi podać ruch z actions.\n- f nie widzi śmierci w środku tacki, tylko to, czy klocek mieści się gdziekolwiek.\n\nCo dalej:\n- zrobione: caf8e72 (stan początkowy); ten commit: bitboard.py,\n  tests/test_bitboard.py. 5 testów zielonych, 24642 legalne ruchy w próbce,\n  z czyszczeniem linii 530.\n- następny krok: policies.build(weights) z wiązką po tacce na tych maskach;\n  kontrola legalności i czasu ruchu na kilku partiach, bez mierzenia wyniku.\n- czego nie powtarzać: dopisywania kar (ogon, tail, przejścia) przed\n  działającym build.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 116,
+  "usd": 7.9967,
+  "minuty": 34.9
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T11:59:31Z",
+   "koniec": "2026-10-12T12:34:24Z",
+   "tury": 116,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
