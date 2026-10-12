@@ -100,6 +100,10 @@ _BEAM = 48
 _FINALS = 20
 _TAIL_DRAWS = 64
 _TAIL_W = 400.0
+_TRAY_FAIL = 400.0
+_REVIEW_HEADS = 3
+_REVIEW_DRAWS = 4
+_REVIEW_BEAM = 12
 
 
 def _placements(shape):
@@ -209,6 +213,63 @@ def _tail_share(bits, trays):
     return dead / len(trays)
 
 
+def _search(start, slots, beam):
+    frontier = [(_value(0, start), 0, start, (1 << len(slots)) - 1, None)]
+    last = []
+    complete = []
+    while frontier:
+        children = {}
+        for _, clears, bits, rem, first in frontier:
+            for j, (idx, places) in enumerate(slots):
+                if not (rem >> j) & 1:
+                    continue
+                left = rem & ~(1 << j)
+                for x, y, mask in places:
+                    if bits & mask:
+                        continue
+                    nxt, lines = _clear_lines(bits | mask)
+                    cl = clears + lines
+                    val = _value(cl, nxt)
+                    key = (nxt, left)
+                    prev = children.get(key)
+                    if prev is None or val > prev[0]:
+                        children[key] = (val, cl, nxt, left, first or (idx, x, y))
+        frontier = []
+        for val, cl, nxt, left, move in sorted(children.values(), key=lambda s: s[0], reverse=True):
+            if left == 0:
+                complete.append((val, nxt, move))
+            elif len(frontier) < beam and any(
+                _fits(nxt, slots[k][1]) for k in range(len(slots)) if (left >> k) & 1
+            ):
+                frontier.append((val, cl, nxt, left, move))
+        if frontier:
+            last = frontier
+    return complete, last
+
+
+def _heads(scored):
+    heads, seen = [], set()
+    for score, final in sorted(scored, key=lambda h: h[0], reverse=True):
+        if final[2] in seen:
+            continue
+        seen.add(final[2])
+        heads.append((score, final))
+        if len(heads) == _REVIEW_HEADS:
+            break
+    return heads
+
+
+def _review(bits, draws):
+    values = []
+    for tray in draws:
+        slots = [(idx, _shape_placements(piece.shape)) for idx, piece in enumerate(tray)]
+        complete, _ = _search(bits, slots, _REVIEW_BEAM)
+        if complete:
+            val, nxt, _ = max(complete, key=lambda s: s[0])
+            values.append(val - _risk(nxt))
+    return sum(values) / len(values) if values else -_TRAY_FAIL
+
+
 class TraySearchPolicy:
     """Wiązka po klockach tacki; finaliści oceniani ryzykiem następnej tacki i ogonem martwych tacek."""
 
@@ -220,45 +281,19 @@ class TraySearchPolicy:
     def reset(self, game_seed):
         # Osobne ziarno: losowanie z generatora gry zmieniłoby prawdziwe tacki.
         self._tail = Generator(f"ogon:{game_seed}")
+        self._draws = Generator(f"przeglad:{game_seed}")
 
     def act(self, game, actions):
         slots = [(idx, _shape_placements(piece.shape)) for idx, piece in enumerate(game.pieces) if piece is not None]
-        start = _grid_bits(game.board.grid)
-        full_rem = (1 << len(slots)) - 1
-        frontier = [(_value(0, start), 0, start, full_rem, None)]
-        last = []
-        complete = []
-        while frontier:
-            children = {}
-            for _, clears, bits, rem, first in frontier:
-                for j, (idx, places) in enumerate(slots):
-                    if not (rem >> j) & 1:
-                        continue
-                    left = rem & ~(1 << j)
-                    for x, y, mask in places:
-                        if bits & mask:
-                            continue
-                        nxt, lines = _clear_lines(bits | mask)
-                        cl = clears + lines
-                        val = _value(cl, nxt)
-                        key = (nxt, left)
-                        prev = children.get(key)
-                        if prev is None or val > prev[0]:
-                            children[key] = (val, cl, nxt, left, first or (idx, x, y))
-            frontier = []
-            for val, cl, nxt, left, move in sorted(children.values(), key=lambda s: s[0], reverse=True):
-                if left == 0:
-                    complete.append((val, nxt, move))
-                elif len(frontier) < _BEAM and any(
-                    _fits(nxt, slots[k][1]) for k in range(len(slots)) if (left >> k) & 1
-                ):
-                    frontier.append((val, cl, nxt, left, move))
-            if frontier:
-                last = frontier
+        complete, last = _search(_grid_bits(game.board.grid), slots, _BEAM)
         if complete:
             finalists = sorted(complete, key=lambda s: s[0], reverse=True)[:_FINALS]
             trays = [self._tail.next_pieces() for _ in range(_TAIL_DRAWS)]
-            return max(finalists, key=lambda s: s[0] - _risk(s[1]) - _TAIL_W * _tail_share(s[1], trays))[2]
+            heads = _heads([(s[0] - _risk(s[1]) - _TAIL_W * _tail_share(s[1], trays), s) for s in finalists])
+            if len(heads) == 1:
+                return heads[0][1][2]
+            draws = [self._draws.next_pieces() for _ in range(_REVIEW_DRAWS)]
+            return max(heads, key=lambda h: h[0] + _review(h[1][1], draws))[1][2]
         if last:
             return max(last, key=lambda s: s[0])[4]
         return actions[0]

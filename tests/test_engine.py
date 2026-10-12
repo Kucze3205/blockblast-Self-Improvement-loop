@@ -304,5 +304,17 @@ class TestTail(unittest.TestCase):
         self.assertEqual(policies._tail_share(self.bits, [[self.square] * 3]), 0.0)
 
 
+class TestReview(unittest.TestCase):
+    def test_review_skips_trays_that_cannot_be_completed(self):
+        grid = [[1] * Board.WIDTH for _ in range(Board.HEIGHT)]
+        for x in range(3):
+            grid[0][x] = 0
+        bits = policies._grid_bits(grid)
+        fits = [Piece([[1]], "dot", -1)] * 3
+        square = [Piece([[1, 1], [1, 1]], "square", -1)] * 3
+        self.assertEqual(policies._review(bits, [square, fits]), policies._review(bits, [fits]))
+        self.assertEqual(policies._review(bits, [square]), -policies._TRAY_FAIL)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
