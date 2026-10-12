@@ -7,7 +7,7 @@ co polityka umie, a nie jak wypada w trakcie nauki (#8).
 import random
 
 from board import Board
-from pieces import PIECE_POOL, PIECE_TYPES
+from pieces import CANONICAL_TYPES, PIECE_POOL, PIECE_TYPES
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 
@@ -79,7 +79,12 @@ def _immediate_gain(game, action):
 
 BEAM = 120
 REVIEW = 8
-DRAWS = 64
+MIXED_DRAWS = 64
+HARD_DRAWS = 64
+HARD_TYPE_NAMES = ("square3", "rect23", "beam5", "corner5", "beam4")
+HARD_TYPES = [t for t, (name, _) in enumerate(CANONICAL_TYPES) if name in HARD_TYPE_NAMES]
+ALL_TYPES = list(range(len(PIECE_TYPES)))
+P_HARD = (len(HARD_TYPES) / len(PIECE_TYPES)) ** 3
 DEATH = 400
 RISK_CUBE = 400
 RISK_MEAN = 80
@@ -207,6 +212,11 @@ def _risk(occ):
     return RISK_CUBE * cube + RISK_MEAN * (1 - sum(shares) / len(shares)) + RISK_DEAD_TYPE * dead
 
 
+def _sample_tray(rng, type_ids):
+    types = [rng.choice(type_ids) for _ in range(3)]
+    return types, [POSES[rng.choice(PIECE_TYPES[t])] for t in types]
+
+
 class TrayBeamPolicy:
     """Przeszukuje całą tackę (wszystkie kolejności) wiązką na bitboardach."""
 
@@ -223,15 +233,19 @@ class TrayBeamPolicy:
                     occ |= 1 << (r * 8 + c)
         slots = [(i, POSES[p.index]) for i, p in enumerate(game.pieces) if p is not None]
         finals = _tray_finals(occ, slots)
-        draws = [
-            [POSES[self.rng.choice(self.rng.choice(PIECE_TYPES))] for _ in range(3)]
-            for _ in range(DRAWS)
-        ]
+        mixed = []
+        while len(mixed) < MIXED_DRAWS:
+            types, tray = _sample_tray(self.rng, ALL_TYPES)
+            if not all(t in HARD_TYPES for t in types):
+                mixed.append(tray)
+        # Tacki samo-twarde są rzadkie (P = 1/27), więc losowane osobno, a nie w próbce mieszanej.
+        hard = [_sample_tray(self.rng, HARD_TYPES)[1] for _ in range(HARD_DRAWS)]
 
         def review(final):
             value, _, board = final
-            dead = sum(not _completable(board, draw) for draw in draws)
-            return value - _risk(board) - DEATH * dead / DRAWS
+            dead_mixed = sum(not _completable(board, tray) for tray in mixed) / MIXED_DRAWS
+            dead_hard = sum(not _completable(board, tray) for tray in hard) / HARD_DRAWS
+            return value - _risk(board) - DEATH * ((1 - P_HARD) * dead_mixed + P_HARD * dead_hard)
 
         move = max(finals, key=review)[1]
         return move if move in actions else actions[0]
