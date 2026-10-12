@@ -8,6 +8,7 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
+from tray_search import best_move, board_bits
 
 
 class RandomPolicy:
@@ -74,3 +75,21 @@ def _immediate_gain(game, action):
         if not any(any(row) for row in board.grid):
             gain += FULL_CLEAR_BONUS
     return gain
+
+
+class SearchPolicy:
+    """Przeszukanie tacki na bitboardach; liście oceniane ryzykiem następnej tacki."""
+
+    name = "search"
+
+    def reset(self, game_seed):
+        pass
+
+    def act(self, game, actions):
+        tray = [(i, piece.index) for i, piece in enumerate(game.pieces) if piece is not None]
+        tray_idx, anchor = best_move(board_bits(game.board), tray)
+        return (tray_idx, anchor % Board.WIDTH, anchor // Board.WIDTH)
+
+
+def build(weights=None):
+    return SearchPolicy()
