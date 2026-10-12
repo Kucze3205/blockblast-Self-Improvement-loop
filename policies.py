@@ -8,6 +8,7 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
+from tray_search import clear, completable, from_grid, mask_at, shape_key
 
 
 class RandomPolicy:
@@ -74,3 +75,29 @@ def _immediate_gain(game, action):
         if not any(any(row) for row in board.grid):
             gain += FULL_CLEAR_BONUS
     return gain
+
+
+class TrayPolicy:
+    """Wybiera ruch, po którym reszta tacki nadal się układa; przy remisie mniej zajętych pól."""
+
+    name = "tray"
+
+    def reset(self, game_seed):
+        pass
+
+    def act(self, game, actions):
+        board = from_grid(game.board.grid)
+        best, best_key = actions[0], None
+        for action in actions:
+            idx, x, y = action
+            after = clear(board | mask_at(shape_key(game.pieces[idx].shape), x, y))
+            rest = [shape_key(p.shape) for j, p in enumerate(game.pieces)
+                    if p is not None and j != idx]
+            key = (completable(after, rest), -bin(after).count("1"))
+            if best_key is None or key > best_key:
+                best, best_key = action, key
+        return best
+
+
+def build(weights):
+    return TrayPolicy()
