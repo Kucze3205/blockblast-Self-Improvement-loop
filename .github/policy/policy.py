@@ -16,6 +16,7 @@ GAP = 0.03        # łańcuch, którego rekord jest o tyle gorszy od najlepszego
 GAP_PER_ROUND = 0.01   # tyle luzu więcej na każdą pozostałą rundę
 NEAR = 0.01       # łańcuch z rekordem w tej odległości od najlepszego nie jest zamykany za zastój
 OPEN_ROOTS = 2    # tyle korzeni otwieramy na starcie; paczka kosztuje najdroższy węzeł
+CEILING = 0.98    # od tego wyniku wzwyż zysk do 1.0 jest mniejszy niż koszt kolejnej rundy
 
 
 def _stalled(nodes):
@@ -36,6 +37,8 @@ def solve(question):
     for o in obs:
         chains.setdefault(o["lancuch"], []).append(o)
     global_best = max(o["s_v"] for o in obs)
+    if global_best >= CEILING:
+        return []
     remaining = max(0, question.max_rounds - question.round - 1)
     gap = GAP + GAP_PER_ROUND * remaining
     packet = []
