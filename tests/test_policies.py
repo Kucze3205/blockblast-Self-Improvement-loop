@@ -10,6 +10,7 @@ import bitboard
 import policies
 from board import Board
 from game import Game
+from generator import Generator
 from pieces import PIECE_POOL, Piece
 
 SEED11_BEFORE_PLACEMENT_81 = [
@@ -141,6 +142,45 @@ class TestTraySearchPolicy(unittest.TestCase):
                    for y in range(8) for x in range(8) if board.can_place_piece(p, x, y)]
         game = SimpleNamespace(board=board, pieces=pieces, combo=0)
         self.assertIn(policies.build(None).act(game, actions), actions)
+
+
+class TestTrayReview(unittest.TestCase):
+    def test_review_skips_unplaceable_trays(self):
+        grid = [[1] * 8 for _ in range(8)]
+        for x in range(3):
+            grid[0][x] = 0
+        board = bitboard.occupancy(grid)
+        fits = [Piece([[1]], "bridge", -1)] * 3
+        square = [Piece([[1, 1], [1, 1]], "bridge", -1)] * 3
+        self.assertEqual(policies._review(board, [square, fits]), policies._review(board, [fits]))
+        self.assertEqual(policies._review(board, [square]), -policies.TRAY_FAIL)
+
+
+class TestReviewDraws(unittest.TestCase):
+    def test_same_seed_plays_same_game(self):
+        def play(seed):
+            policy = policies.build(None)
+            policy.reset(seed)
+            game = Game(seed=seed)
+            moves = []
+            for _ in range(40):
+                actions = game.available_actions()
+                if game.done or not actions:
+                    break
+                move = policy.act(game, actions)
+                moves.append(move)
+                game.step(move)
+            return moves
+
+        self.assertEqual(play(4), play(4))
+
+    def test_review_draws_differ_from_game_stream(self):
+        policy = policies.build(None)
+        policy.reset(7)
+        reviewed = [[p.name for p in policy._draws.next_pieces()] for _ in range(2)]
+        generator = Generator(7)
+        game = [[p.name for p in generator.next_pieces()] for _ in range(2)]
+        self.assertNotEqual(reviewed, game)
 
 
 if __name__ == "__main__":

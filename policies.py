@@ -8,6 +8,7 @@ import random
 
 import bitboard
 from board import Board
+from generator import Generator
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 
@@ -83,6 +84,9 @@ NOFIT_WEIGHT = 30.0
 DEAD_WEIGHT = 2000.0
 BEAM = 12
 FINALISTS = 12
+REVIEW = 3
+DRAWS = 4
+TRAY_FAIL = 400.0
 
 _NOT_RIGHT_COL = sum(1 << (bitboard.SIZE * y + x) for y in range(bitboard.SIZE) for x in range(bitboard.SIZE - 1))
 _NOT_BOTTOM_ROW = (1 << (bitboard.SIZE * (bitboard.SIZE - 1))) - 1
@@ -96,19 +100,26 @@ def build(weights):
 
 
 class TraySearchPolicy:
-    """Wiązka po klockach tacki; finaliści oceniani wartością planszy minus ryzykiem następnej tacki."""
+    """Wiązka po klockach tacki; trzy najlepsze pierwsze ruchy przegląda następna tacka na wspólnych losowaniach."""
+
+    def __init__(self):
+        self.reset(0)
 
     def reset(self, game_seed):
-        pass
+        # Inne ziarno niż w generatorze gry, inaczej przegląd widziałby prawdziwą następną tackę.
+        self._draws = Generator(f"przeglad:{game_seed}")
 
     def act(self, game, actions):
         slots = [(idx, _placements(piece.shape)) for idx, piece in enumerate(game.pieces) if piece is not None]
         occupied = bitboard.occupancy(game.board.grid)
         complete = _search(occupied, slots)
-        if complete:
-            finalists = sorted(complete, key=lambda s: s[0], reverse=True)[:FINALISTS]
-            return max(finalists, key=lambda s: s[0] - _risk(s[1]))[2]
-        return _survive_longest(slots, occupied)
+        if not complete:
+            return _survive_longest(slots, occupied)
+        heads = _heads(complete)
+        if len(heads) == 1:
+            return heads[0][2]
+        trays = [self._draws.next_pieces() for _ in range(DRAWS)]
+        return max(heads, key=lambda h: h[0] + _review(h[1], trays))[2]
 
 
 def _placements(shape):
@@ -176,6 +187,32 @@ def _search(start, slots):
             elif len(frontier) < BEAM and any(_fits(nxt, slots[k][1]) for k in range(len(slots)) if (left >> k) & 1):
                 frontier.append((val, cl, nxt, left, move))
     return complete
+
+
+def _ranked(complete):
+    finalists = sorted(complete, key=lambda s: s[0], reverse=True)[:FINALISTS]
+    return sorted(((s[0] - _risk(s[1]), s[1], s[2]) for s in finalists), key=lambda h: h[0], reverse=True)
+
+
+def _heads(complete):
+    heads, seen = [], set()
+    for head in _ranked(complete):
+        if head[2] in seen:
+            continue
+        seen.add(head[2])
+        heads.append(head)
+        if len(heads) == REVIEW:
+            break
+    return heads
+
+
+def _review(board, trays):
+    values = []
+    for tray in trays:
+        ranked = _ranked(_search(board, [(i, _placements(piece.shape)) for i, piece in enumerate(tray)]))
+        if ranked:
+            values.append(ranked[0][0])
+    return sum(values) / len(values) if values else -TRAY_FAIL
 
 
 def _survive_longest(slots, occupied):
