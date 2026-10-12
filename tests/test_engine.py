@@ -284,5 +284,25 @@ class TestTraySearchPolicy(unittest.TestCase):
         self.assertAlmostEqual(policies._risk(policies._FULL), full_board)
 
 
+class TestTail(unittest.TestCase):
+    def setUp(self):
+        rows = [[1] * Board.WIDTH for _ in range(Board.HEIGHT)]
+        for x, y in [(0, 0), (1, 0), (7, 0), (0, 5), (1, 3), (2, 1), (3, 2), (4, 4), (5, 6), (6, 7)]:
+            rows[y][x] = 0
+        self.bits = policies._grid_bits(rows)
+        self.domino = Piece([[1, 1]], "domino", 0)
+        self.square = Piece([[1, 1, 1], [1, 1, 1], [1, 1, 1]], "square", 0)
+
+    def test_second_domino_has_no_room(self):
+        slots = [policies._shape_placements(self.domino.shape)] * 2
+        self.assertFalse(policies._completable(self.bits, slots))
+        self.assertTrue(policies._completable(self.bits, slots[:1]))
+
+    def test_tail_counts_mixed_dead_trays_only(self):
+        mixed_dead = [self.domino] * 3
+        self.assertAlmostEqual(policies._tail_share(self.bits, [mixed_dead, [self.domino]]), 0.5)
+        self.assertEqual(policies._tail_share(self.bits, [[self.square] * 3]), 0.0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

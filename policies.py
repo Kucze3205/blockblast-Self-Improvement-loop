@@ -7,6 +7,7 @@ co polityka umie, a nie jak wypada w trakcie nauki (#8).
 import random
 
 from board import Board
+from generator import Generator
 from pieces import PIECE_POOL, PIECE_TYPES
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
@@ -97,6 +98,8 @@ _LIN_W = 80.0
 _DEAD_W = 12.3
 _BEAM = 48
 _FINALS = 20
+_TAIL_DRAWS = 64
+_TAIL_W = 400.0
 
 
 def _placements(shape):
@@ -172,16 +175,54 @@ def _risk(bits):
     return _CUBE_W * (1.0 - mean_alive) ** 3 + _LIN_W * (1.0 - mean_all) + _DEAD_W * (len(shares) - len(alive))
 
 
+_SHAPE_PLACEMENTS = {}
+
+
+def _shape_placements(shape):
+    key = tuple(tuple(row) for row in shape)
+    places = _SHAPE_PLACEMENTS.get(key)
+    if places is None:
+        places = _SHAPE_PLACEMENTS[key] = _placements(shape)
+    return places
+
+
+def _completable(bits, slots):
+    if not slots:
+        return True
+    for j, places in enumerate(slots):
+        rest = slots[:j] + slots[j + 1:]
+        for _, _, mask in places:
+            if bits & mask:
+                continue
+            child, _ = _clear_lines(bits | mask)
+            if _completable(child, rest):
+                return True
+    return False
+
+
+def _tail_share(bits, trays):
+    dead = 0
+    for tray in trays:
+        slots = [_shape_placements(piece.shape) for piece in tray]
+        if any(_fits(bits, places) for places in slots) and not _completable(bits, slots):
+            dead += 1
+    return dead / len(trays)
+
+
 class TraySearchPolicy:
-    """Wiązka po klockach tacki; finaliści oceniani ryzykiem następnej tacki."""
+    """Wiązka po klockach tacki; finaliści oceniani ryzykiem następnej tacki i ogonem martwych tacek."""
 
     name = "tray"
 
+    def __init__(self):
+        self.reset(0)
+
     def reset(self, game_seed):
-        pass
+        # Osobne ziarno: losowanie z generatora gry zmieniłoby prawdziwe tacki.
+        self._tail = Generator(f"ogon:{game_seed}")
 
     def act(self, game, actions):
-        slots = [(idx, _placements(piece.shape)) for idx, piece in enumerate(game.pieces) if piece is not None]
+        slots = [(idx, _shape_placements(piece.shape)) for idx, piece in enumerate(game.pieces) if piece is not None]
         start = _grid_bits(game.board.grid)
         full_rem = (1 << len(slots)) - 1
         frontier = [(_value(0, start), 0, start, full_rem, None)]
@@ -216,7 +257,8 @@ class TraySearchPolicy:
                 last = frontier
         if complete:
             finalists = sorted(complete, key=lambda s: s[0], reverse=True)[:_FINALS]
-            return max(finalists, key=lambda s: s[0] - _risk(s[1]))[2]
+            trays = [self._tail.next_pieces() for _ in range(_TAIL_DRAWS)]
+            return max(finalists, key=lambda s: s[0] - _risk(s[1]) - _TAIL_W * _tail_share(s[1], trays))[2]
         if last:
             return max(last, key=lambda s: s[0])[4]
         return actions[0]
