@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "196a4313ddd5fef590b3891e91d7f5add96e860a",
+ "stan": "ocena w toku",
+ "gist": "Wybór ruchu po ryzyku następnej tacki: martwe pozy i domykalność z próbek",
+ "notatki": [
+  "Wybór ruchu po ryzyku następnej tacki: martwe pozy i domykalność z próbek\n\nSpośród 12 najmniej zajętych końcowych plansz tacki (wiązka 40) wybieram tę\no najmniejszym P(następna tacka nie da się ułożyć). P to dokładne (suma π\nmartwych poz)^3, czyli tacka bez żadnego mieszczącego się klocka, plus udział\n128 stałych tacek (seed 14, wspólnych dla wszystkich kandydatów), w których coś\nsię mieści, ale całej tacki nie da się ułożyć. Remis: mniej zajęta plansza.\n\nDowód z historii (s_sym z .historia/<drzewo>/INDEKS.md):\n- 13/1.3 0.959 -> 13/1.4 0.981: domykalność następnej tacki dodana do ryzyka finalistów\n- 8/1.2 0.976 -> 8/1.3 0.983: szersza wiązka po tacce, 40 -> 120\n- 9/2.6 0.996 (najlepszy węzeł): przegląd następnej tacki pomija nieumieszczalne próbki\nPrzeciwdowód: 9/2.7 spadło z 0.996 do 0.991, gdy ogon dostał 128 tacek zamiast 64.\n\nNie powtórka: najbliżej 13/1.4, ale tu nie ma członu liniowego z 13/1.3, finalista\njest wybierany leksykograficznie (śmierć, potem zajętość), a próbki są stałe (128).\nTo nowa kombinacja sprawdzonych elementów, bez nowego wyniku.\n\nRyzyko: wynik nieznany, nie zmierzony. Czas w smoke (3 partie, 274 ruchy): 31 ms/ruch\nśrednio, maks. 115 ms, 0 nielegalnych ruchów, 0 wyjątków. Próbkowanie 1/128 jest\nzgrubne. Beam 40 jest poniżej 120 z 8/1.3, bez sprawdzenia, czy podniesienie pomaga.\n\nCo dalej:\n- zrobione: 2652e06 (kontrakt build, dokończalność na bitboardzie); ten commit\n  (ryzyko następnej tacki w wyborze ruchu, completable z wczesnym wyjściem)\n- następny krok: ocena programem oceniającym; do tego czasu nie wiadomo, czy to lepsze niż 9/2.6\n- czego nie powtarzać: completable budującego pełne listy stanów (82 ms/ruch);\n  zakładania, że więcej próbek poprawia wynik (9/2.7)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj build(weights): ruch, po którym reszta tacki nadal się układa\n\nMechanizm:\n- tray_search.py: plansza 8x8 jako int (bit y*8+x), maski położeń po kształcie,\n  czyszczenie wierszy i kolumn z jednej migawki, completable() jako dokładny DFS\n  po kolejności klocków tacki i kotwicach z czyszczeniem linii.\n- TrayPolicy: dla każdego legalnego ruchu sprawdza, czy pozostałe klocki tacki\n  nadal się mieszczą; przy remisie wybiera mniej zajętych pól po czyszczeniu.\n- build(weights) zwraca TrayPolicy. Wagi są na razie ignorowane.\n- Klocek identyfikowany kształtem, nie indeksem: most podaje index=-1.\n\nDowód z historii:\n- W repo nie ma policies.build (HEAD caf8e72), więc ocena dawałaby 0.\n- Węzły startowe z policies.build w drzewach 1, 3, 4, 6, 10, 13 mierzyły 0,13-0,56.\n  Ten krok nie ma ryzyka następnej tacki, więc nie jest próbą wyniku.\n\nDlaczego to nie powtórka:\n- Nie ma członu oceny ani ryzyka następnej tacki. To baza pod kolejny krok.\n\nRyzyko:\n- Wynik niezmierzony. Testy: completable zgodne z silnikiem na 300 losowych\n  tackach (test_tray_search), kontrakt build i legalność ruchów w partiach silnika.\n- Smoke: 3 partie bez wyjątków i bez nielegalnych ruchów, ok. 0,6 ms na ruch.\n  Partie kończą się wcześnie, bo nie ma jeszcze oceny następnej tacki.\n\nCo dalej:\n- Zrobione: ten commit (dokończalność tacki i kontrakt build).\n- Następny krok: ryzyko następnej tacki w wyborze ostatniego klocka tacki:\n  dokładne P(klocek bez miejsca) = 1-(1-q)^3 i próbki CRN dla tacek, w których\n  każdy klocek się mieści, ale tacki nie da się dokończyć.\n- Czego nie powtarzać: wyboru ruchu bez oceny następnej tacki jako wyniku końcowego.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 81,
+  "usd": 5.5387,
+  "minuty": 23.7
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T17:36:37Z",
+   "koniec": "2026-10-12T18:00:16Z",
+   "tury": 81,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
