@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import policies
 from game import Game
 from generator import Generator
+from pieces import PIECE_TYPES
 
 
 def board_with_middle_row_one_short():
@@ -31,21 +32,34 @@ class LeafValueTest(unittest.TestCase):
         self.assertGreater(policies._value(cleared, lines), policies._value(kept, 0))
 
 
-class DeathRateTest(unittest.TestCase):
-    def test_extremes(self):
-        self.assertEqual(policies._death_rate(0), 0.0)
-        self.assertEqual(policies._death_rate((1 << 64) - 1), 1.0)
+class FitProfileTest(unittest.TestCase):
+    def test_single_free_cell_fits_only_one_by_one(self):
+        board = ((1 << 64) - 1) & ~1
+        miss, dead_types = policies._fit_profile(board)
+        self.assertAlmostEqual(miss, 14 / 15)
+        self.assertEqual(dead_types, 14)
 
-    def test_matches_generator_sampling(self):
+    def test_miss_matches_generator_sampling(self):
         board = board_with_middle_row_one_short() | (1 << 60)
         generator = Generator(seed=7)
         samples = 20000
-        deaths = 0
+        misses = 0
         for _ in range(samples):
-            tray = generator.next_pieces()
-            if not any(policies._fits(board, piece.index) for piece in tray):
-                deaths += 1
-        self.assertAlmostEqual(policies._death_rate(board), deaths / samples, delta=0.01)
+            for piece in generator.next_pieces():
+                if not policies._fits(board, piece.index):
+                    misses += 1
+        miss, _ = policies._fit_profile(board)
+        self.assertAlmostEqual(miss, misses / (3 * samples), delta=0.01)
+
+
+class RiskTest(unittest.TestCase):
+    def test_extremes(self):
+        self.assertEqual(policies._risk(0), 0.0)
+        full = (1 << 64) - 1
+        self.assertAlmostEqual(
+            policies._risk(full),
+            policies.RISK_CUBIC + policies.RISK_LINEAR + policies.RISK_DEAD_TYPE * len(PIECE_TYPES),
+        )
 
 
 class LegalMovesTest(unittest.TestCase):

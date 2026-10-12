@@ -63,7 +63,9 @@ BEAM_WIDTH = 40
 RISK_FINALISTS = 8
 RISK_FINALISTS_TIGHT = 20
 TIGHT_FREE_CELLS = 22
-DEATH_PENALTY = 1000.0
+RISK_CUBIC = 400.0
+RISK_LINEAR = 80.0
+RISK_DEAD_TYPE = 12.3
 FULL = (1 << 64) - 1
 ROW_MASKS = [0xFF << (8 * r) for r in range(8)]
 COL_MASKS = [sum(1 << (8 * r + c) for r in range(8)) for c in range(8)]
@@ -186,16 +188,23 @@ class TrayBeamPolicy:
         tray_ends.sort(key=lambda e: e[0], reverse=True)
         best_move, best_score = None, None
         for value, nb, move in tray_ends[:finalists]:
-            score = value - DEATH_PENALTY * _death_rate(nb)
+            score = value - _risk(nb)
             if best_score is None or score > best_score:
                 best_move, best_score = move, score
         return best_move
 
 
-def _death_rate(board):
+def _fit_profile(board):
+    fitting = {idx for idx, _ in POSE_PROBS if _fits(board, idx)}
+    miss = sum(prob for idx, prob in POSE_PROBS if idx not in fitting)
+    dead_types = sum(1 for poses in PIECE_TYPES if fitting.isdisjoint(poses))
+    return miss, dead_types
+
+
+def _risk(board):
     # Trzy klocki losowane niezależnie: tacka martwa, gdy żaden z nich się nie mieści.
-    miss = sum(prob for idx, prob in POSE_PROBS if not _fits(board, idx))
-    return miss ** 3
+    miss, dead_types = _fit_profile(board)
+    return RISK_CUBIC * miss ** 3 + RISK_LINEAR * miss + RISK_DEAD_TYPE * dead_types
 
 
 def build(weights=None):
