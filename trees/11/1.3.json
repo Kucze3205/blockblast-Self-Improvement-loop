@@ -2,16 +2,25 @@
  "rodzic": "1.2",
  "rodzic_sha": "75037146cb919ff154ae3f28219132b1ecb6f6f4",
  "kolejnosc": 5,
- "sha": "75037146cb919ff154ae3f28219132b1ecb6f6f4",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "aedec2e193d8c207ce429f880b396b0e8045d834",
+ "stan": "ocena w toku",
+ "gist": "Sprawdzaj CRN-owo, czy następna tacka się położy; wiązkę sortuj po mieszczących się klockach",
+ "notatki": [
+  "Sprawdzaj CRN-owo, czy następna tacka się położy; wiązkę sortuj po mieszczących się klockach\n\nMechanizm: _search zwraca klucz i planszę liścia. Wiązka (korzeń 8, poziom środkowy 3)\nsortuje kandydatów po _order = (liczba pozostałych klocków, które jeszcze się mieszczą,\nlinie, minus izolowane) zamiast po room. Cztery najlepsze korzenie wg analitycznego klucza\nprzeglądają 16 losowań następnej tacki (CRN: losowania z seedu partii, wspólne dla\nfinalistów w danym ruchu). Tacka jest martwa, gdy nie da się położyć całej w dowolnej\nkolejności (_completable, DFS po kolejnościach z czyszczeniem linii). Klucz finalisty to\n(1 − martwe/16, mobilność, −izolowane, punkty): pierwszy składnik zastępuje analityczne\nprzeżycie 1 − (1 − q)³, które sprawdza tylko, czy mieści się pierwszy klocek następnej tacki.\n\nDowód z historii: 11/1.1 (analityczne przeżycie) przegrało 526 z 1200 partii, s_sym 0.773.\n11/1.2 (room zamiast quick) przegrało 782, s_sym 0.646, więc room się nie sprawdził.\nW 11/2.2 wiązka sortowana po mieszczących się klockach z przeglądem CRN dała 98 przegranych\nz 1200 (s_sym 0.964), a w drzewie 9 najlepszy węzeł 2.6 (0.996) przegląd następnej tacki\nz pominięciem nieumieszczalnych próbek. Sam analityczny liść ocenia pierwszy klocek\nnastępnej tacki, a przegrana wymaga, żeby cała tacka się położyła.\n\nDlaczego to nie powtórka: poprzednie węzły łańcucha 1 nie próbkowały następnej tacki (CRN).\nTa próba wprowadza CRN tylko na finalistach, na wyczerpującym przeszukiwaniu tacki\nz bitboardami z 11/1.1, a nie na wiązce 40 z 11/2.2. Nie ma w niej wartości liścia\nz 11/2.2 (przejścia, brzegi), więc to nie jest kopia 2.2.\n\nRyzyko: finaliści są wybierani analitycznym kluczem, a analityczne przeżycie bywa nasycone\nna 1.0, więc wybór opiera się głównie na mobilności i może odrzucić ruch, który CRN by\nwybrał. Dyskretyzacja to 1/16. Koszt na 3 partiach kontrolnych (ziarna 101–103, do 150\nruchów): średnio 3,36 ms, najdłuższy ruch 19,45 ms, bez wyjątków i z legalnym ruchem za\nkażdym razem. tests/test_engine.py: 16 zaliczonych, 1 nie przeszedł przez brak tkinter\n(jak w 11/1.1 i 11/1.2, poza zmienianym plikiem). Wynik NIE jest zmierzony.\n_DRAWS = 16 i _REVIEW = 4 nie były strojone.\n\nCo dalej: zmierzyć ocenę. Jeśli węzeł będzie dobry, dodać do klucza liścia składnik\nfragmentacji (przejścia, puste kieszenie), bo diagnoza z 11/1.1 (29–43 puste pola\nrozdrobnione na kieszenie, izolowane = 0) nadal nie jest obsłużona. Jeśli będzie słaby,\nsprawdzić, czy wybór finalistów po mobilności nie odrzuca ruchów, które CRN by wybrał,\ni wtedy zwiększać _REVIEW, a nie zmieniać klucz. Nie wracać do room jako kryterium\nsortowania. Zrobione: przegląd CRN finalistów i sortowanie po mieszczących się klockach,\nbaza 7503714.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 46,
+  "usd": 2.4272,
+  "minuty": 9.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T09:18:33Z",
+   "koniec": "2026-10-12T09:28:05Z",
+   "tury": 46,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
