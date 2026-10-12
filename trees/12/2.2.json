@@ -2,16 +2,26 @@
  "rodzic": "2.1",
  "rodzic_sha": "b752608d1467c33c249d4a7222896a68c2cf086f",
  "kolejnosc": 4,
- "sha": "b752608d1467c33c249d4a7222896a68c2cf086f",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "6eb7a68860b8b01136d036a1f79cf46a5e643580",
+ "stan": "ocena w toku",
+ "gist": "Polityka: przegląd następnej tacki dla trzech najlepszych ruchów",
+ "notatki": [
+  "Polityka: przegląd następnej tacki dla trzech najlepszych ruchów\n\nMechanizm:\nFinaliści oceniane jak w 7d7977e (wartość planszy minus ryzyko). Trzy najlepsze różne pierwsze ruchy dostają ten sam zestaw czterech losowań następnej tacki (wspólne losowania, CRN). Dla każdego losowania bierze się najlepszy stan tacki w tym samym sensie co przy finałach. Losowania, których tacka nie daje się ułożyć, są pomijane; gdy żadna nie jest wykonalna, przegląd wynosi −400. Wynik ruchu to wartość − ryzyko + średnia przeglądu, wybierany jest najwyższy. Losowania idą z osobnego ziarna (`przeglad:<seed>`), bo ziarno gry dałoby prawdziwą następną tackę.\n\nDowód z historii:\n- 9/2.1 (0,9626): przegląd CRN na bazie wiązki z ogonem remisu.\n- 9/2.6 (d9e3f27, 0,99589, baza 9/2.4 0,99525): pominięcie nieumieszczalnych próbek zamiast podwójnej kary za śmierć.\n- Drzewo 9 nie istnieje w tym klonie repo; składanie wzięte z notatek tych rekordów.\n\nDlaczego to nie powtórka:\nŁańcuch 1 (1.1, 0,814) miał wartość z ryzykiem bez przeglądu, a łańcuch 2 (2.1, 0,443) nie domykał tacki. Ten commit dokłada przegląd z drzewa 9 do wartości z ryzykiem z 7d7977e. To połączenie nie było jeszcze mierzone.\n\nRyzyka:\n- Składanie wyniku to mój osąd, nie odtworzona reguła: notatki nie podają wzoru dokładnie. Wybrane: (wartość − ryzyko) + średnia przeglądu, bez dodatkowych wag.\n- Ryzyko podwójnego liczenia śmierci zostaje (ryzyko + −400). Drzewo 9 usunęło je tylko w przeglądzie, nie w ryzyku.\n- Wynik niezmierzony lokalnie. Smoke (3 partie, 485 ruchów): 0 nielegalnych ruchów, średnio 17,2 ms na ruch, maks. 53,7 ms (7d7977e: ok. 1 ms). Limit `limit_shardu_s` nieczytelny; rekordy drzewa 9 mają ok. 25 ms na ruch i nie są oznaczone jako za wolne.\n\nCo dalej:\n- Zrobione: 7d7977e (wartość i ryzyko), ten commit (przegląd).\n- Następny krok: ocena tego head względem 1.1 (0,814) i 7d7977e. Nie dokładać parametrów przed wynikiem.\n- Czego nie powtarzać: wiązki bez domykania tacki (2.1, 0,443).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Polityka: wiązka po tacce z wartością planszy i ryzykiem następnej tacki\n\nMechanizm: TraySearchPolicy zastępuje TrayBeamPolicy. Wiązka 12 stanów po klockach tacki\nocenia plansze jako 4·wyczyszczone linie − przejścia (pary sąsiednich pól o różnym stanie\nwewnątrz planszy plus puste pola przy ściankach, jak w węźle 1.1). Domknięte tacki\nsortowane są wg wartości; 12 najlepszych to finaliści, z których wybierany jest ruch\no największym wyniku wartość − ryzyko, gdzie ryzyko = 2000·p³ + 30·p, a p to szansa,\nże losowy klocek nie zmieści się na planszy. Gdy żadna wiązka nie domyka tacki, działa\n_survive_longest: dokładnie maksymalizuje liczbę postawień z tacki, a przy remisie\nwiększe dopasowanie po ruchu. Maski postawień liczone są z kształtu klocka (_placements),\nnie z indeksu w puli, więc działa też na klockach mostu. bitboard.place zastąpione\nprzez clear_lines.\n\nDowód: węzeł 1.1 (ac294ab) zmierzony na 0.8135, 438 przegranych; węzeł 2.1 (b752608)\nna 0.443, 1080 przegranych, bo f-liść nie liczył linii ani przejść i obcinał wiązkę\ndo top-4/top-3. Test test_move_completes_tray_that_beam_misses (seed 11, ruch 81)\nprzechodzi; sama wiązka z wartością nie domyka tej tacki (ruch dawał 2 z 3 postawień),\ndlatego zostaje dokładny fallback. Lokalnie: 8 partii, 1363 ruchy, 0 nielegalnych,\n0 wrong_placement, fallback w 3 ruchach, act średnio 1.02 ms, max 5.81 ms.\n\nDlaczego to nie powtórka: nie wraca żaden węzeł w całości. Łączy bazę bitboardową\nz 2.1 (bez .index), wartość i ryzyko z 1.1 oraz dokładny fallback z b752608. Od 1.1\nróżni się fallbackiem dokładnym zamiast ostatniej warstwy wiązki, maskami z kształtu\ni clear_lines na bitboardach.\n\nRyzyko: wynik nieznany, nie mierzony. Wagi 4 : 1 : 30 : 2000 z 1.1 też nie były\nmierzone. Jeśli wynik będzie niski, najpierw sprawdzić wagi i fallback, nie wracać\ndo f-liścia.\n\nCo dalej:\n- zrobione: b5584c8 (maski kotwic), ab397c8 (wiązka po tacce), b752608 (fallback),\n  ten commit (wartość, ryzyko, dokładny fallback na bitboardach).\n- następny krok: przegląd następnej tacki z CRN (drzewo 9, węzły 2.1 i 2.6) jako\n  osobny commit.\n- czego nie powtarzać: f-liścia bez linii i przejść z obcinaniem do top-k (węzeł 2.1).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 77,
+  "usd": 5.4796,
+  "minuty": 22.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T12:35:33Z",
+   "koniec": "2026-10-12T12:58:06Z",
+   "tury": 77,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
