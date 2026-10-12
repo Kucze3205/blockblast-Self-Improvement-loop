@@ -58,6 +58,49 @@ class ModelPolicy:
         return tuple(move)
 
 
+class SurvivalPolicy:
+    """Wybiera ruch, który zostawia najwięcej legalnych postawień dla reszty tacki."""
+
+    name = "survival"
+
+    def reset(self, game_seed):
+        pass
+
+    def act(self, game, actions):
+        best, best_key = actions[0], None
+        for action in actions:
+            key = _survival_key(game, action)
+            if best_key is None or key > best_key:
+                best, best_key = action, key
+        return best
+
+
+def build(weights=None):
+    return SurvivalPolicy()
+
+
+def _survival_key(game, action):
+    idx, x, y = action
+    piece = game.pieces[idx]
+    board = game.board.copy()
+    board.place_piece(piece, x, y)
+
+    rows, cols = board.check_full_lines()
+    lines = len(rows) + len(cols)
+    board.clear_lines(rows, cols)
+
+    remaining = [p for i, p in enumerate(game.pieces) if p is not None and i != idx]
+    mobility = 0
+    for other in remaining:
+        for y2 in range(8 - len(other.shape) + 1):
+            for x2 in range(8 - len(other.shape[0]) + 1):
+                if board.can_place_piece(other, x2, y2):
+                    mobility += 1
+
+    filled = sum(sum(row) for row in board.grid)
+    return (mobility, lines, -filled)
+
+
 def _immediate_gain(game, action):
     """Punkty, które da to postawienie — wg skalibrowanego wzoru, bez zmiany stanu gry."""
     idx, x, y = action
