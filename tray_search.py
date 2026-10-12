@@ -11,7 +11,7 @@ ISO_W = 0.75
 TRANS_W = 1.5
 DEAD_W = 12.3
 DEATH_W = 400.0
-SAMPLES = 32
+SAMPLES = 256
 
 FULL = (1 << 64) - 1
 ROW = [0xFF << (8 * r) for r in range(8)]
@@ -108,8 +108,16 @@ def sample_trays(rng):
     return [tuple(rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3)) for _ in range(SAMPLES)]
 
 
-def _unplaceable(bb, samples):
-    return sum(not _completable(bb, tray) for tray in samples) / len(samples)
+def _none_rate(bb):
+    free = FULL ^ bb
+    miss = sum(sum(1 for pose in ids if not _fits(free, pose)) / len(ids) for ids in PIECE_TYPES) / N_TYPES
+    return miss ** 3
+
+
+def _stuck_share(bb, samples):
+    free = FULL ^ bb
+    stuck = sum(1 for tray in samples if any(_fits(free, pose) for pose in tray) and not _completable(bb, tray))
+    return stuck / len(samples)
 
 
 def _cheap_value(bb, lines):
@@ -162,7 +170,7 @@ def best_move(bb, tray, samples):
                 break
     best_score, best = None, None
     for value, nxt, move in finalists:
-        score = value - DEAD_W * _dead_types(nxt) - DEATH_W * _unplaceable(nxt, samples)
+        score = value - DEAD_W * _dead_types(nxt) - DEATH_W * (_none_rate(nxt) + _stuck_share(nxt, samples))
         if best_score is None or score > best_score:
             best_score, best = score, move
     return best

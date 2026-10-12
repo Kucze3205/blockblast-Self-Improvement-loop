@@ -9,7 +9,7 @@ from board import Board
 from game import Game
 from pieces import PIECE_POOL
 from policies import build
-from tray_search import FULL, _completable, _fits, _place, best_move, board_bits, sample_trays
+from tray_search import FULL, _completable, _fits, _place, _stuck_share, best_move, board_bits, sample_trays
 
 
 def _engine_completable(board, pieces):
@@ -106,6 +106,25 @@ class TraySearchTest(unittest.TestCase):
             self.assertTrue(board.can_place_piece(PIECE_POOL[pose], x, y))
             checked += 1
         self.assertGreater(checked, 100)
+
+    def test_stuck_share_matches_engine(self):
+        rng = random.Random(13)
+        outcomes = set()
+        for _ in range(120):
+            board = Board()
+            board.grid = [[int(rng.random() < 0.6) for _ in range(Board.WIDTH)] for _ in range(Board.HEIGHT)]
+            tray = tuple(rng.randrange(len(PIECE_POOL)) for _ in range(3))
+            pieces = [PIECE_POOL[p] for p in tray]
+            some_fit = any(
+                board.can_place_piece(piece, x, y)
+                for piece in pieces
+                for y in range(Board.HEIGHT)
+                for x in range(Board.WIDTH)
+            )
+            stuck = some_fit and not _engine_completable(board, pieces)
+            outcomes.add(stuck)
+            self.assertEqual(_stuck_share(board_bits(board), [tray]), float(stuck))
+        self.assertEqual(outcomes, {True, False})
 
     def test_policy_moves_are_legal(self):
         policy = build(None)
