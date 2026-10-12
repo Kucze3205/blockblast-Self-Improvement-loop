@@ -8,7 +8,12 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
-from tray_search import clear, completable, from_grid, mask_at, shape_key
+from risk import death_probability, sample_trays
+from tray_search import clear, from_grid, mask_at, popcount, shape_key, tray_finals
+
+SAMPLES = 128
+FINALISTS = 12
+TRAY_BEAM = 40
 
 
 class RandomPolicy:
@@ -78,26 +83,29 @@ def _immediate_gain(game, action):
 
 
 class TrayPolicy:
-    """Wybiera ruch, po którym reszta tacki nadal się układa; przy remisie mniej zajętych pól."""
+    """Ruch wiodący do tacki o najmniejszym ryzyku następnej tacki, spośród najmniej zajętych ułożeń."""
 
     name = "tray"
+
+    def __init__(self, trays, finalists, beam):
+        self.trays = trays
+        self.finalists = finalists
+        self.beam = beam
 
     def reset(self, game_seed):
         pass
 
     def act(self, game, actions):
         board = from_grid(game.board.grid)
-        best, best_key = actions[0], None
-        for action in actions:
-            idx, x, y = action
-            after = clear(board | mask_at(shape_key(game.pieces[idx].shape), x, y))
-            rest = [shape_key(p.shape) for j, p in enumerate(game.pieces)
-                    if p is not None and j != idx]
-            key = (completable(after, rest), -bin(after).count("1"))
-            if best_key is None or key > best_key:
-                best, best_key = action, key
-        return best
+        pieces = [(i, shape_key(p.shape)) for i, p in enumerate(game.pieces) if p is not None]
+        finals = tray_finals(board, pieces, self.beam)
+        if not finals:
+            return min(actions, key=lambda a: popcount(
+                clear(board | mask_at(shape_key(game.pieces[a[0]].shape), a[1], a[2]))))
+        best = min(finals[: self.finalists],
+                   key=lambda f: (death_probability(f[0], self.trays), popcount(f[0])))
+        return best[1]
 
 
 def build(weights):
-    return TrayPolicy()
+    return TrayPolicy(sample_trays(SAMPLES), FINALISTS, TRAY_BEAM)

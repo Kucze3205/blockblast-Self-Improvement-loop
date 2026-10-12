@@ -16,7 +16,8 @@ from board import Board
 from game import Game
 from pieces import PIECE_POOL, Piece
 from policies import build
-from tray_search import completable, from_grid, shape_key
+from risk import POSE_KEYS, death_probability, sample_trays
+from tray_search import completable, fits, from_grid, shape_key, tray_finals
 
 
 def brute_completable(grid, shapes):
@@ -79,6 +80,62 @@ class BuildPolicyTest(unittest.TestCase):
         actions = [(i, x, y) for i, p in enumerate(pieces) if p is not None
                    for y in range(8) for x in range(8) if board.can_place_piece(p, x, y)]
         self.assertIn(build(None).act(game, actions), actions)
+
+
+def brute_finals(grid, shapes, out):
+    if not shapes:
+        out.add(from_grid(grid))
+        return
+    for i, shape in enumerate(shapes):
+        piece = Piece(shape, "ref", -1)
+        for y in range(8 - len(shape) + 1):
+            for x in range(8 - len(shape[0]) + 1):
+                trial = Board()
+                trial.grid = [row[:] for row in grid]
+                if not trial.place_piece(piece, x, y):
+                    continue
+                trial.clear_lines(*trial.check_full_lines())
+                brute_finals(trial.grid, shapes[:i] + shapes[i + 1:], out)
+
+
+class TrayFinalsTest(unittest.TestCase):
+    def test_full_search_matches_engine_outcomes(self):
+        rng = random.Random(11)
+        for _ in range(40):
+            grid = random_grid(rng, rng.uniform(0.3, 0.6))
+            shapes = [rng.choice(PIECE_POOL).shape for _ in range(rng.randint(1, 3))]
+            expected = set()
+            brute_finals(grid, shapes, expected)
+            pieces = [(i, shape_key(s)) for i, s in enumerate(shapes)]
+            finals = tray_finals(from_grid(grid), pieces)
+            self.assertEqual({board for board, _ in finals}, expected, (grid, shapes))
+            for _, (idx, x, y) in finals:
+                probe = Board()
+                probe.grid = [row[:] for row in grid]
+                self.assertTrue(probe.can_place_piece(Piece(shapes[idx], "ref", -1), x, y))
+
+
+class RiskTest(unittest.TestCase):
+    def test_fits_matches_engine_for_all_poses(self):
+        rng = random.Random(5)
+        for _ in range(60):
+            grid = random_grid(rng, rng.uniform(0.0, 0.7))
+            ref = Board()
+            ref.grid = [row[:] for row in grid]
+            for p, key in enumerate(POSE_KEYS):
+                engine = any(ref.can_place_piece(Piece(PIECE_POOL[p].shape, "ref", -1), x, y)
+                             for y in range(8) for x in range(8))
+                self.assertEqual(fits(from_grid(grid), key), engine, (p, grid))
+
+    def test_death_probability_bounds(self):
+        trays = sample_trays(64)
+        full = from_grid([[1] * 8 for _ in range(8)])
+        self.assertEqual(death_probability(full, trays), 1.0)
+        rng = random.Random(3)
+        for _ in range(20):
+            value = death_probability(from_grid(random_grid(rng, 0.4)), trays)
+            self.assertGreaterEqual(value, 0.0)
+            self.assertLessEqual(value, 1.0)
 
 
 if __name__ == "__main__":
