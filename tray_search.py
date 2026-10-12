@@ -9,6 +9,7 @@ OCC_W = 1.4
 LINE_W = 4.2
 ISO_W = 0.75
 TRANS_W = 1.5
+EDGE_W = 2.0
 DEAD_W = 12.3
 DEATH_W = 400.0
 SAMPLES = 256
@@ -18,6 +19,7 @@ ROW = [0xFF << (8 * r) for r in range(8)]
 COL = [sum(1 << (8 * r + c) for r in range(8)) for c in range(8)]
 NOT_COL0 = FULL ^ COL[0]
 NOT_COL7 = FULL ^ COL[7]
+EDGE = ROW[0] | ROW[7] | COL[0] | COL[7]
 
 N_POSES = len(PIECE_POOL)
 N_TYPES = len(PIECE_TYPES)
@@ -121,7 +123,9 @@ def _stuck_share(bb, samples):
 
 
 def _cheap_value(bb, lines):
-    return -OCC_W * bb.bit_count() + LINE_W * lines - ISO_W * _isolated(bb) - TRANS_W * _transitions(bb)
+    empty_edges = ((FULL ^ bb) & EDGE).bit_count()
+    return (-OCC_W * bb.bit_count() + LINE_W * lines - ISO_W * _isolated(bb)
+            - TRANS_W * _transitions(bb) - EDGE_W * empty_edges)
 
 
 def best_move(bb, tray, samples):

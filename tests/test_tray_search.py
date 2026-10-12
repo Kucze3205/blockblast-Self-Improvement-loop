@@ -9,7 +9,7 @@ from board import Board
 from game import Game
 from pieces import PIECE_POOL
 from policies import build
-from tray_search import FULL, _completable, _fits, _place, _stuck_share, best_move, board_bits, sample_trays
+from tray_search import FULL, _cheap_value, _completable, _fits, _place, _stuck_share, best_move, board_bits, sample_trays
 
 
 def _engine_completable(board, pieces):
@@ -125,6 +125,9 @@ class TraySearchTest(unittest.TestCase):
             outcomes.add(stuck)
             self.assertEqual(_stuck_share(board_bits(board), [tray]), float(stuck))
         self.assertEqual(outcomes, {True, False})
+
+    def test_edge_term_counts_free_border_cells(self):
+        self.assertEqual(_cheap_value(0, 0), -2.0 * 28)
 
     def test_policy_moves_are_legal(self):
         policy = build(None)
