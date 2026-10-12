@@ -2,16 +2,26 @@
  "rodzic": "1.1",
  "rodzic_sha": "196a4313ddd5fef590b3891e91d7f5add96e860a",
  "kolejnosc": 3,
- "sha": "196a4313ddd5fef590b3891e91d7f5add96e860a",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "438aa2bfa16c8b3d4f1d6f84961695e31dfdf272",
+ "stan": "ocena w toku",
+ "gist": "Ryzyko następnej tacki: 12 kandydatów z puli 40 wg udziału martwych poz",
+ "notatki": [
+  "Ryzyko następnej tacki: 12 kandydatów z puli 40 wg udziału martwych poz\n\nMechanizm:\n- risk.dead_mass(board): suma prawdopodobieństw poz, które nie mieszczą się\n  na planszy. death_probability używa jej bez zmiany wyniku.\n- policies.TrayPolicy: z 40 najmniej zajętych finałów (POOL) wybiera 12\n  o najmniejszym dead_mass (FINALISTS). Dopiero te 12 idzie do dokładnego\n  death_probability. Przed zmianą brano 12 pierwszych wg zajętości, bez\n  sprawdzenia, czy klocki się mieszczą.\n\nDowód:\n- Dokładne death_probability kosztuje ok. 128 dokończeń tacki na kandydata,\n  więc nie da się go liczyć dla całej puli. dead_mass to 41 testów mieszczenia.\n- Po poprzednim commicie (90eb45f) pierwsza dwunastka po zajętości nie jest\n  już przypadkowym wycinkiem z jednego rogu, ale nadal nie uwzględnia zdolności\n  mieszczenia klocków. To robi ten commit.\n\nDlaczego to nie powtórka:\n- 196a431 wybierał finalistów tylko po zajętości. Tu kandydaci są filtrowani\n  liczbą poz, na które da się postawić klocek.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator.\n- Gdy wszystkie poz mieszczą się (wczesna gra, dead_mass = 0), filtr nic nie\n  rozstrzyga i wybór wraca do zajętości i hasha.\n- Smoke 3 partie: 37,5 ms/ruch średnio, maks. 125 ms, 0 nielegalnych ruchów,\n  0 wyjątków. Pomiar dotyczy stanu po obu commitach (90eb45f i ten). Trzy\n  partie nie są miarą jakości.\n\nCo dalej:\n- Zrobione: 90eb45f (remisy i grupy w wiązce), ten commit (pula 40, dead_mass,\n  12 kandydatów).\n- Następny krok: ocena programem oceniającym. Dopiero wtedy wiadomo, czy ten\n  łańcuch przebija 1.1 (0,457).\n- Czego nie powtarzać: wyboru finalistów tylko po zajętości; pełnego\n  death_probability dla całej puli (koszt ok. 128 dokończeń na kandydata).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wiązka tacki: remisy po zajętości bez preferencji lewego górnego rogu\n\nMechanizm:\n- tray_search.tray_finals: wiązka ranguje stany osobno dla każdej reszty tacki,\n  więc stan po postawieniu małego klocka nie wypycha stanów z dużym klockiem\n  do pozostałych. Remisy po zajętości rozstrzyga hash planszy, nie kolejność\n  wyliczenia.\n- Przed zmianą sort po popcount był stabilny, więc przy remisie wygrywał\n  pierwszy wyliczony stan: klocek pierwszy w kolejności kształtów, wiersze\n  od góry, kolumny od lewej.\n\nDowód (pomiar na kodzie, nie ocena):\n- Pusta plansza, tacka [1x1, beam2, square3], wiązka 40: przed zmianą wszystkie\n  1086 finałów miało ten sam ruch startowy (0,0,0), i tak wybierała polityka.\n  Po zmianie ruchy startowe obejmują wiersze 0-7 (66 ruchów), finałów 4707.\n- Nowy test test_beam_does_not_prefer_top_left wymusza więcej niż jeden wiersz.\n- Testy tray_search: 8/8 OK.\n\nDlaczego to nie powtórka:\n- To poprawka błędu w wiązce, nie zmiana wagi ryzyka. Węzły 1.1 (0,457) i 2.1\n  (0,259) używają tej samej wiązki, więc ich wynik nie mówi, czy poprawka pomaga.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator.\n- Smoke 3 partie: 37,5 ms/ruch średnio, maks. 125 ms (wcześniej ok. 31 ms\n  przy 196a431), 0 nielegalnych ruchów, 0 wyjątków. Trzy partie nie są miarą\n  jakości.\n\nCo dalej:\n- Zrobione: ten commit (remisy i grupy w wiązce).\n- Następny krok: pula 40 finałów wg dead_mass przed dokładnym ryzykiem.\n- Czego nie powtarzać: wiązki po samej zajętości bez porównania w obrębie\n  reszty tacki.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 34,
+  "usd": 2.2898,
+  "minuty": 10.8
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T18:06:11Z",
+   "koniec": "2026-10-12T18:16:57Z",
+   "tury": 34,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
