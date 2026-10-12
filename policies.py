@@ -85,6 +85,8 @@ _NOT_COL0 = _FULL & ~_COL_MASKS[0]
 _NOT_COL7 = _FULL & ~_COL_MASKS[7]
 _ROOT_WIDTH = 8
 _MID_WIDTH = 3
+_REVIEW = 4
+_DRAWS = 16
 _DEAD = (-1.0, 0.0, 0, 0)
 _DESC_CACHE = {}
 
@@ -136,13 +138,10 @@ def _isolated(empty):
     return (empty & ~touched).bit_count()
 
 
-def _room(after, rest):
-    empty = _FULL & ~after
-    return sum(_anchors(empty, shifts, valid).bit_count() for _, shifts, valid in rest)
-
-
 def _order(after, lines, rest):
-    return (_room(after, rest), lines, -_isolated(_FULL & ~after))
+    empty = _FULL & ~after
+    fits = sum(1 for _, shifts, valid in rest if _anchors(empty, shifts, valid))
+    return (fits, lines, -_isolated(empty))
 
 
 def _gain(cells, lines, after, base_combo):
@@ -153,6 +152,8 @@ def _gain(cells, lines, after, base_combo):
         gain += FULL_CLEAR_BONUS
     return gain
 
+
+_POSE_DESC = [_describe(p.shape) for p in PIECE_POOL]
 
 _LEAF_POSES = [
     (_describe(PIECE_POOL[pose].shape), 1.0 / (len(PIECE_TYPES) * len(poses)))
@@ -175,7 +176,7 @@ def _leaf(board, pts):
 
 def _search(board, pending, pts, base_combo):
     if not pending:
-        return _leaf(board, pts)
+        return _leaf(board, pts), board
     cands = []
     for k, (mask, shifts, valid) in enumerate(pending):
         anchors = _anchors(_FULL & ~board, shifts, valid)
@@ -185,32 +186,51 @@ def _search(board, pending, pts, base_combo):
             piece_bits = mask << (low.bit_length() - 1)
             after, lines = _clear(board | piece_bits)
             cands.append((k, after, lines, len(shifts)))
-    best = _DEAD
+    best, leaf = _DEAD, None
     if len(pending) == 1:
         for _, after, lines, cells in cands:
             key = _leaf(after, pts + _gain(cells, lines, after, base_combo))
             if key > best:
-                best = key
-        return best
+                best, leaf = key, after
+        return best, leaf
     ranked = []
     for k, after, lines, cells in cands:
         rest = pending[:k] + pending[k + 1:]
         ranked.append((_order(after, lines, rest), rest, after, lines, cells))
     ranked.sort(key=lambda c: c[0], reverse=True)
     for _, rest, after, lines, cells in ranked[:_MID_WIDTH]:
-        key = _search(after, rest, pts + _gain(cells, lines, after, base_combo), base_combo)
+        key, sub = _search(after, rest, pts + _gain(cells, lines, after, base_combo), base_combo)
         if key > best:
-            best = key
-    return best
+            best, leaf = key, sub
+    return best, leaf
+
+
+def _completable(board, slots):
+    if not slots:
+        return True
+    free = _FULL & ~board
+    for i, (mask, shifts, valid) in enumerate(slots):
+        anchors = _anchors(free, shifts, valid)
+        rest = slots[:i] + slots[i + 1:]
+        while anchors:
+            low = anchors & -anchors
+            anchors ^= low
+            after, _ = _clear(board | (mask << (low.bit_length() - 1)))
+            if _completable(after, rest):
+                return True
+    return False
 
 
 class TrayPolicy:
-    """Przeszukuje postawienia całej tacki; plansza po niej oceniana szansą na start następnej."""
+    """Przeszukuje postawienia całej tacki; finalistów sprawdza CRN-owo: czy następna tacka się położy."""
 
-    name = "tray"
+    name = "tray-crn"
+
+    def __init__(self):
+        self.rng = random.Random(0)
 
     def reset(self, game_seed):
-        pass
+        self.rng = random.Random(game_seed)
 
     def act(self, game, actions):
         board = _bits(game.board.grid)
@@ -224,11 +244,24 @@ class TrayPolicy:
             rest = [_describe(p.shape) for j, p in enumerate(game.pieces) if p is not None and j != idx]
             roots.append((_order(after, lines, rest), action, after, lines, mask.bit_count(), rest))
         roots.sort(key=lambda r: r[0], reverse=True)
-        best_action, best_key = None, _DEAD
+        finals = []
         for _, action, after, lines, cells, rest in roots[:_ROOT_WIDTH]:
-            key = _search(after, rest, _gain(cells, lines, after, base_combo), base_combo)
-            if best_action is None or key > best_key:
-                best_action, best_key = action, key
+            key, leaf = _search(after, rest, _gain(cells, lines, after, base_combo), base_combo)
+            finals.append((key, action, leaf))
+        finals.sort(key=lambda f: f[0], reverse=True)
+        draws = [
+            [_POSE_DESC[self.rng.choice(self.rng.choice(PIECE_TYPES))] for _ in range(3)]
+            for _ in range(_DRAWS)
+        ]
+        best_action, best_key = None, _DEAD
+        for key, action, leaf in finals[:_REVIEW]:
+            if leaf is None:
+                review = key
+            else:
+                dead = sum(1 for draw in draws if not _completable(leaf, draw))
+                review = (round(1.0 - dead / _DRAWS, 3),) + key[1:]
+            if best_action is None or review > best_key:
+                best_action, best_key = action, review
         return best_action
 
 
