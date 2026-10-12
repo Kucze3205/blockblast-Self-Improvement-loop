@@ -6,14 +6,18 @@ sprawdza liczbę, jest przywiązany do konkretnej rozbieżności (R-1..R-10), ż
 regresja wskazywała, co dokładnie się rozjechało.
 """
 import os
+import random
 import sys
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import policies
+from board import Board
 from game import Game
 from generator import Generator
-from pieces import CANONICAL_TYPES, EXPECTED_POSES, PIECE_POOL, PIECE_TYPES
+from pieces import CANONICAL_TYPES, EXPECTED_POSES, PIECE_POOL, PIECE_TYPES, Piece
 from scoring import FULL_CLEAR_BONUS, clear_points, line_bonus, placement_points
 
 ONE_BY_ONE = PIECE_POOL[0]
@@ -203,6 +207,64 @@ class TestBenchmarkPrerequisites(unittest.TestCase):
         state = agent.get_state(game)
         agent.get_action(state[:3], epsilon=0.0)
         self.assertEqual(agent.epsilon, 0.0)
+
+
+class TestTraySearchPolicy(unittest.TestCase):
+    def test_build_gives_reset_and_act(self):
+        policy = policies.build(None)
+        policy.reset(0)
+        game = Game(seed=3)
+        actions = game.available_actions()
+        self.assertIn(policy.act(game, actions), actions)
+
+    def test_plays_only_legal_moves(self):
+        for seed in range(3):
+            game = Game(seed=seed)
+            policy = policies.build(None)
+            policy.reset(seed)
+            for _ in range(60):
+                actions = game.available_actions()
+                if not actions or game.done:
+                    break
+                move = policy.act(game, actions)
+                self.assertIn(move, actions)
+                _, _, _, reason = game.step(move)
+                self.assertNotEqual(reason, "wrong_placement")
+
+    def test_accepts_pieces_without_pool_index(self):
+        board = Board()
+        board.grid[7][0] = 1
+        pieces = [Piece([[1, 1, 1]], "bridge", -1), None, Piece([[1], [1]], "bridge", -1)]
+        actions = [(i, x, y) for i, p in enumerate(pieces) if p is not None
+                   for y in range(8) for x in range(8) if board.can_place_piece(p, x, y)]
+        game = SimpleNamespace(board=board, pieces=pieces, combo=0)
+        self.assertIn(policies.build(None).act(game, actions), actions)
+
+    def test_bit_line_clear_matches_board(self):
+        rng = random.Random(7)
+        for _ in range(200):
+            board = Board()
+            board.grid = [[int(rng.random() < 0.8) for _ in range(8)] for _ in range(8)]
+            rows, cols = board.check_full_lines()
+            bits, lines = policies._clear_lines(policies._grid_bits(board.grid))
+            ref = board.copy()
+            ref.clear_lines(rows, cols)
+            self.assertEqual(lines, len(rows) + len(cols))
+            self.assertEqual(bits, policies._grid_bits(ref.grid))
+
+    def test_transitions_match_definition(self):
+        rng = random.Random(11)
+        for _ in range(200):
+            grid = [[int(rng.random() < 0.5) for _ in range(8)] for _ in range(8)]
+            expected = 0
+            for y in range(8):
+                for x in range(8):
+                    if grid[y][x]:
+                        continue
+                    for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                        if not (0 <= nx < 8 and 0 <= ny < 8) or grid[ny][nx]:
+                            expected += 1
+            self.assertEqual(policies._transitions(policies._grid_bits(grid)), expected)
 
 
 if __name__ == "__main__":
