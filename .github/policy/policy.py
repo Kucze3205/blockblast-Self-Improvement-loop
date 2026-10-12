@@ -17,6 +17,7 @@ GAP_PER_ROUND = 0.01   # tyle luzu więcej na każdą pozostałą rundę
 NEAR = 0.01       # łańcuch z rekordem w tej odległości od najlepszego nie jest zamykany za zastój
 OPEN_ROOTS = 2    # tyle korzeni otwieramy na starcie; paczka kosztuje najdroższy węzeł
 CEILING = 0.98    # od tego wyniku wzwyż zysk do 1.0 jest mniejszy niż koszt kolejnej rundy
+OPEN_BELOW = 0.9  # nowe łańcuchy otwieramy tylko poniżej tego rekordu; wyżej świeży korzeń rzadko go przebije
 
 
 def _stalled(nodes):
@@ -58,4 +59,7 @@ def solve(question):
             if record < global_best - gap:
                 continue
         packet.append(tip)
+    # pusta paczka nie kończy drzewa, dopóki zostają nieotwarte korzenie i rekord jest niski
+    if not packet and can_open and remaining > 0 and global_best < OPEN_BELOW:
+        return [None] * OPEN_ROOTS
     return packet
