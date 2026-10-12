@@ -1,14 +1,32 @@
 """Testy polityki wiązki po tacce (policies.build)."""
 import os
+import random
 import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import policies
+from board import Board
 from game import Game
 from generator import Generator
-from pieces import PIECE_TYPES
+from pieces import PIECE_POOL, PIECE_TYPES
+
+
+def engine_completable(board, pieces):
+    if not pieces:
+        return True
+    for k, piece in enumerate(pieces):
+        for y in range(Board.HEIGHT):
+            for x in range(Board.WIDTH):
+                if board.can_place_piece(piece, x, y):
+                    trial = board.copy()
+                    trial.place_piece(piece, x, y)
+                    rows, cols = trial.check_full_lines()
+                    trial.clear_lines(rows, cols)
+                    if engine_completable(trial, pieces[:k] + pieces[k + 1:]):
+                        return True
+    return False
 
 
 def board_with_middle_row_one_short():
@@ -52,13 +70,46 @@ class FitProfileTest(unittest.TestCase):
         self.assertAlmostEqual(miss, misses / (3 * samples), delta=0.01)
 
 
+class CompletableTest(unittest.TestCase):
+    def test_matches_engine_brute_force(self):
+        rng = random.Random(11)
+        outcomes = set()
+        for density in (0.3, 0.5, 0.6):
+            for _ in range(30):
+                board = Board()
+                board.grid = [[int(rng.random() < density) for _ in range(Board.WIDTH)] for _ in range(Board.HEIGHT)]
+                tray = tuple(rng.randrange(len(PIECE_POOL)) for _ in range(3))
+                expected = engine_completable(board, [PIECE_POOL[p] for p in tray])
+                outcomes.add(expected)
+                self.assertEqual(policies._completable(policies._to_bits(board.grid), tray), expected)
+        self.assertEqual(outcomes, {True, False})
+
+    def test_stuck_share_matches_engine_on_sampled_trays(self):
+        rng = random.Random(13)
+        for _ in range(3):
+            board = Board()
+            board.grid = [[int(rng.random() < 0.6) for _ in range(Board.WIDTH)] for _ in range(Board.HEIGHT)]
+            stuck = 0
+            for tray in policies.STUCK_TRAYS:
+                pieces = [PIECE_POOL[p] for p in tray]
+                some_fit = any(
+                    board.can_place_piece(piece, x, y)
+                    for piece in pieces
+                    for y in range(Board.HEIGHT)
+                    for x in range(Board.WIDTH)
+                )
+                if some_fit and not engine_completable(board, pieces):
+                    stuck += 1
+            self.assertAlmostEqual(policies._stuck_share(policies._to_bits(board.grid)), stuck / len(policies.STUCK_TRAYS))
+
+
 class RiskTest(unittest.TestCase):
     def test_extremes(self):
         self.assertEqual(policies._risk(0), 0.0)
         full = (1 << 64) - 1
         self.assertAlmostEqual(
             policies._risk(full),
-            policies.RISK_CUBIC + policies.RISK_LINEAR + policies.RISK_DEAD_TYPE * len(PIECE_TYPES),
+            policies.DEATH_WEIGHT + policies.RISK_LINEAR + policies.RISK_DEAD_TYPE * len(PIECE_TYPES),
         )
 
 

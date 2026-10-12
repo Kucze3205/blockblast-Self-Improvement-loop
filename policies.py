@@ -63,9 +63,10 @@ BEAM_WIDTH = 40
 RISK_FINALISTS = 8
 RISK_FINALISTS_TIGHT = 20
 TIGHT_FREE_CELLS = 22
-RISK_CUBIC = 400.0
+DEATH_WEIGHT = 400.0
 RISK_LINEAR = 80.0
 RISK_DEAD_TYPE = 12.3
+STUCK_SAMPLES = 256
 FULL = (1 << 64) - 1
 ROW_MASKS = [0xFF << (8 * r) for r in range(8)]
 COL_MASKS = [sum(1 << (8 * r + c) for r in range(8)) for c in range(8)]
@@ -80,6 +81,12 @@ POSE_PROBS = [
     (idx, 1.0 / (len(PIECE_TYPES) * len(pose_indices)))
     for pose_indices in PIECE_TYPES
     for idx in pose_indices
+]
+_TRAY_RNG = random.Random("stuck-trays")
+# Stałe tacki: każdy finalista widzi te same losowania, więc różnice między nimi nie są szumem.
+STUCK_TRAYS = [
+    tuple(_TRAY_RNG.choice(_TRAY_RNG.choice(PIECE_TYPES)) for _ in range(3))
+    for _ in range(STUCK_SAMPLES)
 ]
 
 
@@ -201,10 +208,33 @@ def _fit_profile(board):
     return miss, dead_types
 
 
+def _completable(board, pieces):
+    if not pieces:
+        return True
+    for k, idx in enumerate(pieces):
+        rest = pieces[:k] + pieces[k + 1:]
+        for _, _, mask in POSES[idx]:
+            if board & mask:
+                continue
+            nxt, _ = _place_and_clear(board, mask)
+            if _completable(nxt, rest):
+                return True
+    return False
+
+
+def _stuck_share(board):
+    stuck = 0
+    for tray in STUCK_TRAYS:
+        if any(_fits(board, idx) for idx in tray) and not _completable(board, tray):
+            stuck += 1
+    return stuck / len(STUCK_TRAYS)
+
+
 def _risk(board):
-    # Trzy klocki losowane niezależnie: tacka martwa, gdy żaden z nich się nie mieści.
+    # Martwa tacka: żaden klocek się nie mieści (miss**3, klocki niezależne) albo nie da się jej ułożyć.
     miss, dead_types = _fit_profile(board)
-    return RISK_CUBIC * miss ** 3 + RISK_LINEAR * miss + RISK_DEAD_TYPE * dead_types
+    death = miss ** 3 + _stuck_share(board)
+    return DEATH_WEIGHT * death + RISK_LINEAR * miss + RISK_DEAD_TYPE * dead_types
 
 
 def build(weights=None):
