@@ -81,6 +81,9 @@ BEAM = 120
 REVIEW = 8
 MIXED_DRAWS = 64
 HARD_DRAWS = 64
+L2_DRAWS = 8
+L2_BEAM = 8
+L2_FINALISTS = 2
 HARD_TYPE_NAMES = ("square3", "rect23", "beam5", "corner5", "beam4")
 HARD_TYPES = [t for t, (name, _) in enumerate(CANONICAL_TYPES) if name in HARD_TYPE_NAMES]
 ALL_TYPES = list(range(len(PIECE_TYPES)))
@@ -217,6 +220,12 @@ def _sample_tray(rng, type_ids):
     return types, [POSES[rng.choice(PIECE_TYPES[t])] for t in types]
 
 
+def _next_value(board, tray):
+    if not _completable(board, tray):
+        return None
+    return max(value - _risk(after) for value, _, after in _tray_finals(board, list(enumerate(tray)), L2_BEAM))
+
+
 class TrayBeamPolicy:
     """Przeszukuje całą tackę (wszystkie kolejności) wiązką na bitboardach."""
 
@@ -241,13 +250,18 @@ class TrayBeamPolicy:
         # Tacki samo-twarde są rzadkie (P = 1/27), więc losowane osobno, a nie w próbce mieszanej.
         hard = [_sample_tray(self.rng, HARD_TYPES)[1] for _ in range(HARD_DRAWS)]
 
+        def level2(board):
+            scores = [s for s in (_next_value(board, tray) for tray in mixed[:L2_DRAWS]) if s is not None]
+            return sum(scores) / len(scores) if scores else 0.0
+
         def review(final):
             value, _, board = final
             dead_mixed = sum(not _completable(board, tray) for tray in mixed) / MIXED_DRAWS
             dead_hard = sum(not _completable(board, tray) for tray in hard) / HARD_DRAWS
             return value - _risk(board) - DEATH * ((1 - P_HARD) * dead_mixed + P_HARD * dead_hard)
 
-        move = max(finals, key=review)[1]
+        ranked = sorted(((review(f), f) for f in finals), key=lambda pair: pair[0], reverse=True)[:L2_FINALISTS]
+        move = max(ranked, key=lambda pair: pair[0] + level2(pair[1][2]))[1][1]
         return move if move in actions else actions[0]
 
 
