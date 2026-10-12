@@ -103,7 +103,7 @@ class TrayBeamPolicy:
             rest = tuple(p.index for j, p in enumerate(pieces) if p is not None and j != idx)
             states.append((action, child, rest))
 
-        best_action, best_rank, depth = actions[0], None, 0
+        best_action, best_rank, depth = None, None, 0
         while states:
             open_states = []
             for action, occ, rest in states:
@@ -130,4 +130,41 @@ class TrayBeamPolicy:
                         states.append((action, child, tuple(remaining)))
                         mask ^= low
             depth += 1
+        if best_action is None:
+            return _survive_longest(pieces, occupied, actions)
         return best_action
+
+
+def _placements_left(occupied, rest):
+    if not rest:
+        return 0
+    masks = bitboard.fit_masks(occupied)
+    if len(rest) == 1:
+        return 1 if masks[rest[0]] else 0
+    best = 0
+    for pose in set(rest):
+        remaining = list(rest)
+        remaining.remove(pose)
+        mask = masks[pose]
+        while mask:
+            low = mask & -mask
+            bit = low.bit_length() - 1
+            child, _ = bitboard.place(occupied, pose, bit % bitboard.SIZE, bit // bitboard.SIZE)
+            best = max(best, 1 + _placements_left(child, tuple(remaining)))
+            if best == len(rest):
+                return best
+            mask ^= low
+    return best
+
+
+def _survive_longest(pieces, occupied, actions):
+    best_action, best_key = None, None
+    for action in actions:
+        idx, x, y = action
+        child, _ = bitboard.place(occupied, pieces[idx].index, x, y)
+        rest = tuple(p.index for j, p in enumerate(pieces) if p is not None and j != idx)
+        fit, _ = bitboard.fit_stats(bitboard.fit_masks(child))
+        key = (1 + _placements_left(child, rest), fit)
+        if best_key is None or key > best_key:
+            best_action, best_key = action, key
+    return best_action
