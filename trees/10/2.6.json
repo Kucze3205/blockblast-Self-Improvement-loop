@@ -2,16 +2,25 @@
  "rodzic": "2.5",
  "rodzic_sha": "555255061dd5b177bb068b92ee88fc4ca73edb11",
  "kolejnosc": 9,
- "sha": "555255061dd5b177bb068b92ee88fc4ca73edb11",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "dd5ed3ff3a5937cd84d4927d2ec5410bc4cf72b5",
+ "stan": "ocena w toku",
+ "gist": "Koniec tacki po najwyższym V, bez mnożenia przez P(następna tacka)",
+ "notatki": [
+  "Koniec tacki po najwyższym V, bez mnożenia przez P(następna tacka)\n\nMechanizm: RiskPolicy.act zwraca pierwszy ruch najlepszego końca tacki z _tray_ends\n(wiązka EVAL_BEAM=4 po całej tacce, tylko stany dokańczalne dla pozostałych klocków).\nUsunięte: ekran 16 kandydatów i szacowanie P na 256 próbkach trójek (_sample_tray,\nsurvival_fraction, POOL_KEYS). Wagi V bez zmian, z 5552550.\n\nDowód z historii (s_sym w .historia/INDEKS.md): 2.2 i 2.3 dodały P × V (ostatni klocek,\npotem cała tacka), 2.4 strojł ekran i próbki (0.878), 2.5 refitował V pod tę politykę\n(0.905). Próbkowanie P było głównym kosztem decyzji (pomiar lokalny, nie wynik).\n\nDlaczego to nie powtórka: P nie jest już strojone, tylko usunięte z decyzji końca tacki.\nRyzyko następnej tacki zostaje wyłącznie w V.\n\nRyzyko: V uczono na partiach z mnożnikiem P. Stany, które polityka bez P odwiedza\nczęściej, mogą być słabo wycenione. Wynik nieznany, czeka na ocenę.\nTesty: tests/test_ntuple.py 13/13 (usunięto dwa testy o P, dodano test wyboru\nnajwyższego V). tests/test_engine.py ma błąd środowiskowy: brak tkinter.\n\nCo dalej: zrobione 2.6 (ten commit) i 2.5 (5552550). Następny krok: refit V od wag z 2.5\nna partiach tej polityki, 60 min (train_ntuple.py już używa RiskPolicy). Czego nie\npowtarzać: ekranu i próbkowania P w decyzji końca tacki.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 56,
+  "usd": 3.4975,
+  "minuty": 16.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T01:28:35Z",
+   "koniec": "2026-10-12T01:44:41Z",
+   "tury": 56,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
