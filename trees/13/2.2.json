@@ -2,16 +2,25 @@
  "rodzic": "2.1",
  "rodzic_sha": "13a8bb317b8d3a351d8e4ae8b11bc2cee047fba4",
  "kolejnosc": 4,
- "sha": "13a8bb317b8d3a351d8e4ae8b11bc2cee047fba4",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "928f3833eff3a4b7875055a4984c372253699621",
+ "stan": "ocena w toku",
+ "gist": "SearchPolicy: kara za śmierć z próbkowanej domykalności następnej tacki",
+ "notatki": [
+  "SearchPolicy: kara za śmierć z próbkowanej domykalności następnej tacki\n\nMechanizm: kara na liściu była (1-q)^3, gdzie q to udział poz pasujących na start tacki. Ten wskaźnik nie widzi tacek, które pasują pojedynczo, ale nie dają się ułożyć całą trójką. Teraz _completable sprawdza dokładnie (wszystkie kotwice, bez przycięcia K), czy da się ułożyć trzy klocki, a kara to DEATH_W * odsetek nieułożalnych z SAMPLES=32 losowanych następnych tacek. _dead_types zastępuje dawne type_fits.count(0). Próbki losowane są z generatora (typ jednostajnie, potem poza jednostajnie), rng seedowany per partia w reset.\n\nDowód z historii (diagnostyka, nie ocena): w 2.1 (13a8bb3, s_sym 0.5846, 881 przegranych) z 40 zgubionych tacek (zgubionych przy K=4) 29 nie da się ułożyć nawet z pełnym przeszukaniem, a tylko 11 ożywa przy pełnych kotwicach. Błąd leży więc w karze, nie w K. Koszt _completable ok. 0,04 ms na sprawdzenie, ok. 21 liści na ruch. Smoke 3 partie (wynik nieoceniany): 479 ruchów, średnio 32 ms/ruch, maks. 292 ms, bez wyjątków i bez nielegalnych ruchów.\n\nDlaczego nie powtórka: 2.1 karał tylko start tacki. Postać 400·P, gdzie P to udział nieułożalnych próbek, jest jak w 9/2.6 (najlepszy węzeł), ale liście pochodzą z przeszukania tacki z 2.1, a nie z beam search. 1/2.5 (za_wolna, 57,4 min na shard) miał pełny DFS obecnej tacki i 12 próbek; tu obecna tacka zostaje przy K=4.\n\nRyzyko: średnio 32 ms/ruch, więc partia do 500 ruchów to ok. 16 s, a shard z 24 partii najwyżej ok. 6,4 min. Progu limitu nie znam (9/2.6 przy 6,9 min przechodził). Kara jest kwantowana po 12,5 na niedającą się ułożyć próbkę, więc decyzje mogą się wahać między ruchami. Ok. 27% zgubionych tacek wynika z przycięcia K=4 i nie jest ruszone.\n\nCo dalej: zrobione 13a8bb3 (2.1, zmierzone) i ten commit (2.2, bez oceny). Następny krok: przycięcie K=4 (ok. 27% zgubionych tacek), np. dokładny filtr korzenia z _completable albo K=6-8 tylko dla ruchów, które zostają. Czego nie powtarzać: kary (1-q)^3 ani pełnego DFS obecnej tacki z 12 próbkami (1/2.5).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 43,
+  "usd": 2.9583,
+  "minuty": 13.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T15:35:09Z",
+   "koniec": "2026-10-12T15:48:09Z",
+   "tury": 43,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
