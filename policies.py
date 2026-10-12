@@ -87,6 +87,8 @@ FINALISTS = 12
 REVIEW = 3
 DRAWS = 4
 TRAY_FAIL = 400.0
+TAIL_DRAWS = 64
+TAIL_WEIGHT = 400.0
 
 _NOT_RIGHT_COL = sum(1 << (bitboard.SIZE * y + x) for y in range(bitboard.SIZE) for x in range(bitboard.SIZE - 1))
 _NOT_BOTTOM_ROW = (1 << (bitboard.SIZE * (bitboard.SIZE - 1))) - 1
@@ -106,8 +108,9 @@ class TraySearchPolicy:
         self.reset(0)
 
     def reset(self, game_seed):
-        # Inne ziarno niż w generatorze gry, inaczej przegląd widziałby prawdziwą następną tackę.
+        # Inne ziarna niż w generatorze gry, inaczej przegląd i ogon widziałyby prawdziwą następną tackę.
         self._draws = Generator(f"przeglad:{game_seed}")
+        self._tail = Generator(f"ogon:{game_seed}")
 
     def act(self, game, actions):
         slots = [(idx, _placements(piece.shape)) for idx, piece in enumerate(game.pieces) if piece is not None]
@@ -115,7 +118,8 @@ class TraySearchPolicy:
         complete = _search(occupied, slots)
         if not complete:
             return _survive_longest(slots, occupied)
-        heads = _heads(complete)
+        tails = [self._tail.next_pieces() for _ in range(TAIL_DRAWS)]
+        heads = _heads(complete, tails)
         if len(heads) == 1:
             return heads[0][2]
         trays = [self._draws.next_pieces() for _ in range(DRAWS)]
@@ -160,6 +164,27 @@ def _fits(bits, places):
     return any((bits & mask) == 0 for _, _, mask in places)
 
 
+def _completable(bits, slots):
+    if not slots:
+        return True
+    for j, places in enumerate(slots):
+        rest = slots[:j] + slots[j + 1:]
+        for _, _, mask in places:
+            if bits & mask:
+                continue
+            child, _ = bitboard.clear_lines(bits | mask)
+            if _completable(child, rest):
+                return True
+    return False
+
+
+def _dead_share(bits, tails):
+    if not tails:
+        return 0.0
+    dead = sum(not _completable(bits, [_placements(piece.shape) for piece in tray]) for tray in tails)
+    return dead / len(tails)
+
+
 def _search(start, slots):
     frontier = [(_value(0, start), 0, start, (1 << len(slots)) - 1, None)]
     complete = []
@@ -189,14 +214,15 @@ def _search(start, slots):
     return complete
 
 
-def _ranked(complete):
+def _ranked(complete, tails=()):
     finalists = sorted(complete, key=lambda s: s[0], reverse=True)[:FINALISTS]
-    return sorted(((s[0] - _risk(s[1]), s[1], s[2]) for s in finalists), key=lambda h: h[0], reverse=True)
+    scored = ((s[0] - _risk(s[1]) - TAIL_WEIGHT * _dead_share(s[1], tails), s[1], s[2]) for s in finalists)
+    return sorted(scored, key=lambda h: h[0], reverse=True)
 
 
-def _heads(complete):
+def _heads(complete, tails=()):
     heads, seen = [], set()
-    for head in _ranked(complete):
+    for head in _ranked(complete, tails):
         if head[2] in seen:
             continue
         seen.add(head[2])

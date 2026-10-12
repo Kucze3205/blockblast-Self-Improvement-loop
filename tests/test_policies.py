@@ -183,5 +183,23 @@ class TestReviewDraws(unittest.TestCase):
         self.assertNotEqual(reviewed, game)
 
 
+class TestTail(unittest.TestCase):
+    def setUp(self):
+        self.by_name = {piece.name: piece for piece in PIECE_POOL}
+        self.checker = bitboard.occupancy([[1 if (x + y) % 2 else 0 for x in range(8)] for y in range(8)])
+
+    def test_completable_needs_room_for_every_piece(self):
+        single = policies._placements(self.by_name["1x1"].shape)
+        square = policies._placements(self.by_name["square2"].shape)
+        self.assertTrue(policies._completable(self.checker, [single, single, single]))
+        self.assertFalse(policies._completable(self.checker, [square]))
+
+    def test_dead_share_counts_unplaceable_trays(self):
+        ok = [self.by_name["1x1"]] * 3
+        dead = [self.by_name["square2"]] * 3
+        self.assertEqual(policies._dead_share(self.checker, [ok, dead]), 0.5)
+        self.assertEqual(policies._dead_share(self.checker, []), 0.0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
