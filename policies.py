@@ -77,94 +77,131 @@ def _immediate_gain(game, action):
     return gain
 
 
-MOBILITY_WEIGHT = 1e-5
+LINE_WEIGHT = 4.0
+TRANSITION_WEIGHT = 1.0
+NOFIT_WEIGHT = 30.0
+DEAD_WEIGHT = 2000.0
+BEAM = 12
+FINALISTS = 12
+
+_NOT_RIGHT_COL = sum(1 << (bitboard.SIZE * y + x) for y in range(bitboard.SIZE) for x in range(bitboard.SIZE - 1))
+_NOT_BOTTOM_ROW = (1 << (bitboard.SIZE * (bitboard.SIZE - 1))) - 1
+_WALL_MASKS = (bitboard.COL_MASKS[0], bitboard.COL_MASKS[-1], bitboard.ROW_MASKS[0], bitboard.ROW_MASKS[-1])
+_PLACEMENTS = {}
 
 
 def build(weights):
     """Polityka nie używa wag; argument zostaje ze względu na kontrakt oceny."""
-    return TrayBeamPolicy()
+    return TraySearchPolicy()
 
 
-class TrayBeamPolicy:
-    """Wiązka po tacce na maskach bitowych. Ruch oceniany szansą, że losowy klocek zmieści się po tacce."""
-
-    WIDTHS = (4, 3)
+class TraySearchPolicy:
+    """Wiązka po klockach tacki; finaliści oceniani wartością planszy minus ryzykiem następnej tacki."""
 
     def reset(self, game_seed):
         pass
 
     def act(self, game, actions):
-        pieces = game.pieces
+        slots = [(idx, _placements(piece.shape)) for idx, piece in enumerate(game.pieces) if piece is not None]
         occupied = bitboard.occupancy(game.board.grid)
-        states = []
-        for action in actions:
-            idx, x, y = action
-            child, _ = bitboard.place(occupied, pieces[idx].index, x, y)
-            rest = tuple(p.index for j, p in enumerate(pieces) if p is not None and j != idx)
-            states.append((action, child, rest))
-
-        best_action, best_rank, depth = None, None, 0
-        while states:
-            open_states = []
-            for action, occ, rest in states:
-                masks = bitboard.fit_masks(occ)
-                fit, mobility = bitboard.fit_stats(masks)
-                rank = fit + MOBILITY_WEIGHT * mobility
-                if not rest:
-                    if best_rank is None or rank > best_rank:
-                        best_action, best_rank = action, rank
-                elif any(masks[p] for p in rest):
-                    open_states.append((rank, action, occ, rest, masks))
-            open_states.sort(key=lambda s: s[0], reverse=True)
-            width = self.WIDTHS[depth] if depth < len(self.WIDTHS) else len(open_states)
-            states = []
-            for _, action, occ, rest, masks in open_states[:width]:
-                for pose in set(rest):
-                    remaining = list(rest)
-                    remaining.remove(pose)
-                    mask = masks[pose]
-                    while mask:
-                        low = mask & -mask
-                        bit = low.bit_length() - 1
-                        child, _ = bitboard.place(occ, pose, bit % bitboard.SIZE, bit // bitboard.SIZE)
-                        states.append((action, child, tuple(remaining)))
-                        mask ^= low
-            depth += 1
-        if best_action is None:
-            return _survive_longest(pieces, occupied, actions)
-        return best_action
+        complete = _search(occupied, slots)
+        if complete:
+            finalists = sorted(complete, key=lambda s: s[0], reverse=True)[:FINALISTS]
+            return max(finalists, key=lambda s: s[0] - _risk(s[1]))[2]
+        return _survive_longest(slots, occupied)
 
 
-def _placements_left(occupied, rest):
-    if not rest:
-        return 0
-    masks = bitboard.fit_masks(occupied)
-    if len(rest) == 1:
-        return 1 if masks[rest[0]] else 0
+def _placements(shape):
+    key = tuple(tuple(row) for row in shape)
+    if key not in _PLACEMENTS:
+        size = bitboard.SIZE
+        cells = [(dx, dy) for dy, row in enumerate(shape) for dx, cell in enumerate(row) if cell]
+        h, w = len(shape), len(shape[0])
+        out = []
+        for y in range(size - h + 1):
+            for x in range(size - w + 1):
+                mask = 0
+                for dx, dy in cells:
+                    mask |= 1 << (size * (y + dy) + x + dx)
+                out.append((x, y, mask))
+        _PLACEMENTS[key] = out
+    return _PLACEMENTS[key]
+
+
+def _transitions(bits):
+    empty = bitboard.FULL ^ bits
+    inner = ((bits ^ (bits >> 1)) & _NOT_RIGHT_COL).bit_count()
+    inner += ((bits ^ (bits >> bitboard.SIZE)) & _NOT_BOTTOM_ROW).bit_count()
+    walls = sum((empty & mask).bit_count() for mask in _WALL_MASKS)
+    return inner + walls
+
+
+def _value(clears, bits):
+    return LINE_WEIGHT * clears - TRANSITION_WEIGHT * _transitions(bits)
+
+
+def _risk(bits):
+    p = 1.0 - bitboard.fit_stats(bitboard.fit_masks(bits))[0]
+    return DEAD_WEIGHT * p ** 3 + NOFIT_WEIGHT * p
+
+
+def _fits(bits, places):
+    return any((bits & mask) == 0 for _, _, mask in places)
+
+
+def _search(start, slots):
+    frontier = [(_value(0, start), 0, start, (1 << len(slots)) - 1, None)]
+    complete = []
+    while frontier:
+        children = {}
+        for _, clears, bits, rem, first in frontier:
+            for j, (idx, places) in enumerate(slots):
+                if not (rem >> j) & 1:
+                    continue
+                left = rem & ~(1 << j)
+                for x, y, mask in places:
+                    if bits & mask:
+                        continue
+                    nxt, lines = bitboard.clear_lines(bits | mask)
+                    cl = clears + lines
+                    val = _value(cl, nxt)
+                    key = (nxt, left)
+                    prev = children.get(key)
+                    if prev is None or val > prev[0]:
+                        children[key] = (val, cl, nxt, left, first or (idx, x, y))
+        frontier = []
+        for val, cl, nxt, left, move in sorted(children.values(), key=lambda s: s[0], reverse=True):
+            if left == 0:
+                complete.append((val, nxt, move))
+            elif len(frontier) < BEAM and any(_fits(nxt, slots[k][1]) for k in range(len(slots)) if (left >> k) & 1):
+                frontier.append((val, cl, nxt, left, move))
+    return complete
+
+
+def _survive_longest(slots, occupied):
+    best_move, best_key = None, None
+    for idx, places in slots:
+        rest = [slot for slot in slots if slot[0] != idx]
+        for x, y, mask in places:
+            if occupied & mask:
+                continue
+            child, _ = bitboard.clear_lines(occupied | mask)
+            fit, _ = bitboard.fit_stats(bitboard.fit_masks(child))
+            key = (1 + _max_placements(child, rest), fit)
+            if best_key is None or key > best_key:
+                best_move, best_key = (idx, x, y), key
+    return best_move
+
+
+def _max_placements(occupied, slots):
     best = 0
-    for pose in set(rest):
-        remaining = list(rest)
-        remaining.remove(pose)
-        mask = masks[pose]
-        while mask:
-            low = mask & -mask
-            bit = low.bit_length() - 1
-            child, _ = bitboard.place(occupied, pose, bit % bitboard.SIZE, bit // bitboard.SIZE)
-            best = max(best, 1 + _placements_left(child, tuple(remaining)))
-            if best == len(rest):
+    for j, (_, places) in enumerate(slots):
+        rest = slots[:j] + slots[j + 1:]
+        for _, _, mask in places:
+            if occupied & mask:
+                continue
+            child, _ = bitboard.clear_lines(occupied | mask)
+            best = max(best, 1 + _max_placements(child, rest))
+            if best == len(slots):
                 return best
-            mask ^= low
     return best
-
-
-def _survive_longest(pieces, occupied, actions):
-    best_action, best_key = None, None
-    for action in actions:
-        idx, x, y = action
-        child, _ = bitboard.place(occupied, pieces[idx].index, x, y)
-        rest = tuple(p.index for j, p in enumerate(pieces) if p is not None and j != idx)
-        fit, _ = bitboard.fit_stats(bitboard.fit_masks(child))
-        key = (1 + _placements_left(child, rest), fit)
-        if best_key is None or key > best_key:
-            best_action, best_key = action, key
-    return best_action

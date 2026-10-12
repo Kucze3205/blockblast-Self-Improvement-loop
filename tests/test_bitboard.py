@@ -65,22 +65,22 @@ class TestFitMasks(unittest.TestCase):
         self.assertAlmostEqual(sum(bitboard.POSE_PROB), 1.0)
 
 
-class TestPlace(unittest.TestCase):
-    def test_place_matches_board_including_line_clears(self):
+class TestClearLines(unittest.TestCase):
+    def test_clear_lines_matches_board_after_placement(self):
         rng = random.Random(7)
         for grid in random_grids(seed=2, count=40):
             board = board_from(grid)
-            occupied = bitboard.occupancy(grid)
-            for pose, piece in enumerate(PIECE_POOL):
+            for piece in PIECE_POOL:
                 anchors = [(x, y) for y in range(SIZE) for x in range(SIZE) if board.can_place_piece(piece, x, y)]
                 if not anchors:
                     continue
                 x, y = rng.choice(anchors)
-                after = board_from(grid)
-                after.place_piece(piece, x, y)
+                placed = board_from(grid)
+                placed.place_piece(piece, x, y)
+                after = placed.copy()
                 rows, cols = after.check_full_lines()
                 after.clear_lines(rows, cols)
-                new_occupied, lines = bitboard.place(occupied, pose, x, y)
+                new_occupied, lines = bitboard.clear_lines(bitboard.occupancy(placed.grid))
                 self.assertEqual(new_occupied, bitboard.occupancy(after.grid))
                 self.assertEqual(lines, len(rows) + len(cols))
 

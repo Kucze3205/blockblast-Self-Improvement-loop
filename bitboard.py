@@ -19,7 +19,6 @@ def _anchors_for_offset(dy, dx):
 
 
 POSE_CELLS = [_cells(piece.shape) for piece in PIECE_POOL]
-POSE_PATTERN = [sum(1 << (dy * SIZE + dx) for dy, dx in cells) for cells in POSE_CELLS]
 # Generator losuje typ jednostajnie, a potem pozę jednostajnie w obrębie typu.
 POSE_PROB = [1 / (len(PIECE_TYPES) * len(PIECE_TYPES[piece.type_index])) for piece in PIECE_POOL]
 
@@ -57,13 +56,12 @@ def fit_stats(masks):
     return fit, places
 
 
-def place(occupied, pose, x, y):
-    """Plansza po postawieniu pozy z kotwicą (x, y) i wyczyszczeniu pełnych linii oraz liczba tych linii. Ruch musi być legalny."""
-    occ = occupied | (POSE_PATTERN[pose] << (y * SIZE + x))
-    rows = [r for r in range(SIZE) if (occ & ROW_MASKS[r]) == ROW_MASKS[r]]
-    cols = [c for c in range(SIZE) if (occ & COL_MASKS[c]) == COL_MASKS[c]]
+def clear_lines(occupied):
+    """Plansza po wyczyszczeniu pełnych wierszy i kolumn oraz liczba tych linii."""
+    rows = [r for r in range(SIZE) if (occupied & ROW_MASKS[r]) == ROW_MASKS[r]]
+    cols = [c for c in range(SIZE) if (occupied & COL_MASKS[c]) == COL_MASKS[c]]
     for r in rows:
-        occ &= ~ROW_MASKS[r]
+        occupied &= ~ROW_MASKS[r]
     for c in cols:
-        occ &= ~COL_MASKS[c]
-    return occ, len(rows) + len(cols)
+        occupied &= ~COL_MASKS[c]
+    return occupied, len(rows) + len(cols)

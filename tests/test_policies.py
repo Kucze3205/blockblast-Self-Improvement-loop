@@ -1,13 +1,16 @@
 import os
+import random
 import sys
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import bitboard
 import policies
 from board import Board
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, Piece
 
 SEED11_BEFORE_PLACEMENT_81 = [
     "..######",
@@ -87,7 +90,27 @@ class TestTrayCompletion(unittest.TestCase):
         self.assertEqual(checked, 3)
 
 
-class TestTrayBeamPolicy(unittest.TestCase):
+class TestPlacements(unittest.TestCase):
+    def test_placements_match_can_place_piece_and_mask(self):
+        rng = random.Random(5)
+        for _ in range(10):
+            board = Board()
+            board.grid = [[int(rng.random() < 0.4) for _ in range(8)] for _ in range(8)]
+            bits = bitboard.occupancy(board.grid)
+            for piece in PIECE_POOL:
+                legal = {(x, y) for y in range(8) for x in range(8) if board.can_place_piece(piece, x, y)}
+                fitted = set()
+                for x, y, mask in policies._placements(piece.shape):
+                    if (bits & mask) == 0:
+                        fitted.add((x, y))
+                    if (x, y) in legal:
+                        after = board.copy()
+                        after.place_piece(piece, x, y)
+                        self.assertEqual(bitboard.occupancy(after.grid), bits | mask)
+                self.assertEqual(fitted, legal)
+
+
+class TestTraySearchPolicy(unittest.TestCase):
     def test_build_returns_policy_that_ignores_weights(self):
         game = Game(seed=1)
         actions = game.available_actions()
@@ -109,6 +132,15 @@ class TestTrayBeamPolicy(unittest.TestCase):
                 self.assertIn(move, actions)
                 _, _, _, reason = game.step(move)
                 self.assertNotEqual(reason, "wrong_placement")
+
+    def test_accepts_pieces_without_pool_index(self):
+        board = Board()
+        board.grid[7][0] = 1
+        pieces = [Piece([[1, 1, 1]], "bridge", -1), None, Piece([[1], [1]], "bridge", -1)]
+        actions = [(i, x, y) for i, p in enumerate(pieces) if p is not None
+                   for y in range(8) for x in range(8) if board.can_place_piece(p, x, y)]
+        game = SimpleNamespace(board=board, pieces=pieces, combo=0)
+        self.assertIn(policies.build(None).act(game, actions), actions)
 
 
 if __name__ == "__main__":
