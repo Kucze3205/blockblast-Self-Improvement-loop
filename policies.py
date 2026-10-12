@@ -81,6 +81,9 @@ BEAM = 120
 REVIEW = 8
 DRAWS = 64
 DEATH = 400
+RISK_CUBE = 400
+RISK_MEAN = 80
+RISK_DEAD_TYPE = 12.3
 FULL = (1 << 64) - 1
 ROWS = [0xFF << (8 * r) for r in range(8)]
 COLS = [sum(1 << (8 * r + c) for r in range(8)) for c in range(8)]
@@ -195,6 +198,15 @@ def _completable(occ, slots):
     return False
 
 
+def _risk(occ):
+    free = FULL & ~occ
+    shares = [sum(1 for p in poses if _fit(POSES[p], free)) / len(poses) for poses in PIECE_TYPES]
+    alive = [s for s in shares if s]
+    cube = (1 - sum(alive) / len(alive)) ** 3 if alive else 1.0
+    dead = len(shares) - len(alive)
+    return RISK_CUBE * cube + RISK_MEAN * (1 - sum(shares) / len(shares)) + RISK_DEAD_TYPE * dead
+
+
 class TrayBeamPolicy:
     """Przeszukuje całą tackę (wszystkie kolejności) wiązką na bitboardach."""
 
@@ -219,7 +231,7 @@ class TrayBeamPolicy:
         def review(final):
             value, _, board = final
             dead = sum(not _completable(board, draw) for draw in draws)
-            return value - DEATH * dead / DRAWS
+            return value - _risk(board) - DEATH * dead / DRAWS
 
         move = max(finals, key=review)[1]
         return move if move in actions else actions[0]
