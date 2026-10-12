@@ -266,6 +266,10 @@ class TestTraySearchPolicy(unittest.TestCase):
                             expected += 1
             self.assertEqual(policies._transitions(policies._grid_bits(grid)), expected)
 
+    def test_risk_bounds(self):
+        self.assertEqual(policies._risk(0), 0.0)
+        self.assertAlmostEqual(policies._risk(policies._FULL), policies._TRAY_FAIL_W)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

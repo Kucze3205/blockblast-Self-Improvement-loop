@@ -87,8 +87,7 @@ _NOT_RIGHT_COL = sum(1 << (_W * y + x) for y in range(_H) for x in range(_W - 1)
 _NOT_BOTTOM_ROW = (1 << (_W * (_H - 1))) - 1
 _TRANS_W = 1.0
 _LINE_W = 4.0
-_NOFIT_W = 30.0
-_DEAD_W = 2000.0
+_TRAY_FAIL_W = 120.0
 _BEAM = 12
 _FINALS = 12
 
@@ -154,8 +153,9 @@ def _value(clears, bits):
 
 
 def _risk(bits):
+    # Gra kończy się, gdy zostaje klocek, który się nie mieści: liczy się P(choć jeden), nie P(wszystkie).
     p = _nofit_probability(bits)
-    return _DEAD_W * p ** 3 + _NOFIT_W * p
+    return _TRAY_FAIL_W * (1.0 - (1.0 - p) ** 3)
 
 
 class TraySearchPolicy:
