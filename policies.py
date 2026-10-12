@@ -15,8 +15,10 @@ from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 NTUPLE_FILE = "ntuple.json"
 EVAL_BEAM = 4
-RISK_SAMPLES = 16
-RISK_TOP = 8
+SCREEN_TOP = 16
+SCREEN_SAMPLES = 16
+REFINE_TOP = 3
+REFINE_SAMPLES = 256
 POOL_KEYS = [valuation.shape_key(piece.shape) for piece in PIECE_POOL]
 
 
@@ -183,10 +185,8 @@ class RiskPolicy(NTuplePolicy):
 
     name = "risk"
 
-    def __init__(self, table, beam=EVAL_BEAM, samples=RISK_SAMPLES, top=RISK_TOP):
+    def __init__(self, table, beam=EVAL_BEAM):
         super().__init__(table, beam=beam)
-        self.samples = samples
-        self.top = top
         self.rng = random.Random(0)
 
     def reset(self, game_seed):
@@ -202,12 +202,16 @@ class RiskPolicy(NTuplePolicy):
         ends = self._tray_ends(occ, pieces)
         if not ends:
             return max(actions, key=lambda action: valuation.value(self.table, _after(game, occ, action)))
-        trays = [_sample_tray(self.rng) for _ in range(self.samples)]
+        trays = [_sample_tray(self.rng) for _ in range(REFINE_SAMPLES)]
+        screened = sorted(
+            (
+                (survival_fraction(after, trays[:SCREEN_SAMPLES]) * max(value, 0.0), value, move, after)
+                for value, move, after in ends[:SCREEN_TOP]
+            ),
+            key=lambda item: -item[0],
+        )
         best, best_score = None, None
-        for value, move, after in ends[: self.top]:
-            # P ≤ 1, więc wynik nie przekracza V: niższe V nie zmieni wyboru.
-            if best_score is not None and value <= best_score:
-                break
+        for _, value, move, after in screened[:REFINE_TOP]:
             score = survival_fraction(after, trays) * max(value, 0.0)
             if best_score is None or score > best_score:
                 best, best_score = move, score
