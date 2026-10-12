@@ -8,7 +8,7 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
-from tray_search import best_move, board_bits
+from tray_search import best_move, board_bits, sample_trays
 
 
 class RandomPolicy:
@@ -83,11 +83,11 @@ class SearchPolicy:
     name = "search"
 
     def reset(self, game_seed):
-        pass
+        self.rng = random.Random(f"search:{game_seed}")
 
     def act(self, game, actions):
         tray = [(i, piece.index) for i, piece in enumerate(game.pieces) if piece is not None]
-        tray_idx, anchor = best_move(board_bits(game.board), tray)
+        tray_idx, anchor = best_move(board_bits(game.board), tray, sample_trays(self.rng))
         return (tray_idx, anchor % Board.WIDTH, anchor // Board.WIDTH)
 
 

@@ -8,6 +8,7 @@ ISO_W = 0.75
 TRANS_W = 1.5
 DEAD_W = 12.3
 DEATH_W = 400.0
+SAMPLES = 32
 
 FULL = (1 << 64) - 1
 ROW = [0xFF << (8 * r) for r in range(8)]
@@ -85,20 +86,35 @@ def _place(bb, pose, anchor):
     return bb & ~clear, len(rows) + len(cols)
 
 
-def _death_risk(bb):
+def _dead_types(bb):
     free = FULL ^ bb
-    type_fits = [0] * N_TYPES
-    for p in range(N_POSES):
-        if _fits(free, p):
-            type_fits[POSE_TYPE[p]] += 1
-    q = sum(type_fits[t] / (N_TYPES * len(PIECE_TYPES[t])) for t in range(N_TYPES))
-    return q, type_fits.count(0)
+    fit_types = {POSE_TYPE[p] for p in range(N_POSES) if _fits(free, p)}
+    return N_TYPES - len(fit_types)
 
 
-def _leaf_value(bb, lines):
-    q, dead = _death_risk(bb)
+def _completable(bb, poses):
+    if not poses:
+        return True
+    free = FULL ^ bb
+    for k, pose in enumerate(poses):
+        anchors = _fits(free, pose)
+        if not anchors:
+            continue
+        rest = poses[:k] + poses[k + 1:]
+        for anchor in _bits(anchors):
+            if _completable(_place(bb, pose, anchor)[0], rest):
+                return True
+    return False
+
+
+def sample_trays(rng):
+    return [tuple(rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3)) for _ in range(SAMPLES)]
+
+
+def _leaf_value(bb, lines, samples):
+    unplaceable = sum(not _completable(bb, tray) for tray in samples) / len(samples)
     return (-OCC_W * bb.bit_count() + LINE_W * lines - ISO_W * _isolated(bb)
-            - TRANS_W * _transitions(bb) - DEAD_W * dead - DEATH_W * (1.0 - q) ** 3)
+            - TRANS_W * _transitions(bb) - DEAD_W * _dead_types(bb) - DEATH_W * unplaceable)
 
 
 def _enumerate(bb, rem, lines, first, depth, alive, dead):
@@ -123,7 +139,7 @@ def _enumerate(bb, rem, lines, first, depth, alive, dead):
         dead.append((depth, first))
 
 
-def best_move(bb, tray):
+def best_move(bb, tray, samples):
     alive, dead = [], []
     _enumerate(bb, tray, 0, None, 0, alive, dead)
     if not alive:
@@ -133,7 +149,7 @@ def best_move(bb, tray):
     for leaf_bb, lines, first in alive:
         key = (leaf_bb, lines)
         if key not in cache:
-            cache[key] = _leaf_value(leaf_bb, lines)
+            cache[key] = _leaf_value(leaf_bb, lines, samples)
         if best_value is None or cache[key] > best_value:
             best_value, best_first = cache[key], first
     return best_first
