@@ -13,7 +13,16 @@ import valuation
 from board import Board
 from game import Game
 from pieces import PIECE_POOL
-from policies import EVAL_BEAM, NTUPLE_FILE, GreedyPolicy, NTuplePolicy, RiskPolicy, build
+from policies import (
+    EVAL_BEAM,
+    NTUPLE_FILE,
+    POOL_KEYS,
+    GreedyPolicy,
+    NTuplePolicy,
+    RiskPolicy,
+    build,
+    survival_fraction,
+)
 
 FULL = (1 << 64) - 1
 
@@ -115,16 +124,6 @@ class TestCompletable(unittest.TestCase):
         occ = FULL & ~(1 | (1 << 8))
         self.assertTrue(valuation.completable(occ, (self.ONE, self.BEAM2)))
 
-    def test_completable_matches_board_enumeration(self):
-        rng = random.Random(6)
-        for _ in range(25):
-            board = Board()
-            board.grid = random_grid(rng, rng.uniform(0.2, 0.5))
-            pieces = [PIECE_POOL[rng.randrange(len(PIECE_POOL))] for _ in range(3)]
-            keys = tuple(valuation.shape_key(piece.shape) for piece in pieces)
-            occ = valuation.occupancy(board.grid)
-            self.assertEqual(valuation.completable(occ, keys), board_completable(board, pieces))
-
 
 def board_completable(board, pieces):
     if not pieces:
@@ -140,6 +139,38 @@ def board_completable(board, pieces):
                     if board_completable(nxt, rest):
                         return True
     return False
+
+
+class TestRisk(unittest.TestCase):
+    ONE = valuation.shape_key([[1]])
+    BEAM2 = valuation.shape_key([[1, 1]])
+
+    def test_fraction_counts_completable_trays(self):
+        # Pierwszy 1x1 zapełnia wiersz i kolumnę, czyszczenie daje miejsce drugiemu.
+        self.assertAlmostEqual(
+            survival_fraction(FULL & ~1, [(self.ONE,), (self.ONE, self.ONE), (self.BEAM2,)]),
+            2 / 3,
+        )
+        self.assertEqual(survival_fraction(0, [(self.ONE, self.ONE, self.BEAM2)]), 1.0)
+        self.assertEqual(survival_fraction(FULL, [(self.ONE,), (self.BEAM2,)]), 0.0)
+
+    def test_sampled_trays_come_from_pool(self):
+        rng = random.Random(9)
+        for _ in range(50):
+            tray = policies._sample_tray(rng)
+            self.assertEqual(len(tray), 3)
+            self.assertTrue(all(key in POOL_KEYS for key in tray))
+
+    def test_completable_matches_board_enumeration(self):
+        rng = random.Random(6)
+        for _ in range(25):
+            board = Board()
+            board.grid = random_grid(rng, rng.uniform(0.2, 0.5))
+            idx = [rng.randrange(len(PIECE_POOL)) for _ in range(3)]
+            keys = tuple(POOL_KEYS[i] for i in idx)
+            pieces = [PIECE_POOL[i] for i in idx]
+            occ = valuation.occupancy(board.grid)
+            self.assertEqual(valuation.completable(occ, keys), board_completable(board, pieces))
 
 
 class TestTrayPlan(unittest.TestCase):
@@ -166,19 +197,6 @@ class TestTrayPlan(unittest.TestCase):
         for value, move, after in ends:
             self.assertIn(move, actions)
             self.assertAlmostEqual(value, valuation.value(table, after))
-
-    def test_act_takes_highest_value_end(self):
-        table = self._table(12)
-        policy = RiskPolicy(table)
-        game = Game(seed=3)
-        occ = valuation.occupancy(game.board.grid)
-        pieces = tuple(
-            (idx, valuation.shape_key(piece.shape))
-            for idx, piece in enumerate(game.pieces)
-            if piece is not None
-        )
-        ends = policy._tray_ends(occ, pieces)
-        self.assertEqual(policy.act(game, game.available_actions()), ends[0][1])
 
     def test_chosen_move_keeps_tray_completable_when_possible(self):
         policy = RiskPolicy(self._table(11))

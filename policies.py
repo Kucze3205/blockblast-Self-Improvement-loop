@@ -10,10 +10,16 @@ import random
 
 import valuation
 from board import Board
+from pieces import PIECE_POOL, PIECE_TYPES
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 NTUPLE_FILE = "ntuple.json"
 EVAL_BEAM = 4
+SCREEN_TOP = 16
+SCREEN_SAMPLES = 16
+REFINE_TOP = 3
+REFINE_SAMPLES = 256
+POOL_KEYS = [valuation.shape_key(piece.shape) for piece in PIECE_POOL]
 
 
 class RandomPolicy:
@@ -157,6 +163,14 @@ class NTuplePolicy:
         return rng.choice(actions)
 
 
+def _sample_tray(rng):
+    return tuple(POOL_KEYS[rng.choice(rng.choice(PIECE_TYPES))] for _ in range(3))
+
+
+def survival_fraction(after, trays):
+    return sum(valuation.completable(after, tray) for tray in trays) / len(trays)
+
+
 def _moves(occ, pieces):
     for n, (idx, key) in enumerate(pieces):
         mask, shifts = valuation.placements(key)
@@ -167,12 +181,16 @@ def _moves(occ, pieces):
 
 
 class RiskPolicy(NTuplePolicy):
-    """Wiązka po całej tacce; koniec tacki to najwyższe V (ryzyko następnej tacki jest już w V)."""
+    """Wiązka po całej tacce; koniec tacki oceniany przez P(następna tacka da się położyć) razy V."""
 
     name = "risk"
 
     def __init__(self, table, beam=EVAL_BEAM):
         super().__init__(table, beam=beam)
+        self.rng = random.Random(0)
+
+    def reset(self, game_seed):
+        self.rng = random.Random(f"risk:{game_seed}")
 
     def act(self, game, actions):
         occ = valuation.occupancy(game.board.grid)
@@ -184,7 +202,20 @@ class RiskPolicy(NTuplePolicy):
         ends = self._tray_ends(occ, pieces)
         if not ends:
             return max(actions, key=lambda action: valuation.value(self.table, _after(game, occ, action)))
-        return ends[0][1]
+        trays = [_sample_tray(self.rng) for _ in range(REFINE_SAMPLES)]
+        screened = sorted(
+            (
+                (survival_fraction(after, trays[:SCREEN_SAMPLES]) * max(value, 0.0), value, move, after)
+                for value, move, after in ends[:SCREEN_TOP]
+            ),
+            key=lambda item: -item[0],
+        )
+        best, best_score = None, None
+        for _, value, move, after in screened[:REFINE_TOP]:
+            score = survival_fraction(after, trays) * max(value, 0.0)
+            if best_score is None or score > best_score:
+                best, best_score = move, score
+        return best
 
     def _tray_ends(self, occ, pieces):
         beam = [(occ, pieces, None)]
