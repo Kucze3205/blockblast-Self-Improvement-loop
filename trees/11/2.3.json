@@ -2,16 +2,25 @@
  "rodzic": "2.2",
  "rodzic_sha": "8acd00970714522e9c94ec9387f328bb45447c8f",
  "kolejnosc": 6,
- "sha": "8acd00970714522e9c94ec9387f328bb45447c8f",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "103a176b0b36193575fc13f79e0fc337ad31f708",
+ "stan": "ocena w toku",
+ "gist": "Recenzja śmierci: 64 losowania, 8 finalistów, wiązka 120",
+ "notatki": [
+  "Recenzja śmierci: 64 losowania, 8 finalistów, wiązka 120\n\nMechanizm bez zmian: wybór ruchu z wiązki tacki, potem recenzja\nDEATH * martwe / DRAWS na wspólnych losowaniach (CRN). Zmienia się\nrozdzielczość ryzyka: 64 zamiast 8 losowań (przy K=8 ryzyko poniżej\nok. 10% jest niewidoczne), 8 finalistów zamiast 3 i wiązka 120 zamiast 40.\nWystarcza zmiana stałej BEAM, bo domyślny argument _tray_finals\nczyta ją przy definicji.\n\nDowód z historii:\n- 11/2.2 (8 losowań, 3 finalistów, wiązka 40): 98 strat na 1200.\n- 9/2.1 (4 losowania, wiązka 120, 8 finalistów): też 98 strat, więc samo\n  szersze przeszukanie nie wystarcza.\n- 9/2.4 (64 losowania oraz człony hard-triple i E): 13 strat.\n- 8/1.3: wiązka 40 -> 120 podniosła s_sym z 0.975 do 0.983.\n- 10/1.3: przy K=8 ryzyko poniżej ok. 10% jest niewidoczne.\n\nDlaczego to nie powtórka: w drzewie 11 żadna z tych wartości nie była\njeszcze mierzona. To nowa kombinacja sprawdzonych elementów, nie\nstrojenie wag.\n\nDiagnoza kodu przed zmianą: _fit, _clear, _isolated, _transitions\ni _completable porównane z silnikiem (200 losowych plansz, 50 sprawdzeń\n_completable: 45 wykonalnych, 5 nie): 0 rozbieżności. Ruchów\nzastępczych actions[0] w 3 partiach kontrolnych: 0. Pomyłki\nw implementacji nie znaleziono.\nCzas: średnio ok. 7 ms na ruch (poprzednio 2.2 ms), max 38 ms,\ndaleko w limicie kalibrowanym na historii. To pomiar czasu, nie wyniku.\n\nRyzyko:\n- Trzy parametry naraz. Jeśli wynik spadnie, nie wiadomo, który jest\n  winny. 9/2.1 sugeruje, że główną dźwignią są losowania, ale nie\n  zmierzono tego osobno.\n- Znana, niesprawdzona luka: gdy wiązka nie znajdzie ustawienia całej\n  tacki, recenzja nie widzi niewstawionego klocka. Przy wyczerpującej\n  wiązce nie zmienia to wyniku (partia i tak przegrana), więc dotyczy\n  tylko przycinania.\n- tests/test_engine.py: 16 z 17 przechodzi. Błąd to brak tkinter\n  (agent.py -> model.py -> turtle), nie policies.py.\n\nCo dalej:\n- Zrobione: 8acd009 (wiązka tacki, _completable, wartość liścia);\n  ten commit: parametry 64/8/120.\n- Następny krok: ocena tego commitu. Przy mniej niż 98 stratach sprawdzić\n  lukę z tacką. Przy większej liczbie rozdzielić zmiany: najpierw\n  DRAWS=64 samo, potem REVIEW i BEAM osobno.\n- Nie powtarzać: strojenia wag liścia bez oceny, terminów wysokości\n  i dziur Tetrisa (odrzucone wcześniej).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 39,
+  "usd": 2.955,
+  "minuty": 13.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T09:18:33Z",
+   "koniec": "2026-10-12T09:32:10Z",
+   "tury": 39,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
