@@ -2,16 +2,25 @@
  "rodzic": "2.7",
  "rodzic_sha": "060730474cd1e0126485431b1c3149960db349a2",
  "kolejnosc": 11,
- "sha": "060730474cd1e0126485431b1c3149960db349a2",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "999ff852faa7517645836d4334a7750ecc1a864e",
+ "stan": "ocena w toku",
+ "gist": "Koniec tacki ważony przeglądem następnej tacki: P × średnie najlepsze V",
+ "notatki": [
+  "Koniec tacki ważony przeglądem następnej tacki: P × średnie najlepsze V\n\nMechanizm:\nDla trzech kandydatów z odsiewu wynik to P(następna tacka dokańczalna, 256 próbek) razy R. R to średnia z najlepszego V po ułożeniu następnej tacki (_tray_ends), liczona po wykonalnych próbkach z pierwszych REVIEW_SAMPLES=4 wspólnych losowań (CRN). Niewykonalne próbki wchodzą tylko przez P, więc śmierć liczy się raz. Wcześniej wynik był P × V(koniec tacki).\n\nDowód z historii:\n- Drzewo 8: 1.4 0,983 -> 1.5 0,990 (przegląd następnej tacki: wybór spośród trzech kandydatów po dwóch ruchach), 1.6 0,993 (cztery tacki zamiast trzech).\n- Drzewo 9: 2.6 0,996 (z 2.5 0,992), przegląd pomija nieumieszczalne próbki, bez podwójnej kary.\n- Łańcuch 2: P × V bez przeglądu daje plateau 0,905-0,936; usunięcie P w 2.6 spadło do 0,840.\n- Diagnostyka na 2.7 (40 decyzji): najlepsze P×V jest w top-16 w 100% decyzji, więc wąskim gardłem nie jest odsiew. Wiązka 16 podnosi najlepsze P×V o ok. 0,5% (25 decyzji, bez istotności), dlatego jej nie robię.\n\nDlaczego to nie powtórka:\nŁańcuch 2 nigdy nie uśredniał najlepszego ułożenia następnej tacki. 2.2 i 2.3 liczyły P × V na końcu tacki lub po ostatnim klocku, a 2.6 usunął P. Tu V po drugiej tacce zastępuje V(koniec), a P zostaje.\n\nRyzyko:\n- Wynik niezmierzony. Ocenia ewaluator.\n- Czas: smoke, 3 partie, 585 ruchów, 53 ms na ruch zamiast ok. 21 ms; przegląd to 41 ms, trzy wywołania na ruch. Szacunek czasu węzła proporcjonalny: ok. 5,3 min. Limit z notatki drzewa 9 to ok. 8,9 min, niesprawdzony w tej gałęzi. Węzły drzewa 9 przy 40-55 ms na ruch miały ocenę do 8,3 min.\n- K=4 wspólne próbki to szum. K=8 podwoi koszt przeglądu.\n- Maksimum po przybliżonym V jest zawyżone, bardziej dla kandydatów z większą liczbą ułożeń następnej tacki.\n- Sprawdzenie: test_ntuple 15/15 (nowy test _review), pełny zestaw 31/32, jedyny błąd to brak tkinter (istniał wcześniej). Smoke: 0 nielegalnych ruchów, 0 wrong_placement.\n\nCo dalej:\n- Zrobione: 0607304 (węzeł 2.7).\n- Następny krok: ocena tego węzła względem 2.7 (0,936). Jeśli czas przekroczy limit, zawęzić przegląd do dwóch kandydatów, nie zmniejszać K.\n- Czego nie powtarzać: wiązki 16 (diagnostyka: +0,5% P×V) i usuwania P (2.6).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 52,
+  "usd": 3.5589,
+  "minuty": 18.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T02:45:09Z",
+   "koniec": "2026-10-12T03:03:35Z",
+   "tury": 52,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
