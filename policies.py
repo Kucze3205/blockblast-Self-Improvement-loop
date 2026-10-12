@@ -8,10 +8,11 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
-from risk import death_probability, sample_trays
+from risk import dead_mass, death_probability, sample_trays
 from tray_search import clear, from_grid, mask_at, popcount, shape_key, tray_finals
 
 SAMPLES = 128
+POOL = 40
 FINALISTS = 12
 TRAY_BEAM = 40
 
@@ -87,8 +88,9 @@ class TrayPolicy:
 
     name = "tray"
 
-    def __init__(self, trays, finalists, beam):
+    def __init__(self, trays, pool, finalists, beam):
         self.trays = trays
+        self.pool = pool
         self.finalists = finalists
         self.beam = beam
 
@@ -102,10 +104,10 @@ class TrayPolicy:
         if not finals:
             return min(actions, key=lambda a: popcount(
                 clear(board | mask_at(shape_key(game.pieces[a[0]].shape), a[1], a[2]))))
-        best = min(finals[: self.finalists],
-                   key=lambda f: (death_probability(f[0], self.trays), popcount(f[0])))
+        pool = sorted(finals[: self.pool], key=lambda f: dead_mass(f[0]))[: self.finalists]
+        best = min(pool, key=lambda f: (death_probability(f[0], self.trays), popcount(f[0])))
         return best[1]
 
 
 def build(weights):
-    return TrayPolicy(sample_trays(SAMPLES), FINALISTS, TRAY_BEAM)
+    return TrayPolicy(sample_trays(SAMPLES), POOL, FINALISTS, TRAY_BEAM)

@@ -21,10 +21,13 @@ def sample_trays(count, seed=SAMPLE_SEED):
     return [tuple(rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3)) for _ in range(count)]
 
 
+def dead_mass(board):
+    return sum(p for p, key in zip(POSE_PROB, POSE_KEYS) if not fits(board, key))
+
+
 def death_probability(board, trays):
     fit = [fits(board, key) for key in POSE_KEYS]
-    dead_mass = sum(p for p, ok in zip(POSE_PROB, fit) if not ok)
     stuck = sum(1 for tray in trays
                 if any(fit[p] for p in tray)
                 and not completable(board, [POSE_KEYS[p] for p in tray]))
-    return dead_mass ** 3 + stuck / len(trays)
+    return dead_mass(board) ** 3 + stuck / len(trays)
