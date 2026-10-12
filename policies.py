@@ -82,14 +82,21 @@ _FULL = (1 << (_W * _H)) - 1
 _ROW_MASKS = [((1 << _W) - 1) << (_W * y) for y in range(_H)]
 _COL_MASKS = [sum(1 << (_W * y + x) for y in range(_H)) for x in range(_W)]
 _LINE_MASKS = _ROW_MASKS + _COL_MASKS
-_WALL_MASKS = (_COL_MASKS[0], _COL_MASKS[-1], _ROW_MASKS[0], _ROW_MASKS[-1])
-_NOT_RIGHT_COL = sum(1 << (_W * y + x) for y in range(_H) for x in range(_W - 1))
-_NOT_BOTTOM_ROW = (1 << (_W * (_H - 1))) - 1
-_TRANS_W = 1.0
-_LINE_W = 4.0
-_TRAY_FAIL_W = 120.0
-_BEAM = 12
-_FINALS = 12
+_EDGE_MASK = _COL_MASKS[0] | _COL_MASKS[-1] | _ROW_MASKS[0] | _ROW_MASKS[-1]
+_NOT_LEFT_COL = _FULL ^ _COL_MASKS[0]
+_NOT_RIGHT_COL = _FULL ^ _COL_MASKS[-1]
+_NOT_TOP_ROW = _FULL ^ _ROW_MASKS[0]
+_NOT_BOTTOM_ROW = _FULL ^ _ROW_MASKS[-1]
+_LINE_W = 4.2
+_OCC_W = 1.4
+_ISO_W = 0.75
+_INNER_W = 1.5
+_EDGE_W = 2.0
+_CUBE_W = 400.0
+_LIN_W = 80.0
+_DEAD_W = 12.3
+_BEAM = 48
+_FINALS = 20
 
 
 def _placements(shape):
@@ -106,7 +113,7 @@ def _placements(shape):
 
 
 _POSE_PLACEMENTS = [_placements(piece.shape) for piece in PIECE_POOL]
-_POSE_PROB = [1.0 / (len(PIECE_TYPES) * len(PIECE_TYPES[piece.type_index])) for piece in PIECE_POOL]
+_TYPE_PLACEMENTS = [[_POSE_PLACEMENTS[i] for i in pose_indices] for pose_indices in PIECE_TYPES]
 
 
 def _grid_bits(grid):
@@ -128,20 +135,18 @@ def _clear_lines(bits):
     return bits & ~cleared, lines
 
 
-def _transitions(bits):
-    empty = _FULL ^ bits
-    inner = ((bits ^ (bits >> 1)) & _NOT_RIGHT_COL).bit_count()
-    inner += ((bits ^ (bits >> _W)) & _NOT_BOTTOM_ROW).bit_count()
-    walls = sum((empty & mask).bit_count() for mask in _WALL_MASKS)
-    return inner + walls
+def _inner_transitions(bits):
+    return ((bits ^ (bits >> 1)) & _NOT_RIGHT_COL).bit_count() + ((bits ^ (bits >> _W)) & _NOT_BOTTOM_ROW).bit_count()
 
 
-def _nofit_probability(bits):
-    total = 0.0
-    for pose, placements in enumerate(_POSE_PLACEMENTS):
-        if not any((bits & mask) == 0 for _, _, mask in placements):
-            total += _POSE_PROB[pose]
-    return total
+def _isolated(bits):
+    blocked = (
+        (((bits << 1) & _NOT_LEFT_COL) | _COL_MASKS[0])
+        & (((bits >> 1) & _NOT_RIGHT_COL) | _COL_MASKS[-1])
+        & (((bits << _W) & _NOT_TOP_ROW) | _ROW_MASKS[0])
+        & (((bits >> _W) & _NOT_BOTTOM_ROW) | _ROW_MASKS[-1])
+    )
+    return (blocked & (_FULL ^ bits)).bit_count()
 
 
 def _fits(bits, placements):
@@ -149,13 +154,22 @@ def _fits(bits, placements):
 
 
 def _value(clears, bits):
-    return _LINE_W * clears - _TRANS_W * _transitions(bits)
+    return (
+        _LINE_W * clears
+        - _OCC_W * bits.bit_count()
+        - _ISO_W * _isolated(bits)
+        - _INNER_W * _inner_transitions(bits)
+        - _EDGE_W * ((_FULL ^ bits) & _EDGE_MASK).bit_count()
+    )
 
 
 def _risk(bits):
-    # Gra kończy się, gdy zostaje klocek, który się nie mieści: liczy się P(choć jeden), nie P(wszystkie).
-    p = _nofit_probability(bits)
-    return _TRAY_FAIL_W * (1.0 - (1.0 - p) ** 3)
+    # Zgon na granicy tacki: wszystkie trzy klocki nowej tacki bez miejsca, stąd sześcian.
+    shares = [sum(_fits(bits, placements) for placements in poses) / len(poses) for poses in _TYPE_PLACEMENTS]
+    alive = [share for share in shares if share > 0.0]
+    mean_all = sum(shares) / len(shares)
+    mean_alive = sum(alive) / len(alive) if alive else 0.0
+    return _CUBE_W * (1.0 - mean_alive) ** 3 + _LIN_W * (1.0 - mean_all) + _DEAD_W * (len(shares) - len(alive))
 
 
 class TraySearchPolicy:

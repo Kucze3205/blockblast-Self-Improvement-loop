@@ -252,23 +252,36 @@ class TestTraySearchPolicy(unittest.TestCase):
             self.assertEqual(lines, len(rows) + len(cols))
             self.assertEqual(bits, policies._grid_bits(ref.grid))
 
-    def test_transitions_match_definition(self):
+    def test_inner_transitions_match_definition(self):
         rng = random.Random(11)
         for _ in range(200):
             grid = [[int(rng.random() < 0.5) for _ in range(8)] for _ in range(8)]
             expected = 0
             for y in range(8):
                 for x in range(8):
+                    for nx, ny in ((x + 1, y), (x, y + 1)):
+                        if nx < 8 and ny < 8 and grid[y][x] != grid[ny][nx]:
+                            expected += 1
+            self.assertEqual(policies._inner_transitions(policies._grid_bits(grid)), expected)
+
+    def test_isolated_matches_definition(self):
+        rng = random.Random(13)
+        for _ in range(200):
+            grid = [[int(rng.random() < 0.6) for _ in range(8)] for _ in range(8)]
+            expected = 0
+            for y in range(8):
+                for x in range(8):
                     if grid[y][x]:
                         continue
-                    for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-                        if not (0 <= nx < 8 and 0 <= ny < 8) or grid[ny][nx]:
-                            expected += 1
-            self.assertEqual(policies._transitions(policies._grid_bits(grid)), expected)
+                    sides = ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+                    if all(not (0 <= nx < 8 and 0 <= ny < 8) or grid[ny][nx] for nx, ny in sides):
+                        expected += 1
+            self.assertEqual(policies._isolated(policies._grid_bits(grid)), expected)
 
     def test_risk_bounds(self):
         self.assertEqual(policies._risk(0), 0.0)
-        self.assertAlmostEqual(policies._risk(policies._FULL), policies._TRAY_FAIL_W)
+        full_board = policies._CUBE_W + policies._LIN_W + len(policies.PIECE_TYPES) * policies._DEAD_W
+        self.assertAlmostEqual(policies._risk(policies._FULL), full_board)
 
 
 if __name__ == "__main__":
