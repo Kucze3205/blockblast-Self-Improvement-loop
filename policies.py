@@ -83,8 +83,8 @@ _COL_MASKS = [sum(1 << (8 * y + x) for y in range(8)) for x in range(8)]
 _LINE_MASKS = _ROW_MASKS + _COL_MASKS
 _NOT_COL0 = _FULL & ~_COL_MASKS[0]
 _NOT_COL7 = _FULL & ~_COL_MASKS[7]
-_BORDER = _ROW_MASKS[0] | _ROW_MASKS[7] | _COL_MASKS[0] | _COL_MASKS[7]
 _ROOT_WIDTH = 8
+_MID_WIDTH = 3
 _DEAD = (-1.0, 0.0, 0, 0)
 _DESC_CACHE = {}
 
@@ -136,10 +136,13 @@ def _isolated(empty):
     return (empty & ~touched).bit_count()
 
 
-def _quick(board, piece_bits, after, lines):
-    touch = ((piece_bits << 1) & _NOT_COL0) | ((piece_bits >> 1) & _NOT_COL7) | (piece_bits << 8) | (piece_bits >> 8)
-    contact = (touch & board).bit_count() + (piece_bits & _BORDER).bit_count()
-    return (4 * lines - _isolated(_FULL & ~after), contact)
+def _room(after, rest):
+    empty = _FULL & ~after
+    return sum(_anchors(empty, shifts, valid).bit_count() for _, shifts, valid in rest)
+
+
+def _order(after, lines, rest):
+    return (_room(after, rest), lines, -_isolated(_FULL & ~after))
 
 
 def _gain(cells, lines, after, base_combo):
@@ -173,7 +176,6 @@ def _leaf(board, pts):
 def _search(board, pending, pts, base_combo):
     if not pending:
         return _leaf(board, pts)
-    width = 3 if len(pending) > 1 else 2
     cands = []
     for k, (mask, shifts, valid) in enumerate(pending):
         anchors = _anchors(_FULL & ~board, shifts, valid)
@@ -182,11 +184,20 @@ def _search(board, pending, pts, base_combo):
             anchors ^= low
             piece_bits = mask << (low.bit_length() - 1)
             after, lines = _clear(board | piece_bits)
-            cands.append((_quick(board, piece_bits, after, lines), k, after, lines, len(shifts)))
-    cands.sort(key=lambda c: c[0], reverse=True)
+            cands.append((k, after, lines, len(shifts)))
     best = _DEAD
-    for _, k, after, lines, cells in cands[:width]:
+    if len(pending) == 1:
+        for _, after, lines, cells in cands:
+            key = _leaf(after, pts + _gain(cells, lines, after, base_combo))
+            if key > best:
+                best = key
+        return best
+    ranked = []
+    for k, after, lines, cells in cands:
         rest = pending[:k] + pending[k + 1:]
+        ranked.append((_order(after, lines, rest), rest, after, lines, cells))
+    ranked.sort(key=lambda c: c[0], reverse=True)
+    for _, rest, after, lines, cells in ranked[:_MID_WIDTH]:
         key = _search(after, rest, pts + _gain(cells, lines, after, base_combo), base_combo)
         if key > best:
             best = key
@@ -210,12 +221,11 @@ class TrayPolicy:
             mask, _, _ = _describe(game.pieces[idx].shape)
             piece_bits = mask << (8 * y + x)
             after, lines = _clear(board | piece_bits)
-            roots.append((_quick(board, piece_bits, after, lines), action, after, lines, mask.bit_count()))
+            rest = [_describe(p.shape) for j, p in enumerate(game.pieces) if p is not None and j != idx]
+            roots.append((_order(after, lines, rest), action, after, lines, mask.bit_count(), rest))
         roots.sort(key=lambda r: r[0], reverse=True)
         best_action, best_key = None, _DEAD
-        for _, action, after, lines, cells in roots[:_ROOT_WIDTH]:
-            idx = action[0]
-            rest = [_describe(p.shape) for j, p in enumerate(game.pieces) if p is not None and j != idx]
+        for _, action, after, lines, cells, rest in roots[:_ROOT_WIDTH]:
             key = _search(after, rest, _gain(cells, lines, after, base_combo), base_combo)
             if best_action is None or key > best_key:
                 best_action, best_key = action, key
