@@ -6,6 +6,7 @@ co polityka umie, a nie jak wypada w trakcie nauki (#8).
 """
 import random
 
+import bitboard
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
@@ -74,3 +75,59 @@ def _immediate_gain(game, action):
         if not any(any(row) for row in board.grid):
             gain += FULL_CLEAR_BONUS
     return gain
+
+
+MOBILITY_WEIGHT = 1e-5
+
+
+def build(weights):
+    """Polityka nie używa wag; argument zostaje ze względu na kontrakt oceny."""
+    return TrayBeamPolicy()
+
+
+class TrayBeamPolicy:
+    """Wiązka po tacce na maskach bitowych. Ruch oceniany szansą, że losowy klocek zmieści się po tacce."""
+
+    WIDTHS = (4, 3)
+
+    def reset(self, game_seed):
+        pass
+
+    def act(self, game, actions):
+        pieces = game.pieces
+        occupied = bitboard.occupancy(game.board.grid)
+        states = []
+        for action in actions:
+            idx, x, y = action
+            child, _ = bitboard.place(occupied, pieces[idx].index, x, y)
+            rest = tuple(p.index for j, p in enumerate(pieces) if p is not None and j != idx)
+            states.append((action, child, rest))
+
+        best_action, best_rank, depth = actions[0], None, 0
+        while states:
+            open_states = []
+            for action, occ, rest in states:
+                masks = bitboard.fit_masks(occ)
+                fit, mobility = bitboard.fit_stats(masks)
+                rank = fit + MOBILITY_WEIGHT * mobility
+                if not rest:
+                    if best_rank is None or rank > best_rank:
+                        best_action, best_rank = action, rank
+                elif any(masks[p] for p in rest):
+                    open_states.append((rank, action, occ, rest, masks))
+            open_states.sort(key=lambda s: s[0], reverse=True)
+            width = self.WIDTHS[depth] if depth < len(self.WIDTHS) else len(open_states)
+            states = []
+            for _, action, occ, rest, masks in open_states[:width]:
+                for pose in set(rest):
+                    remaining = list(rest)
+                    remaining.remove(pose)
+                    mask = masks[pose]
+                    while mask:
+                        low = mask & -mask
+                        bit = low.bit_length() - 1
+                        child, _ = bitboard.place(occ, pose, bit % bitboard.SIZE, bit // bitboard.SIZE)
+                        states.append((action, child, tuple(remaining)))
+                        mask ^= low
+            depth += 1
+        return best_action
