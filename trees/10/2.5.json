@@ -2,16 +2,25 @@
  "rodzic": "2.4",
  "rodzic_sha": "8c5071bfb46d320f57857079fd75939245430286",
  "kolejnosc": 8,
- "sha": "8c5071bfb46d320f57857079fd75939245430286",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "555255061dd5b177bb068b92ee88fc4ca73edb11",
+ "stan": "ocena w toku",
+ "gist": "Refit V na partiach RiskPolicy: TD(0) od wag z 2.1, 60 min",
+ "notatki": [
+  "Refit V na partiach RiskPolicy: TD(0) od wag z 2.1, 60 min\n\nMechanizm: train_ntuple.play prowadzi partie RiskPolicy (wiązka 4 po całej tacce, P(następna tacka) × V) zamiast NTuplePolicy i wywołuje policy.reset(seed) tak jak ocena. Cel TD(0) bez zmian: 1/CAP + V(następny stan), 0 w ostatnim stanie. Start z weights/ntuple.json (wagi z ac8137c, bez zmian w 2.2-2.4), --resume, --seed 4 (nowy ciąg partii), ε=0.05, α=0.1, 4 procesy, 60 min: 1592 partii. Zapis atomowy co 200 partii.\n\nDowód z historii (wyniki oceny, nie lokalne):\n- V uczono na NTuplePolicy (ac8137c), a od 2.2 ocenia RiskPolicy. Przy tej samej V s_sym rósł: 0.731 (2.1), 0.771 (2.2), 0.834 (2.3), 0.878 (2.4).\n- s_sym 0.878 to średnio ok. 439 postawień na partię (cap 500), a trening NTuplePolicy kończył się przy ok. 100-130. V nigdy nie była uczona na partiach tej polityki.\n\nDlaczego to nie powtórka: to nie strojenie K ani top i nie trening 1-ply. Zmienia się tylko rozkład partii, na których uczy się V. Ścieżka decyzji ta sama, więc koszt decyzji (ok. 17,5 ms) i limit czasu jak przy 2.4 (ocena 2.0 min, bez \"za wolna\").\n\nRyzyko:\n- Refit może przesunąć V także w stanach rzadko odwiedzanych przez RiskPolicy. 1592 partii może nie wystarczyć, by V się zbiegła na nowej polityce. Wynik nie zmierzony.\n- ε=0.05 wprowadza losowe ruchy do danych treningowych.\n- Sprawdzenia: tests/test_ntuple.py 14 OK; build('weights') daje RiskPolicy z 22528 wagami; 3 partie bez wyjątku, 0 nielegalnych ruchów (legalność, nie wynik).\n\nCo dalej:\n- zrobione: 8c5071b (2.4), ten commit (refit V na RiskPolicy, weights/ntuple.json).\n- następny krok: ocena tego commitu. Jeśli nie przebije 0.878: adaptacyjne dosamplowanie (16 → 256 → 1024 tylko dla finalistów), koszt decyzji najwyżej 2× względem 2.4, bo 256 próbek (rozdzielczość ok. 0,4%) nie widzi ryzyka rzędu 0,1%. Jeśli przebije: kolejny refit na nowej polityce, o ile koszt mieści się w limicie.\n- nie powtarzać: strojenia K i top; treningu 1-ply; kolejnych porcji refitu na tej samej polityce bez zmiany mechanizmu.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 41,
+  "usd": 3.2879,
+  "minuty": 74.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-12T00:11:09Z",
+   "koniec": "2026-10-12T01:25:41Z",
+   "tury": 41,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
