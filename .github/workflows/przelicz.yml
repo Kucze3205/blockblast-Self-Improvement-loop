@@ -16,6 +16,11 @@ permissions:
 jobs:
   przelicz:
     if: vars.AUTOPILOT == 'on'
+    # ta sama grupa co drzewo.yml i offline.yml: dopóki trwa przeliczanie, harmonogram i offline czekają;
+    # na końcu skrypt sam woła drzewo.yml i wznawia węzły
+    concurrency:
+      group: polityka
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 345
     env:
