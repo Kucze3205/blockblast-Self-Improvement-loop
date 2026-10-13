@@ -2,16 +2,25 @@
  "rodzic": "2.2",
  "rodzic_sha": "52b6fab39bcd179ad62fa81f86ea53ecf7702b05",
  "kolejnosc": 6,
- "sha": "52b6fab39bcd179ad62fa81f86ea53ecf7702b05",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "7dc268d9a28d93681d3416221293c6db248e0430",
+ "stan": "ocena w toku",
+ "gist": "Wiązka i finaliści wg liścia 8/1.1, ryzyko jak w 13/2.4 (węzeł 2.3)",
+ "notatki": [
+  "Wiązka i finaliści wg liścia 8/1.1, ryzyko jak w 13/2.4 (węzeł 2.3)\n\nMechanizm:\n- Liść po czyszczeniu (bez grawitacji): 4.2*linie - 1.4*zajęte - 0.75*izolowane - 1.5*przejścia w planszy - 2.0*puste pola na brzegu. Pusta plansza = -56.\n- Wiązka (40) i wybór finalistów sortowane tym liściem. Węzły deduplikowane po (plansza, reszta tacki); odrzucane, gdy żaden pozostały klocek nie pasuje.\n- Finaliści: 8, a 20 gdy wolnych pól <= 22. Najlepszy finalista dla każdej liczby linii zawsze w puli.\n- Wartość tacki: liść - 12.3*martwe typy - 400*((1-q)^3 + stuck/256) - 80*(1-q). q = P(losowy klocek pasuje); stuck = próbki, w których coś pasuje, ale tacki nie da się ułożyć.\n\nDowód z historii:\n- 8/1.1 (0.975): liść bitboardowy bez wysokości i dziur.\n- 13/1.1 (0.190): wysokości i dziury po osi y zniechęcały do czyszczenia w grze bez grawitacji; stąd liść po czyszczeniu.\n- 13/1.2 (0.955): ten sam liść i wiązka, ryzyko tylko dokładnym członem sześciennym.\n- 13/2.4 (0.991): DEAD_W*martwe + DEATH_W*(P_none + P_stuck) z 256 próbkami.\n- 9/2.4 (0.995): człon liniowy 80*(1-q).\n\nDlaczego to nie powtórka:\n- Nie 2.1 (0.259): wiązka i finaliści sortowane tylko przez wolne pola brzegowe przed czyszczeniem; 64 próbki; człon 80*(1-q^3); bez zajętości, izolowanych i przejść.\n- Nie 13/2.4: tam sortowanie samym brzegiem i bez członu liniowego. Tu pełny liść 8/1.1 i człon liniowy z 9/2.4.\n- Nie 13/1.2: tam sam człon sześcienny, bez stuck i martwych typów.\n\nRyzyko:\n- Wynik nieznany: ocenę liczy ewaluator.\n- Smoke (5 gier, 1432 ruchy; tylko wywrotki i czas): 0 nielegalnych ruchów, 0 wyjątków, średnio 28 ms/ruch, max 227 ms. Limit \"za wolna\" nieznany.\n- Test \"border fills\" zastąpiony testem _pool na danych syntetycznych: w tej planszy klocek czyszczący jest już najlepszy, więc stary test nie sprawdzał puli.\n\nCo dalej:\n- zrobione: 52b6fab (węzeł 2.1, 0.259).\n- następny krok: poczekać na ocenę tego węzła. Przy spadku najpierw sprawdzić sortowanie pełnym liściem w wiązce, bo względem 13/2.4 zmieniły się dwie rzeczy: sortowanie pełnym liściem i człon liniowy 80*(1-q).\n- czego nie powtarzać: sortowania wiązki samym brzegiem (2.1); samego członu sześciennego (13/1.2); strojenia wag bez pomiaru.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 64,
+  "usd": 4.9859,
+  "minuty": 21.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-13T19:58:54Z",
+   "koniec": "2026-10-13T20:20:25Z",
+   "tury": 64,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
