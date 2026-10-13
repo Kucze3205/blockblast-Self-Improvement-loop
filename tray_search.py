@@ -8,6 +8,11 @@ klocki z index=-1, więc tylko shape jest wiarygodny.
 ROW_MASKS = [0xFF << (8 * r) for r in range(8)]
 COL_MASKS = [sum(1 << (8 * r + c) for r in range(8)) for c in range(8)]
 LINE_MASKS = ROW_MASKS + COL_MASKS
+FULL = (1 << 64) - 1
+BORDER = ROW_MASKS[0] | ROW_MASKS[7] | COL_MASKS[0] | COL_MASKS[7]
+NOT_FIRST_COL = FULL ^ COL_MASKS[0]
+NOT_LAST_COL = FULL ^ COL_MASKS[7]
+ROWS_BUT_LAST = FULL ^ ROW_MASKS[7]
 _PLACEMENTS = {}
 
 
@@ -43,8 +48,25 @@ def clear(board):
     return board
 
 
+def clear_count(board):
+    full = [m for m in LINE_MASKS if board & m == m]
+    for m in full:
+        board &= ~m
+    return board, len(full)
+
+
 def popcount(board):
     return bin(board).count("1")
+
+
+def leaf(board, lines):
+    empty = FULL ^ board
+    touched = ((empty >> 1) & NOT_LAST_COL) | ((empty << 1) & NOT_FIRST_COL) | (empty << 8) | (empty >> 8)
+    isolated = popcount(empty & ~touched)
+    transitions = (popcount((board ^ (board >> 1)) & NOT_LAST_COL)
+                   + popcount((board ^ (board >> 8)) & ROWS_BUT_LAST))
+    return (-1.4 * popcount(board) - 0.75 * isolated - 1.5 * transitions
+            - 2.0 * popcount(empty & BORDER) + 4.2 * lines)
 
 
 def completable(board, keys):
@@ -73,37 +95,41 @@ def _finishable(board, left, failed):
 
 
 def tray_finals(board, pieces, width=None):
-    """Plansze po całej tacce z pierwszym ruchem do każdej z nich, od najmniej zajętej.
+    """Plansze po całej tacce jako (wartość liścia, plansza, pierwszy ruch), od najlepszej.
 
     pieces: lista (indeks w game.pieces, kształt). Pośrednie stany są ograniczone do
-    `width` najmniej zajętych osobno dla każdej reszty tacki; None oznacza pełny przegląd.
+    `width` najlepszych osobno dla każdej reszty tacki; None oznacza pełny przegląd.
     """
     left = tuple(sorted(pieces, key=lambda item: item[1]))
-    frontier = {(board, tuple(k for _, k in left)): (None, left)}
+    frontier = {(board, tuple(k for _, k in left)): (None, left, 0)}
     finals = {}
     while frontier:
         nxt = {}
-        for (b, _), (first, entries) in frontier.items():
+        for (b, _), (first, entries, lines) in frontier.items():
             for j, (idx, key) in enumerate(entries):
                 if j and entries[j - 1][1] == key:
                     continue
                 tail = entries[:j] + entries[j + 1:]
                 for x, y, m in legal(b, key):
-                    nb = clear(b | m)
+                    nb, cleared = clear_count(b | m)
+                    total = lines + cleared
                     move = first or (idx, x, y)
                     if tail:
-                        nxt.setdefault((nb, tuple(k for _, k in tail)), (move, tail))
-                    else:
-                        finals.setdefault(nb, move)
+                        state = (nb, tuple(k for _, k in tail))
+                        if state not in nxt or total > nxt[state][2]:
+                            nxt[state] = (move, tail, total)
+                    elif nb not in finals or total > finals[nb][1]:
+                        finals[nb] = (move, total)
         frontier = nxt
         if width is not None:
             frontier = _beam(frontier, width)
-    return sorted(finals.items(), key=lambda item: _rank(item[0]))
+    ranked = [(leaf(nb, total), nb, move) for nb, (move, total) in finals.items()]
+    return sorted(ranked, key=lambda item: (-item[0], _tie(item[1])))
 
 
-def _rank(board):
-    # Remisy po zajętości rozstrzyga hash planszy, nie kolejność wyliczenia (lewy górny róg).
-    return popcount(board), (board * 0x9E3779B97F4A7C15) & 0xFFFFFFFFFFFFFFFF
+def _tie(board):
+    # Remisy wartości rozstrzyga hash planszy, nie kolejność wyliczenia (lewy górny róg).
+    return (board * 0x9E3779B97F4A7C15) & 0xFFFFFFFFFFFFFFFF
 
 
 def _beam(frontier, width):
@@ -112,7 +138,7 @@ def _beam(frontier, width):
         groups.setdefault(state[1], []).append((state, value))
     kept = {}
     for members in groups.values():
-        members.sort(key=lambda item: _rank(item[0][0]))
+        members.sort(key=lambda item: (-leaf(item[0][0], item[1][2]), _tie(item[0][0])))
         kept.update(members[:width])
     return kept
 

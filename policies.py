@@ -9,11 +9,12 @@ import random
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 from risk import dead_mass, death_probability, sample_trays
-from tray_search import clear, from_grid, mask_at, popcount, shape_key, tray_finals
+from tray_search import clear_count, from_grid, leaf, mask_at, popcount, shape_key, tray_finals
 
 SAMPLES = 128
-POOL = 40
-FINALISTS = 12
+CANDIDATES = 8
+LATE_CANDIDATES = 20
+LATE_FREE = 22
 TRAY_BEAM = 40
 
 
@@ -83,15 +84,21 @@ def _immediate_gain(game, action):
     return gain
 
 
+def _step_value(board, key, action):
+    _, x, y = action
+    nb, cleared = clear_count(board | mask_at(key, x, y))
+    return leaf(nb, cleared)
+
+
 class TrayPolicy:
-    """Ruch wiodący do tacki o najmniejszym ryzyku następnej tacki, spośród najmniej zajętych ułożeń."""
+    """Ruch wiodący do tacki o najlepszym liściu kształtu minus ryzyko następnej tacki."""
 
     name = "tray"
 
-    def __init__(self, trays, pool, finalists, beam):
+    def __init__(self, trays, candidates, late_candidates, beam):
         self.trays = trays
-        self.pool = pool
-        self.finalists = finalists
+        self.candidates = candidates
+        self.late_candidates = late_candidates
         self.beam = beam
 
     def reset(self, game_seed):
@@ -102,12 +109,14 @@ class TrayPolicy:
         pieces = [(i, shape_key(p.shape)) for i, p in enumerate(game.pieces) if p is not None]
         finals = tray_finals(board, pieces, self.beam)
         if not finals:
-            return min(actions, key=lambda a: popcount(
-                clear(board | mask_at(shape_key(game.pieces[a[0]].shape), a[1], a[2]))))
-        pool = sorted(finals[: self.pool], key=lambda f: dead_mass(f[0]))[: self.finalists]
-        best = min(pool, key=lambda f: (death_probability(f[0], self.trays), popcount(f[0])))
-        return best[1]
+            return max(actions, key=lambda a: _step_value(board, shape_key(game.pieces[a[0]].shape), a))
+        limit = self.late_candidates if 64 - popcount(board) <= LATE_FREE else self.candidates
+        best = max(finals[:limit], key=lambda f: f[0] - self._penalty(f[1]))
+        return best[2]
+
+    def _penalty(self, board):
+        return 400 * death_probability(board, self.trays) + 80 * dead_mass(board)
 
 
 def build(weights):
-    return TrayPolicy(sample_trays(SAMPLES), POOL, FINALISTS, TRAY_BEAM)
+    return TrayPolicy(sample_trays(SAMPLES), CANDIDATES, LATE_CANDIDATES, TRAY_BEAM)
