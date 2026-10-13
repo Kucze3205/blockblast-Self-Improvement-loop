@@ -2,16 +2,25 @@
  "rodzic": "1.2",
  "rodzic_sha": "438aa2bfa16c8b3d4f1d6f84961695e31dfdf272",
  "kolejnosc": 5,
- "sha": "438aa2bfa16c8b3d4f1d6f84961695e31dfdf272",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "41fb525882e34c314ee335e8c5a1c12ae9b1e979",
+ "stan": "ocena w toku",
+ "gist": "Wiązka tacki: ranking po liściu kształtu i kara za ryzyko na 8 kandydatach",
+ "notatki": [
+  "Wiązka tacki: ranking po liściu kształtu i kara za ryzyko na 8 kandydatach\n\nMechanizm:\n- wiązka 40 po kolejnościach i pozycjach klocków tacki ranguje stany po liściu zamiast po zajętości, remisy rozstrzyga hash planszy\n- liść: -1.4*zajęte - 0.75*izolowane puste (pusty bez pustego sąsiada) - 1.5*przejścia (tylko wewnątrz planszy) - 2.0*puste na brzegu + 4.2*linie; linie liczone po drodze przez całą tackę\n- na 8 najlepszych końcowych planszach (20, gdy wolnych pól <= 22) wartość = liść - (400*P(ryzyko tacki) + 80*martwa masa); wybór największej wartości\n- brak końcowej planszy: pojedynczy ruch o najlepszym liściu\n\nDowód z historii:\n- 8/1.1 (s_sym 0.975): te same wagi liścia (z 5/2.1), ta sama definicja izolowanego pola, kara z martwą masą na 8 liściach (20 gdy <=22 wolnych)\n- 9/2.2: przejścia liczone wewnątrz planszy, ściany poza nimi\n- 1.2 (0.551, 438aa2b): ranking po zajętości bez kształtu; 12 kandydatów z puli 40 wg martwej masy\n\nDlaczego to nie powtórka:\n- 14/2.1 (0.259) miało liść z krawędzią, liniami i martwym typem, bez zajętości, izolowanych pól i przejść; tu te człony są\n- 8/2.1 (0.285) oceniało planszę po jednym ruchu; tu ocenia się całą tackę\n- odchylenia od 8/1.1: brak członu martwych typów (12.3) i członu trudnych trójek; ryzyko z 128 próbkami tacek jak w 14/1.2\n\nRyzyko:\n- wynik niezmierzony; nie wiadomo, czy wypada lepiej niż 0.551\n- smoke: 1500 ruchów w 5 partiach po 300 ruchów, 0 nielegalnych, średnio 21 ms, p95 42 ms, max 166 ms; tylko jeden ruch z <=22 wolnymi polami, więc ścieżka 20 kandydatów prawie nie była sprawdzona\n- testy: liść i licznik linii zgodne z brute force i Board; dokończalność bez zmian; 10/10\n\nCo dalej:\n- zrobione: ten commit (po 438aa2b)\n- następny krok: po ocenie, jeśli słabo, patrzeć na izolowane pola i brzeg w planszach przegranych, zanim zmieni się wagi\n- nie powtarzać: liścia bez zajętości i przejść (14/2.1), oceny planszy po jednym ruchu (8/2.1)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 58,
+  "usd": 3.4912,
+  "minuty": 16.7
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-13T19:58:54Z",
+   "koniec": "2026-10-13T20:15:36Z",
+   "tury": 58,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
