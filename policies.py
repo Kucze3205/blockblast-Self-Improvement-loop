@@ -178,6 +178,8 @@ BEAM_WIDTH = 24
 FINALISTS = 8
 FINALISTS_TIGHT = 20
 TIGHT_FREE_CELLS = 22
+LAMBDA_DEATH = 1000.0
+CLOSE_SAMPLES = 256
 
 _TYPE_MASKS = []
 
@@ -217,7 +219,21 @@ def _place_gain(bits, mask):
     return after, LINE_WEIGHT * lines + CLEARED_CELL_WEIGHT * cleared
 
 
-def _plan_values(bits, pieces):
+def _sample_tray(rng):
+    return tuple(PIECE_POOL[rng.choice(rng.choice(PIECE_TYPES))] for _ in range(3))
+
+
+def _stuck_share(bits, samples):
+    stuck = 0
+    for tray in samples:
+        # Tacka bez żadnego pasującego klocka nie wlicza się: jej karę niesie już _fit_penalty.
+        fits = any(not (bits & m) for p in tray for m in _placements(p).values())
+        if fits and not _tray_playable(bits, tray):
+            stuck += 1
+    return stuck / len(samples)
+
+
+def _plan_values(bits, pieces, samples):
     """Najlepsza wartość pełnego planu dla każdego pierwszego ruchu tacki."""
     slots = [i for i, p in enumerate(pieces) if p is not None]
     if not slots:
@@ -244,7 +260,12 @@ def _plan_values(bits, pieces):
         if depth == len(slots) - 1:
             values = {}
             for value, after, first, _ in children[:finalists]:
-                full = value - _fit_penalty(after) - POCKET_WEIGHT * _pocket_cells(after)
+                full = (
+                    value
+                    - _fit_penalty(after)
+                    - POCKET_WEIGHT * _pocket_cells(after)
+                    - LAMBDA_DEATH * _stuck_share(after, samples)
+                )
                 values[first] = max(values.get(first, float("-inf")), full)
             return values
         frontier = []
@@ -257,15 +278,17 @@ def _plan_values(bits, pieces):
 
 
 class TrayBeamPolicy:
-    """Wiązka po całej tacce; liść z liniami i strukturą, finaliści z karą za dopasowanie."""
+    """Wiązka po całej tacce; liść z liniami i strukturą, finaliści z karami za dopasowanie i następną tackę."""
 
     name = "tray_beam"
 
     def reset(self, game_seed):
-        pass
+        # Inny strumień niż Generator gry, inaczej polityka widziałaby przyszłe tacki.
+        self.rng = random.Random(f"closability:{game_seed}")
 
     def act(self, game, actions):
-        values = _plan_values(_to_bits(game.board.grid), list(game.pieces))
+        samples = [_sample_tray(self.rng) for _ in range(CLOSE_SAMPLES)]
+        values = _plan_values(_to_bits(game.board.grid), list(game.pieces), samples)
         scores = {action: values.get(action, float("-inf")) for action in actions}
         top = max(scores.values())
         ties = [action for action in actions if scores[action] == top]

@@ -21,7 +21,9 @@ from policies import (
     _placements,
     _plan_values,
     _pocket_cells,
+    _sample_tray,
     _structure_cost,
+    _stuck_share,
     _to_bits,
     _tray_playable,
     build,
@@ -151,8 +153,14 @@ class TrayBeamPolicyTest(unittest.TestCase):
         for seed in range(4):
             game = Game(seed)
             game.board.grid = random_board(rng, 0.3).grid
-            values = _plan_values(_to_bits(game.board.grid), list(game.pieces))
+            samples = [_sample_tray(rng) for _ in range(16)]
+            values = _plan_values(_to_bits(game.board.grid), list(game.pieces), samples)
             self.assertTrue(set(values) <= set(game.available_actions()))
+
+    def test_stuck_share_is_zero_on_empty_board(self):
+        rng = random.Random(7)
+        samples = [_sample_tray(rng) for _ in range(64)]
+        self.assertEqual(_stuck_share(0, samples), 0)
 
     def test_build_returns_policy_that_picks_a_legal_action(self):
         policy = build(None)
@@ -191,6 +199,7 @@ class TrayBeamPolicyTest(unittest.TestCase):
     def test_chosen_move_keeps_tray_playable_when_some_move_does(self):
         rng = random.Random(4)
         policy = build(None)
+        policy.reset(0)
         for _ in range(4):
             game = Game(rng.randrange(1000))
             game.board.grid = random_board(rng, 0.35).grid
