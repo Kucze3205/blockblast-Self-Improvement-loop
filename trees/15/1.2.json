@@ -2,16 +2,25 @@
  "rodzic": "1.1",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 3,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "8dc521a861826d22970838fa8557cdc798fe1a17",
+ "stan": "ocena w toku",
+ "gist": "Dodaj policies.build: wiązka tacki z kosztem dziur i ryzykiem martwej tacki",
+ "notatki": [
+  "Dodaj policies.build: wiązka tacki z kosztem dziur i ryzykiem martwej tacki\n\nMechanizm:\n- build(weights) zwraca TrayBeamPolicy z reset(seed) i act(game, actions); weights ignorowane, bez torch i tkinter.\n- Plansza jako bitboard z krokiem 9 (kolumna 8 to strażnik). Wiązka po pozostałych klockach tacki: BEAM=16, POOL=16, ranking (liczba klocków bez miejsca, -koszt tani).\n- Pełny koszt liścia (_full_value) liczony tylko na poolu i finalistach, nie kumulowany między poziomami: LINE_W*linie - EDGE_W*wolne pola obwodu - POCKET_W*kieszenie - HOLE_W*zakryte puste pola - DEAD_W*martwe typy - RISK_W*q - DEATH_W*q^3, gdzie q = P(losowy klocek się nie mieści).\n- Generator losuje 1/15 na typ, potem 1/n na pozę, trzy niezależne klocki, więc q^3 to dokładne P(nowa tacka martwa).\n\nDowód z historii:\n- Korzeń łańcucha 1 (węzeł 1.1) dał s_sym 0,000: AttributeError, policies nie ma build. Ten commit usuwa tę przyczynę.\n- Drzewo 15, węzeł 2.1 (s_sym 0,275) i drzewo 13, węzeł 1.1 (0,190): wiązka z samym q^3 nie ma gradientu w środku gry. Tu q dochodzi liniowo obok q^3.\n- Dym, seed 2: plansza przegranej ma zakryte puste pola, których żaden człon nie karał. Człon dziur dodany i sprawdzony względem brute force.\n\nDlaczego to nie powtórka:\n- Względem 15/2.1: koszt liścia nie jest sumowany między poziomami (tam DEAD_W odejmowany wielokrotnie), liniowe q obok q^3, człon dziur, BEAM 16 zamiast 8.\n- Bez DFS, bez przeglądu następnej tacki i bez próbkowania (drzewa 4 i 9).\n\nSprawdzenia (to nie wynik):\n- Maski ruchów, linie, ryzyko i dziury względem Board: 0 rozbieżności (12300 pozycji, 300 plansz).\n- Dym, 3 partie: 0 nielegalnych ruchów, 1,5-1,8 ms na ruch. Długości 56, 41, 32 ruchy to tylko dym.\n- tests/test_engine.py: 16 zaliczonych, 1 niezaliczony (brak tkinter, model.py importuje turtle). Problem sprzed tej zmiany, poza policies.py.\n\nRyzyko:\n- Wynik niezmierzony, liczy ewaluator.\n- Wagi LINE_W 4,2, EDGE_W 2, POCKET_W 3, HOLE_W 2, DEAD_W 6, RISK_W 40, DEATH_W 1000 wybrane bez pomiaru.\n- Dym kończy partie wcześnie: możliwy za krótki horyzont (BEAM 16) albo za słaby sygnał przed końcem gry.\n\nCo dalej:\n- zrobione: build i wiązka tacki z kosztem dziur (ten commit)\n- następny krok: po ocenie sprawdzić, czy niski wynik to wagi czy brak przeglądu następnej tacki; jeśli nadal nisko, dodać przegląd następnej tacki na próbkach zamiast kolejnego członu\n- czego nie powtarzać: wag bez pomiaru i sumowania kar między poziomami\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 42,
+  "usd": 2.1212,
+  "minuty": 9.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T04:23:03Z",
+   "koniec": "2026-10-14T04:32:40Z",
+   "tury": 42,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
