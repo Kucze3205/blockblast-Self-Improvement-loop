@@ -86,10 +86,12 @@ NOT_LEFT = FULL & ~COL_MASKS[0]
 NOT_RIGHT = FULL & ~COL_MASKS[W - 1]
 HMASK = sum(1 << (W * r + c) for r in range(H) for c in range(1, W))
 VMASK = sum(1 << (W * r + c) for r in range(H - 1) for c in range(W))
+EDGE_MASK = ROW_MASKS[0] | ROW_MASKS[H - 1] | COL_MASKS[0] | COL_MASKS[W - 1]
 
 CLEAR_W = 10.0
 TRANSITION_W = 1.0
 ISOLATED_W = 6.0
+EDGE_W = 2.0
 TRAY_FAIL_W = 400.0
 TRAY_SAMPLES = 64
 BEAM = 24
@@ -150,8 +152,12 @@ def _isolated(board):
     return (empty & ~touching).bit_count()
 
 
+def _edge_empty(board):
+    return (EDGE_MASK & ~board).bit_count()
+
+
 def _beam_score(board, lines):
-    return CLEAR_W * lines - TRANSITION_W * _transitions(board)
+    return CLEAR_W * lines - TRANSITION_W * _transitions(board) - EDGE_W * _edge_empty(board)
 
 
 def _draw(rng):

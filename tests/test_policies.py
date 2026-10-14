@@ -12,7 +12,7 @@ from board import Board
 from game import Game
 from pieces import PIECE_POOL
 from policies import (
-    _bits, _clear, _fits, _isolated, _joint_failure, _joint_ok, _transitions, build,
+    _bits, _clear, _edge_empty, _fits, _isolated, _joint_failure, _joint_ok, _transitions, build,
 )
 
 
@@ -55,6 +55,9 @@ class TestBitboardHelpers(unittest.TestCase):
     def test_enclosed_empty_cell_is_isolated(self):
         corner_enclosed = (1 << 1) | (1 << 8)
         self.assertEqual(_isolated(corner_enclosed), 1)
+
+    def test_empty_board_has_28_edge_cells(self):
+        self.assertEqual(_edge_empty(0), 28)
 
 
 def _placeable(board, piece):
