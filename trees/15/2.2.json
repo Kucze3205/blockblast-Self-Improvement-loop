@@ -2,16 +2,25 @@
  "rodzic": "2.1",
  "rodzic_sha": "2d291a57f5bb28264c088c1ce60eb057f300b67a",
  "kolejnosc": 4,
- "sha": "2d291a57f5bb28264c088c1ce60eb057f300b67a",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "08fdc244db23134add9e9d1ecf6147cb2ecdecda",
+ "stan": "ocena w toku",
+ "gist": "Liść wiązki: koszt stanu planszy zamiast nagrody za komórki i kar za kieszenie",
+ "notatki": [
+  "Liść wiązki: koszt stanu planszy zamiast nagrody za komórki i kar za kieszenie\n\nMechanizm:\n- liść = 4.2*linie po ścieżce wiązki - koszt planszy; koszt planszy liczony z aktualnego\n  stanu (_board_cost): 1.4*zajęte + 0.75*izolowane puste + 1.5*przejścia wewnątrz planszy\n  + 2.0*puste przy brzegu\n- izolowane puste = pusty bez pustego sąsiada (jak w notatce 8/1.1), ściany nie liczą się\n- usunięte: nagroda 1.4*komórki klocka (CELL_W) i kara za kieszenie (POCKET_W, _pockets);\n  kara za brzeg nie jest sumowana po każdym postawieniu, tylko liczona ze stanu\n- ranking wiązki, przycinanie puli i wybór końcowy używają tej samej wyceny; DEAD_W i q³ bez zmian\n\nDowód z historii:\n- 2.1 = 0.275 (1172/1200 przegranych). Domknięcie wiersza przy brzegu wychodziło o 9.8\n  gorzej niż postawienie w środku: kara za brzeg zwalniała 7 pól, a nagroda za linię to 4.2\n- ta sama tabela cech i wag co liść 8/1.1 (0.975)\n\nDlaczego to nie powtórka:\n- 2.1 nie ma przejść ani stanowego kosztu planszy; nagroda za komórki klocka liczy punkty\n  gry, a nie przeżycie, na którym mierzy się wynik\n- na planszy z dziurą w wierszu 0 (x=3) domknięcie wiersza ma teraz wartość o 20.9 wyższą\n  niż postawienie w środku (było -9.8)\n\nRyzyko:\n- wynik niezmierzony; smoke: 9 partii bez wyjątku z legalnymi ruchami, cechy i czyszczenie\n  zgodne z Board na 741 stanach (26660 postawień), ruch średnio 0.7 ms, max 3.4 ms (nie ocena)\n- przycinanie terminali do POOL po wartości bez kary za śmierć zostaje z 2.1; kara q³\n  działa tylko na 16 najlepszych wariantach tacki\n- wagi 1.4/0.75/1.5/2.0/4.2 przeniesione z 8/1.1, nie strojone\n\nCo dalej:\n- zrobione: ten commit (węzeł 2.2 na trees/15/2)\n- następny krok: ocena węzła przez osobny program; potem kara za martwą następną tackę (P_stuck)\n- czego nie powtarzać: kar za kieszenie (_pockets) i nagrody 1.4*komórki klocka w liściu\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 48,
+  "usd": 3.1619,
+  "minuty": 13.2
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T04:23:03Z",
+   "koniec": "2026-10-14T04:36:15Z",
+   "tury": 48,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
