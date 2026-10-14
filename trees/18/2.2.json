@@ -2,16 +2,27 @@
  "rodzic": "2.1",
  "rodzic_sha": "aa27f12b012d90939743013295f290dbfe4fea4f",
  "kolejnosc": 4,
- "sha": "aa27f12b012d90939743013295f290dbfe4fea4f",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "398ef6c0ed070b81cc02a3651d6b68100d4d1bf7",
+ "stan": "ocena w toku",
+ "gist": "dead_prob: klocek niepasujący do planszy liczy się przez DFS, nie jako pewna śmierć",
+ "notatki": [
+  "dead_prob: klocek niepasujący do planszy liczy się przez DFS, nie jako pewna śmierć\n\nMechanizm: stara wersja traktowała tackę, w której któryś klocek nie mieści się na obecnej\nplanszy, jako przegraną z prawdopodobieństwem 1. Wyczyszczenie linii przez wcześniejszy\nklocek z tej samej tacki może jednak zwolnić miejsce. Teraz każda tacka przechodzi przez\nplaces_all, a p_single waży średnią śmiertelności tacek z niepasującym klockiem.\nTacki w pełni pasujące liczone jak dotąd.\n\nDowód (kalibracja lokalna, nie wynik gry): 30 plansz, prawda z 1000 tacek MC, 30 pul po\n24 tacki. Obciążenie stare +0.071, nowe +0.002; średni błąd 0.078 -> 0.035; przy gęstości\n0.5 obciążenie +0.176 -> +0.007. Test test_unfit_piece_freed_by_clear_is_not_death:\nstare 0.9997, nowe 0.0.\n\nDlaczego nie powtórka: poprzednie próby zmieniały kandydatów (f90c2f0) i progi; tu zmienia\nsię model śmierci dla tacek z niepasującym klockiem.\n\nRyzyko: koszt na ruch średnio 4.25 ms wobec 3.52 (+21%), maksimum 23.8 wobec 16.7 ms\n(4 partie, ok. 650 ruchów). Limit czasu z .github/evaluator/config.json nie jest czytelny\nw tym checkoucie (.github to urządzenie znakowe). Gdy w puli nie ma tacki z niepasującym\nklockiem, d_stuck = 1.0 (jak dawniej); wtedy waga p_single jest mała.\n\nCo dalej: zrobione f90c2f0 (pierwsze ruchy), bc6d934 (test), ten commit (defekt B).\nPo ocenie, jeśli wynik jest poniżej lineage: sprawdzić DEATH_W i BEAM. Nie tunować\nLINE_W/TRANS_W/FILL_W bez nowego mechanizmu.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Test: plan_move ocenia śmiertelność najlepszym liściem każdego pierwszego ruchu\n\nMechanizm: test podsłuchuje dead_prob i wymaga, żeby każda oceniona plansza była\nnajlepszym pełnym liściem pewnego pierwszego ruchu, a ocen było dokładnie FINALISTS.\nPlansza z ziarna 0 ma 14 pierwszych ruchów, więc odcięcie do ośmiu jest realnie sprawdzane.\n\nDowód: na f90c2f0 cały moduł przechodzi (8/8). Na aa27f12 (stary plan_move, ładowany\nz git show bez zapisu na dysk) test pada na asercji zawierania: top-8 liści zawiera\nplansze, które nie są najlepszym liściem swojego ruchu.\n\nDlaczego nie powtórka: pilnuje naprawy defektu A z f90c2f0 przed zmianami w dead_prob.\nRyzyko: wynik zależy od ziarna 0 i liczby pierwszych ruchów; zmiana BEAM może to unieważnić,\nco wyłapie asercja len(best) > FINALISTS.\n\nCo dalej: zrobione f90c2f0 i ten test. Następny krok: stratyfikowany dead_prob, bo\ndead_prob przeszacowuje śmierć (średnio 0.139 wobec 0.084 z MC na 39 planszach).\nNie tunować DEATH_W ani BEAM bez nowego mechanizmu.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Śmiertelność liczona dla ruchów, nie dla liści tacki\n\nMechanizm: plan_move brał 8 najlepszych pełnych sekwencji po cheap i liczył\nkarę 400 * P(śmierć na następnej tacce) tylko dla nich. Decyzja zapada jednak\nna pierwszym ruchu, a wiele sekwencji dzieli ten sam pierwszy ruch, więc\nshortlist zawężał się do kilku ruchów. Teraz dla każdego pierwszego ruchu\nbierzemy najlepszy liść po cheap, a karę liczymy dla 8 najlepszych ruchów.\nRuch, z którego nie wychodzi żaden pełny liść, dostaje -400 (wszystkie\ngałęzie umierają), jak dotąd.\n\nDowód z historii: węzeł 2.1 ma 140 przegranych przy s_sym 0.9425, a lineage\ntrzyma 0.98–0.996. Diagnoza z kodu, nie z opisu: na 278 losowych planszach\ntop-8 liści ma średnio 4.88 pierwszych ruchów z 14.38 dostępnych, czyli\nśmiertelność była sprawdzana tylko dla około jednej trzeciej ruchów.\n\nDlaczego to nie powtórka: nie zmienia wag ani mechanizmu liścia, zmienia\njednostkę decyzji. Koszt ten sam: 8 wywołań dead_prob na ruch. Sprawdzone\nlokalnie, nie jako wynik: tests/test_policies.py 7/7; dead_prob wołane dla\nmin(FINALISTS, pierwsze ruchy) ruchów na 226 planszach; 0 nielegalnych\nruchów; 3 partie, 551 ruchów bez wyjątku, średnio 3.4 ms na ruch.\n\nRyzyko: wynik niezmierzony. Druga wada, której ta zmiana nie rusza:\ndead_prob przeszacowuje śmiertelność. Taca, w której któryś klocek nie mieści\nsię teraz, jest liczona jako martwa, choć czyszczenie linii przez inne klocki\nmogłoby go umieścić. Na 39 planszach średnio 0.139 wobec 0.084 (MC, 1500 tacek),\n6 plansz z różnicą > 0.10, żadnej z niedoszacowaniem > 0.05. Zwykła MC na 24\npróbkach ma przy p≈0.1 odchylenie ok. 0.06, czyli ok. 24 pkt kary, więc samo\nwyrzucenie p_single nie wchodzi w grę.\n\nCo dalej:\n- Zrobione: ten commit (plan_move liczy karę po ruchach).\n- Następny krok: po ocenie, jeśli wynik jest poniżej lineage, stratyfikowany\n  dead_prob: p_single * d1 + (1 - p_single) * q, gdzie d1 to odsetek tacek\n  warunkowych z co najmniej jednym nieułożonym klockiem. Dopiero potem DEATH_W\n  i BEAM.\n- Nie powtarzać: strojenia LINE_W, TRANS_W, FILL_W bez zmiany mechanizmu.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 57,
+  "usd": 3.9074,
+  "minuty": 17.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T19:16:10Z",
+   "koniec": "2026-10-14T19:33:46Z",
+   "tury": 57,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
