@@ -2,16 +2,27 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "be550a5135ea47d4083ec4e77400dd888e9cc1db",
+ "stan": "zaparkowany",
+ "gist": "Usuń martwy import turtle z model.py, który blokował import agenta bez tkintera",
+ "notatki": [
+  "Usuń martwy import turtle z model.py, który blokował import agenta bez tkintera\n\nSedno: `from turtle import done` wymaga tkintera, którego nie ma na runnerze, więc\n`import agent` padał z ModuleNotFoundError i jeden test z tests.test_engine kończył się błędem.\nMechanizm: usunięta pierwsza linia. Nazwa `done` w model.py to wyłącznie parametr i zmienne\nlokalne w train_step; nigdy nie była funkcją z turtle.\nDowód lokalny: unittest tests.test_engine przed zmianą 16 OK + 1 error, po zmianie 17 OK.\nDlaczego to nie powtórka: poprzednie drzewa miały policies.build, ale import agenta i tak\nmusiał przejść; tu usuwam przyczynę, nie objaw.\nRyzyko: brak zmiany logiki, tylko martwy import.\n\nCo dalej: zrobione: caf8e72 (korzeń) + ten commit. Następny krok: policies.build(weights)\nz polityką po tacce, bez importu torcha. Czego nie powtarzać: importu turtle w model.py.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
   "tury": 0,
   "usd": 0.0,
-  "minuty": 0.0
+  "minuty": 12.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T07:00:05Z",
+   "koniec": "2026-10-14T07:12:36Z",
+   "tury": 0,
+   "przyczyna": "terminal_reason=rate_limit exit=143"
+  }
+ ],
+ "zaparkowano": "2026-10-14T07:12:36Z",
+ "wznow_po": "2026-10-14T08:10:00Z"
 }
