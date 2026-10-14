@@ -2,16 +2,25 @@
  "rodzic": "2.3",
  "rodzic_sha": "9d657c3100c7f4bdddde0caccd279eddf622cd11",
  "kolejnosc": 8,
- "sha": "9d657c3100c7f4bdddde0caccd279eddf622cd11",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "87eb66d9d240e16bba27aed2c44671dddba4ec00",
+ "stan": "ocena w toku",
+ "gist": "Przegląd następnej tacki: 64 próbki i dokładne sprawdzenie ułożenia",
+ "notatki": [
+  "Przegląd następnej tacki: 64 próbki i dokładne sprawdzenie ułożenia\n\nMechanizm:\n- DRAWS 4 -> 64 wspólne losowania następnej tacki (CRN), te same dla wszystkich trzech kandydatów\n- ułożenie tacki sprawdza _completable: przeszukiwanie w głąb po wszystkich kolejnościach i zakotwiczeniach, z czyszczeniem linii jak w _place; zastępuje wiązkę BEAM=8/POOL=16 tylko w przeglądzie\n- kara bez zmian: STUCK_W * utykające / sprawdzone, pomijane tacki, w których nic nie pasuje (tę śmierć łapie q^3)\n- wiązka bieżącego ruchu, liść, DEAD_W i DEATH_W * q^3 bez zmian\n\nDowód z historii:\n- 15/2.3 miał 4 próbki. Przy p = 1% tacce utykającej wykrycie to 1 - 0.99^4 = 4%, przy 64 ok. 47% (wzór z 9/2.7). Odchylenie kary przy p = 1% to 400 * sqrt(p(1-p)/n): ok. 20 pkt dla n = 4, ok. 5 pkt dla n = 64.\n- 9/2.6 (0.996, ocena 6.9 min) miało ogon na 64 mieszanych tackach (MIX_TRAYS = 64 wg 9/2.7). 9/2.7 na 128 dał 0.991, czyli różnica w granicach szumu. Zakładam tylko, że 64 to rozsądna skala, nie że więcej pomoże.\n- lokalnie, seedy 0-2, 200 ruchów: HEAD 22.2 ms na ruch, nowy kod 3.5 ms. Przegląd liczy 192 tacki na ruch (3 x 64).\n\nDlaczego to nie powtórka:\n- 15/2.3 ma to samo pojęcie, ale w 4 próbkach i z wiązką. Zmienia się skala i sprawdzenie, nie idea.\n- 9/2.6 uśredniał wartość następnej tacki po wykonalnych próbkach. Tu nie ma wartości następnej tacki, tylko kara za utykanie. Połączenia z 9/2.6 nie robię.\n- P(choć jeden klocek) z 12/1.2 (0.821) odpada: na granicy tacki zgon to p^3 (12/1.3, 0.974). Tego nie ruszam.\n\nRyzyko:\n- wynik niezmierzony, ocenia ewaluator. Lokalny silnik nie odtwarza liczb oficjalnych (notatka 9d657c3: p22 lokalnie 246, oficjalnie 449), więc długości partii w dymie nie są sygnałem\n- kara jest estymatą: przy p ok. 1% szum nadal duży, przy p < 0.5% prawie niewidoczna\n- koszt lokalnie spadł; to szacunek, nie pomiar, ocena powinna być krótsza niż przy 2.3\n- sprawdzenie: tests/test_policies.py (300 losowych plansz, zgodność z brute force na Board, oba wyniki występują) przechodzi; tests/test_engine.py 16/17, jeden błąd importu tkinter w środowisku (agent.py -> model.py -> turtle), nie ten kod; smoke 3 partie bez wyjątku, wszystkie ruchy legalne\n\nCo dalej:\n- zrobione: ten commit (węzeł 2.4 na trees/15/2)\n- następny krok: ocena tego SHA. Jeśli nie przekroczy 2.3 (0.908), sprawdzić, które przegrane gry się zmieniły, zanim dodam kolejny człon\n- czego nie powtarzać: przeglądu z 4 próbkami (2.3) i beamowego sprawdzania ułożenia w przeglądzie\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 43,
+  "usd": 3.5688,
+  "minuty": 16.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T05:04:08Z",
+   "koniec": "2026-10-14T05:20:25Z",
+   "tury": 43,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
