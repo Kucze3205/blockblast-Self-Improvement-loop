@@ -3,7 +3,7 @@
  "rodzic_sha": "84a01e6ec4ce1437a01e9fc3029522c60918def3",
  "kolejnosc": 8,
  "sha": "84a01e6ec4ce1437a01e9fc3029522c60918def3",
- "stan": "zaparkowany",
+ "stan": "sesja",
  "gist": "",
  "notatki": [],
  "koszt": {
@@ -11,7 +11,7 @@
   "usd": 0.0,
   "minuty": 13.8
  },
- "oczekiwanie_min": 0.0,
+ "oczekiwanie_min": 80.3,
  "kontynuacje_tur": 0,
  "sesje": [
   {
@@ -20,7 +20,5 @@
    "tury": 0,
    "przyczyna": "terminal_reason=rate_limit exit=143"
   }
- ],
- "zaparkowano": "2026-10-14T11:50:31Z",
- "wznow_po": "2026-10-14T13:10:00Z"
+ ]
 }
