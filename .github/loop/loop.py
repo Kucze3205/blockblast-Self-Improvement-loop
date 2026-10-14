@@ -262,13 +262,19 @@ def evaluated(base, tree):
     return {n: r for n, r in load_tree(base, tree).items() if r.get("stan") == "oceniony"}
 
 
+def widok(rec):
+    """Rekord dla agenta: bez `przezycie` (lista wyników po rozdaniach, 1200 liczb na ocenę, ok. 40% rozmiaru rekordów; zostaje `przegrane`, `punkty_srednie`, `s_sym`) (#50)."""
+    sym = {h: {k: v for k, v in s.items() if k != "przezycie"} for h, s in ((rec.get("oceny") or {}).get("sym") or {}).items()}
+    return {**rec, "oceny": {**rec["oceny"], "sym": sym}} if sym else rec
+
+
 def historia(base, tree, node, out, diff):
     """Rozkłada `.historia/`: indeks, rekordy ocenionych węzłów, patche innych łańcuchów (diff(sha) -> tekst)."""
     tree = int(tree)
     cur = evaluated(base, tree)
     lines = ["# Indeks prób", "", "## Drzewo %d (bieżące)" % tree, ""] + table(cur)
     for name, r in cur.items():
-        write_json(os.path.join(out, str(tree), name + ".json"), r)
+        write_json(os.path.join(out, str(tree), name + ".json"), widok(r))
     own = node.split(".")[0]
     leaves = {}
     for name, r in cur.items():
@@ -287,7 +293,7 @@ def historia(base, tree, node, out, diff):
     for t in older:
         recs = evaluated(base, t)
         for name, r in recs.items():
-            write_json(os.path.join(out, str(t), name + ".json"), r)
+            write_json(os.path.join(out, str(t), name + ".json"), widok(r))
         with open(os.path.join(out, str(t), "INDEKS.md"), "w", encoding="utf-8", newline="\n") as fh:
             fh.write("\n".join(["# Drzewo %d" % t, ""] + table(recs)) + "\n")
         best = max((v for v in map(s_v, recs.values()) if v is not None), default=None)

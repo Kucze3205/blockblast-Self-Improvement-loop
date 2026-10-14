@@ -210,6 +210,18 @@ class HistoriaTest(Drzewo):
         self.assertIn("| 1.1 | korzen | 0.500 | — | 3.8 | g |", idx)
         self.assertIn("| 2.1 | korzen | 0.600 | — | 57.8 za wolna | g |", idx)
 
+    def test_rekord_dla_agenta_bez_listy_przezyc(self):
+        self.oceniony("1.1", "A", s_sym=0.5)
+        rec = self.rec("1.1")
+        rec["oceny"]["sym"] = {"h2": {"przezycie": [1, 2, 3], "przegrane": 2, "punkty_srednie": 9.5}}
+        loop.write_json(loop.record_path(self.base, 1, "1.1"), rec)
+        out = os.path.join(self.base, ".historia")
+        loop.historia(self.base, 1, "1.2", out, lambda sha: "")
+        got = loop.read_json(os.path.join(out, "1", "1.1.json"))
+        self.assertEqual(got["oceny"]["sym"], {"h2": {"przegrane": 2, "punkty_srednie": 9.5}})
+        self.assertEqual(got["oceny"]["s_sym"], rec["oceny"]["s_sym"])
+        self.assertIn("przezycie", loop.read_json(loop.record_path(self.base, 1, "1.1"))["oceny"]["sym"]["h2"])
+
 
 if __name__ == "__main__":
     unittest.main()
