@@ -2,16 +2,27 @@
  "rodzic": "1.2",
  "rodzic_sha": "337a5c8c46c5bc800ba86ff54ad1ef30a295e548",
  "kolejnosc": 5,
- "sha": "337a5c8c46c5bc800ba86ff54ad1ef30a295e548",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "ed146136b28036e3569ef9736c724ac9f97d341e",
+ "stan": "ocena w toku",
+ "gist": "Polityka tacki: deduplikacja wiązki po (plansza, linie, pozostałe sloty)",
+ "notatki": [
+  "Polityka tacki: deduplikacja wiązki po (plansza, linie, pozostałe sloty)\n\nMechanizm: stany wiązki o tej samej planszy, tej samej liczbie wyczyszczonych linii i tym\nsamym zbiorze pozostałych slotów tacki dają tę samą wartość i te same dalsze ruchy. W każdym\npoziomie zostaje pierwszy napotkany, więc 24 miejsca wiązki zajmują różne stany zamiast\nkopii tej samej planszy z innej kolejności klocków.\n\nHistoria: drzewo 6, 4.3 (dedup wiązki po planszy) 0.974 -> 0.980 na swojej bazie, ale\n2.4 (dedup wiązki i liści) 0.982 -> 0.981: dowód mieszany. Łańcuch 2 (16/2.patch) używa\ntego samego klucza wiązki.\n\nDlaczego nie powtórka: w łańcuchu 1 dedupu jeszcze nie było. Węzły 1.2 i 1.3 zmieniały\nmodel śmierci, 1.4 dodał człon brzegowy.\n\nRyzyko: korzyść mała i niepewna. Koszt czasu na identycznych wejściach (512 plansz z\nprzebiegu fa5fc48): 20.3 ms na plan wobec 14.1 ms (+44%), bo wiązka jest realnie szersza.\nOceny drzewa 9 trwały 5-8 min, a 1.2 trwał 2.4 min, więc to powinno się mieścić, ale to\nnie jest pomiar limitu. Wynik niezmierzony.\n\nCo dalej:\n- zrobione: ea982c6 (1.1), 337a5c8 (1.2), a264a0f (1.3), fa5fc48 (1.4), 1.5 (ten commit)\n- następny krok: ISOLATED_W 6.0 (łańcuch 2 ma 0.75) jako osobny węzeł; jeśli ocena 1.5\n  pokaże czas bliski limitu, najpierw przyspieszyć _fits bez zmiany wyniku\n- czego nie powtarzać: R1 i liniowego ryzyka klocka bez miejsca\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Polityka tacki: człon brzegowy E (-2 za wolne pole na obwodzie) w wartości stanu\n\nMechanizm: EDGE_MASK to cztery brzegi planszy; _beam_score odejmuje EDGE_W razy liczba\npustych pól na obwodzie. Wartość trafia do rankingu wiązki i do wartości finalistów,\nwięc jeden człon działa na obu poziomach. Model śmierci i wagi bez zmian.\n\nHistoria: drzewo 13, węzeł 2.3 (0.977) -> 2.4 (0.991): ten sam człon E (-2 na wolne pole\nna obwodzie) w wartości liścia. Łańcuch 2 (16/2.patch, _leaf) ma go z wagą 2.0.\n\nDlaczego nie powtórka: w łańcuchu 1 E jeszcze nie było. Węzły 1.2 i 1.3 zmieniały model\nśmierci, a ten zmienia tylko wartość stanu.\n\nRyzyko: wartość 2.0 przeniesiona bez strojenia do skali tego planera (CLEAR_W 10,\nISOLATED_W 6, TRANSITION_W 1). Względna siła E może się różnić od drzewa 13 i łańcucha 2.\nCzłon działa też na sortowanie wiązki, nie tylko na finalistów. Lokalnie 13.8 ms/ruch,\nmaks. 84 ms. Wynik niezmierzony.\n\nCo dalej:\n- zrobione: ea982c6 (1.1), 337a5c8 (1.2), a264a0f (1.3), 1.4 (ten commit)\n- następny krok: deduplikacja stanów wiązki wg klucza z 16/2.patch, osobny węzeł\n- czego nie powtarzać: R1 i liniowego ryzyka klocka bez miejsca\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Polityka tacki: ryzyko śmierci tylko z domykalności tacek CRN, bez R1\n\nUsunięto R1 (RISK_W * (1 - (1 - q)^3), gdzie q to P(losowy klocek nie mieści się teraz)).\nTen człon karze stany, z których gra jeszcze nie ginie: klocek, którego nie ma gdzie\npostawić teraz, może zmieścić się po wyczyszczeniu linii przez inne klocki tacki.\nJedyną karą za śmierć zostaje TRAY_FAIL_W * odsetek z 64 próbek CRN, których tacki nie\nda się ułożyć na planszy po ruchu. Odsetek liczy wszystkie próbki: dawny warunek\n\"wszystkie klocki pasują od razu\" pomijał tacki z klockiem bez miejsca, które mogą się\nułożyć po czyszczeniu, i zaniżał śmiertelność. Domykalność jest memoizowana na czas\nruchu (klucz: plansza, posortowany zbiór klocków), bo bez warunku wstępnego DFS idzie\npo wszystkich próbkach.\n\nHistoria: 1.2 (0.950) = R1 + domykalność z warunkiem wstępnym. Łańcuch 2 zamienił\n1-(1-q)^3 na dokładną domykalność 64 tacek CRN i wzrósł 0.965 -> 0.980 (2.2). Tu ta\nsama zamiana na planerze wiązki z 1.1/1.2.\n\nDlaczego nie powtórka: planer (wiązka po tacce, ISOLATED/TRANSITION/CLEAR) i wagi zostają\nbez zmian; zmienia się model śmierci i sposób liczenia odsetka.\n\nRyzyko: wynik niezmierzony. Wagi (ISOLATED_W=6, CLEAR_W=10) różnią się od łańcucha 2\n(isolated 0.75, bez E, wyższa nagroda za linię) i ich wpływ jest nieznany. Lokalnie:\n15.6 ms/ruch (1.2: 13.2), maks. 166 ms (1.2: 62). Na tych samych 4 ziarnach 1156 ruchów\nwobec 1524 w 1.2: to nie jest ocena, ale kierunek do sprawdzenia.\n\nCo dalej:\n- zrobione: ea982c6 (1.1), 337a5c8 (1.2), 1.3 (ten commit)\n- następny krok: 1.4 deduplikacja stanów wiązki (plansza, linie, pozostałe sloty) wg\n  16/2.patch, osobny commit\n- czego nie powtarzać: R1 i liniowego ryzyka klocka bez miejsca\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 62,
+  "usd": 4.2913,
+  "minuty": 20.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T08:58:13Z",
+   "koniec": "2026-10-14T09:18:40Z",
+   "tury": 62,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
