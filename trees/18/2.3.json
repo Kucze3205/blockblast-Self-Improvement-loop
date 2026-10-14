@@ -2,16 +2,26 @@
  "rodzic": "2.2",
  "rodzic_sha": "398ef6c0ed070b81cc02a3651d6b68100d4d1bf7",
  "kolejnosc": 6,
- "sha": "398ef6c0ed070b81cc02a3651d6b68100d4d1bf7",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "1e0b9943960ff9d4238acc0e0f33eb2ce4a558a7",
+ "stan": "ocena w toku",
+ "gist": "Martwe pierwsze ruchy dostają -inf zamiast płaskiego -400",
+ "notatki": [
+  "Martwe pierwsze ruchy dostają -inf zamiast płaskiego -400\n\nMechanizm: w plan_move ruch, którego gałęzie w wiązce utknęły (żaden klocek tacki się nie mieści, czyli przegrana) i żadna nie dokończyła tacki, dostaje -inf. Dotąd -400. Płaski -400 wygrywa z żywym finalistą, gdy cheap - 400*P < -400, czyli P > 1 + cheap/400. Przy skali nowego liścia typowe cheap finalistów w próbce (seedy 1-4): mediana -105, p10 -130, więc próg to P około 0,68-0,74. DEATH_W nadal dotyczy finalistów.\n\nDowód: test_dead_first_move_never_beats_living_move mockuje search i dead_prob: żywy ruch (-100, P=1,0) musi wygrać z martwym. Na poprzednim kodzie test failuje i zwraca martwy ruch (1,0,0). Historia tego nie mierzyła; poprawka wynika z definicji, nie z wyniku: utknięta tacka to pewna przegrana, więc nie powinna wygrywać z ruchem, który może przeżyć.\n\nDlaczego to nie powtórka: zmiana zasady oceny martwych ruchów, nie wag. Wagi i DEATH_W bez zmian.\n\nRyzyko: wynik niezmierzony. W próbce (seedy 1-4, 655 decyzji) zmiana nie zmienia żadnego wyboru (differ=0). 37 decyzji miało martwy pierwszy ruch, ale żywe ruchy wygrywały. Płaski -400 wybrał martwy ruch raz, w decyzji, gdzie żaden ruch nie dokończył tacki, więc oba zapisy dają tam to samo. Ryzyko: jeśli wiązka odcięła żywą gałąź ruchu, który ma też utknięte gałęzie, ruch dostaje -inf i nie zostanie wybrany, dopóki są inne ruchy. Płaski -400 robił to samo, gdy żywy finalista miał wynik powyżej -400. Smoke czasu: 655 wywołań, średnio 3,51 ms, p95 7,74 ms, 0 nielegalnych.\n\nTesty: test_policies 11/11 OK; pełna suita 28 testów, jeden błąd (brak tkinter w test_engine; błąd istniał przed tymi zmianami).\n\nCo dalej:\n- zrobione: d360ca6 (liść), ten commit (-inf)\n- następny krok: ocena gałęzi przez orkiestratora (s_sym, s_emu, ocena); bez wyniku nie dokładam parametrów\n- czego nie powtarzać: płaskiej kary -400 dla martwych ruchów; strojenia DEATH_W bez nowego mechanizmu\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Liść planera: izolowane i puste pola przy brzegu, wagi z 5/2.1 i 8/1.1\n\nMechanizm: _cheap = 4.2*linie - 1.5*przejścia - 1.4*zajęte - 0.75*izolowane - 2.0*puste przy brzegu. Dotąd: 10*linie - 1.0*przejścia - 0.5*zajęte. Izolowane pole to puste pole bez pustego sąsiada w 4-sąsiedztwie; brzeg to zewnętrzny pierścień; przejścia liczone wewnątrz planszy jak dotąd. DEATH_W, BEAM i formuła śmierci bez zmian.\n\nDowód z historii: 5/2.1 (0,983) ma wagi zajęte 1,4, izolowane 0,75, linie 4,2. 8/1.1 (0,975) ma cały liść z przejściami 1,5 i pustym brzegiem 2,0, ale ma też inną formułę śmierci, więc nie izoluje liścia. 9/2.2 (0,987) zmienia tylko konwencję przejść (bez ścian) i karę za pusty brzeg z 3,5 na 2,0; wobec 9/2.1 (0,963) to +0,025.\n\nDlaczego to nie powtórka: nowa kombinacja sprawdzonych elementów. Nasze 2.1 (0,943) i 2.2 (0,940) nie mają cech izolowanych ani pustego brzegu poza karą za śmierć. Wag starego liścia nie stroję.\n\nRyzyko: wynik niezmierzony. Nasza kara za śmierć (DFS po CRN) nie była jeszcze mierzona z tym liściem. Skala liścia się zmieniła, więc kara za śmierć względem liścia się przesuwa; naprawa w następnym commicie. Smoke (seedy 1-4, do 200 ruchów, bez oceny): 655 wywołań, średnio 3,47 ms, p95 7,79 ms, 0 nielegalnych.\n\nCo dalej:\n- zrobione: ten commit (liść)\n- następny krok: martwe pierwsze ruchy dostają -inf zamiast -400 (osobny commit z testem)\n- czego nie powtarzać: strojenia wag starego liścia bez nowej cechy; zmian DEATH_W i BEAM bez nowego mechanizmu\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 57,
+  "usd": 3.3604,
+  "minuty": 13.8
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T19:38:40Z",
+   "koniec": "2026-10-14T19:52:30Z",
+   "tury": 57,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
