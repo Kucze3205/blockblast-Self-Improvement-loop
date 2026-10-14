@@ -89,7 +89,6 @@ DEAD_W = 6.0
 DEATH_W = 1000.0
 STUCK_W = 1000.0
 DRAWS = 64
-REVIEW = 3
 _BOARD = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W))
 _HPAIR = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W - 1))
 _VPAIR = sum(1 << (y * STRIDE + x) for y in range(H - 1) for x in range(W))
@@ -245,10 +244,9 @@ class TrayBeamPolicy:
         if not terminal:
             return partial
         finalists = sorted(terminal, key=lambda t: -t[0])[:POOL]
-        ranked = sorted(finalists, key=lambda t: -_full_value(t[1], t[2]))[:REVIEW]
         trays = [_draw_tray(self.rng) for _ in range(DRAWS)]
         return max(
-            ranked,
+            finalists,
             key=lambda t: _full_value(t[1], t[2]) - STUCK_W * _stuck_share(t[1], trays),
         )[3]
 
