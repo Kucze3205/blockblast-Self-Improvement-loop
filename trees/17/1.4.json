@@ -2,14 +2,16 @@
  "rodzic": "1.3",
  "rodzic_sha": "37d8b4cb4c54e0d2a9f41c2f7d7ff2a4d1637893",
  "kolejnosc": 7,
- "sha": "37d8b4cb4c54e0d2a9f41c2f7d7ff2a4d1637893",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "a49d928ba156bb0edd31c65f2952150760cd6c24",
+ "stan": "ocena w toku",
+ "gist": "Przywróć liść 8/1.1 i wybór finalistów po liściu, jak w 13/1.4",
+ "notatki": [
+  "Przywróć liść 8/1.1 i wybór finalistów po liściu, jak w 13/1.4\n\nMechanizm (zmiany względem 1.3):\n- liść: 4.2*linie - 1.4*zajęte - 0.75*izolowane - 2.0*puste na brzegu - 1.5*przejścia;\n  izolowane to puste pole bez pustego sąsiada w 4 kierunkach. 1.3 miał wagi 10/1/0.5\n  i nie miał członu izolowanych pól.\n- do finalistów idzie 8 najlepszych po samym liściu, a 20 gdy <=22 wolne pola.\n  1.3 wybierał finalistów po liściu z ryzykiem.\n- wybór końcowy i ryzyko bez zmian: liść - (400*miss^3 + 80*miss + 12.3*D)\n  - 400*udział stuck na 256 stałych tackach na partię.\n\nDowód z historii:\n- 13/1.4 (0.981, 46 przegranych partii, czas sym 2.4 min) ma ten sam liść, finalistów\n  z 13/1.2 (8, a 20 przy <=22 wolnych, jak w 8/1.1) i ryzyko z 13/1.3.\n- 1.3 (0.895, czas sym 2.8 min) ma to samo ryzyko i domykalność, ale inny liść\n  i klucz finalistów. Różnica 0.086 wskazuje na te odstępstwa; nie rozdziela ich.\n\nDlaczego to nie powtórka:\n- to celowa poprawka konkretnego odstępstwa łańcucha 1 od 13/1.4 (liść, klucz finalistów),\n  a nie nowy mechanizm. Kod ma być zgodny z 13/1.4, więc wynik spodziewany jak tam\n  (0.981) i nie wnosi nowej wiedzy o mechanizmie. Dlatego kolejny węzeł to przegląd\n  następnej tacki, a nie strojenie wag.\n\nRyzyko:\n- wynik niezmierzony, ocenia ewaluator;\n- kod 13/1.4 nie jest w repo (SHA 5d69f66 nieosiągalny), zgodność opiera się na notatkach;\n  losowanie 256 tacek (closability:seed) może różnić się od 13/1.4;\n- przycinanie wiązki (stan, w którym żaden pozostały klocek się nie mieści) nie porównane\n  z 13/1.4;\n- smoke: 23.8 ms na ruch na tej maszynie (13/1.4 podał 22 ms na swojej);\n- test_agent_accepts_epsilon_zero nie przechodzi z powodu braku tkinter; błąd środowiska\n  sprzed tej zmiany.\n\nTesty: _isolated i _cheap zgodne z wersją po komórkach na 500 planszach; _completes zgodne\nz silnikiem na 30 trójkach (jednorazowo 960 bez różnic); ruchy legalne. Razem 20 passed,\n1 failed (tkinter).\n\nCo dalej:\n- zrobione: ten commit (węzeł 1.4).\n- następny krok: po ocenie. Przy wyniku >= 0.975 przegląd następnej tacki (jak 8/1.5 albo\n  9/2.6). 8/1.5 kosztował ok. 4x na ruch (22 ms wobec 5.6 ms), więc przy \"za wolna\" najpierw\n  128 próbek albo stuck tylko dla czterech finalistów. Przy wyniku < 0.959 ablacja członu\n  80*miss.\n- czego nie powtarzać: samego miss^3 jako ryzyka (13/1.2); domykalności próbkowanej co ruch\n  (1.2); wyboru finalistów po cheap - ryzyko (1.x).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 13.1
+  "tury": 52,
+  "usd": 3.7974,
+  "minuty": 27.8
  },
  "oczekiwanie_min": 81.0,
  "kontynuacje_tur": 0,
@@ -19,6 +21,12 @@
    "koniec": "2026-10-14T11:49:50Z",
    "tury": 0,
    "przyczyna": "terminal_reason=rate_limit exit=143"
+  },
+  {
+   "start": "2026-10-14T13:10:06Z",
+   "koniec": "2026-10-14T13:24:48Z",
+   "tury": 52,
+   "przyczyna": "terminal_reason=completed"
   }
  ]
 }
