@@ -87,6 +87,9 @@ OCC_W = 1.4
 LINE_W = 4.2
 ISO_W = 0.75
 TRANS_W = 1.5
+DRAWS = 4
+REVIEW = 3
+STUCK_W = 400.0
 _BOARD = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W))
 _HPAIR = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W - 1))
 _VPAIR = sum(1 << (y * STRIDE + x) for y in range(H - 1) for x in range(W))
@@ -172,52 +175,74 @@ def _dead_tray_prob(occ):
     return q ** 3
 
 
+def _search(occ, items, beam_w, pool_n):
+    beam = [((0, 0.0), 0.0, occ, items, None)]
+    terminal = []
+    while True:
+        nxt = {}
+        for _, score, occ_s, rest, first in beam:
+            for slot, pose in rest:
+                left = tuple(r for r in rest if r[0] != slot)
+                anchors = _anchors(occ_s, pose)
+                while anchors:
+                    low = anchors & -anchors
+                    anchor = low.bit_length() - 1
+                    anchors ^= low
+                    new_occ, lines = _place(occ_s, pose, anchor)
+                    s = score + LINE_W * lines
+                    head = first or (slot, anchor % STRIDE, anchor // STRIDE)
+                    if not left:
+                        terminal.append((s - _board_cost(new_occ), new_occ, head))
+                        continue
+                    unfit = sum(1 for _, p in left if not _anchors(new_occ, p))
+                    rank = (unfit, _board_cost(new_occ) - s)
+                    key = (new_occ, left)
+                    if key not in nxt or rank < nxt[key][0]:
+                        nxt[key] = (rank, s, new_occ, left, head)
+        if not nxt:
+            break
+        pool = sorted(nxt.values(), key=lambda t: t[0])[:pool_n]
+        beam = []
+        for (unfit, _), s, new_occ, left, head in pool:
+            s -= DEAD_W * _dead_types(new_occ)
+            beam.append(((unfit, _board_cost(new_occ) - s), s, new_occ, left, head))
+        beam = sorted(beam, key=lambda t: t[0])[:beam_w]
+    return terminal, beam
+
+
+def _draw_tray(rng):
+    return tuple((i, rng.choice(rng.choice(PIECE_TYPES))) for i in range(3))
+
+
 class TrayBeamPolicy:
     name = "tray_beam"
 
     def reset(self, game_seed):
-        pass
+        self.rng = random.Random(f"tray:{game_seed}")
 
     def act(self, game, actions):
         occ = _occupancy(game.board)
-        slots = tuple(i for i, p in enumerate(game.pieces) if p is not None)
-        beam = [((0, 0.0), 0.0, occ, slots, None)]
-        terminal = []
-        while True:
-            nxt = {}
-            for _, score, occ_s, rest, first in beam:
-                for slot in rest:
-                    pose = game.pieces[slot].index
-                    left = tuple(r for r in rest if r != slot)
-                    anchors = _anchors(occ_s, pose)
-                    while anchors:
-                        low = anchors & -anchors
-                        anchor = low.bit_length() - 1
-                        anchors ^= low
-                        new_occ, lines = _place(occ_s, pose, anchor)
-                        s = score + LINE_W * lines
-                        head = first or (slot, anchor % STRIDE, anchor // STRIDE)
-                        if not left:
-                            terminal.append((s - _board_cost(new_occ), new_occ, head))
-                            continue
-                        unfit = sum(1 for r in left if not _anchors(new_occ, game.pieces[r].index))
-                        rank = (unfit, _board_cost(new_occ) - s)
-                        key = (new_occ, left)
-                        if key not in nxt or rank < nxt[key][0]:
-                            nxt[key] = (rank, s, new_occ, left, head)
-            if not nxt:
-                break
-            pool = sorted(nxt.values(), key=lambda t: t[0])[:POOL]
-            beam = []
-            for (unfit, _), s, new_occ, left, head in pool:
-                s -= DEAD_W * _dead_types(new_occ)
-                beam.append(((unfit, _board_cost(new_occ) - s), s, new_occ, left, head))
-            beam = sorted(beam, key=lambda t: t[0])[:BEAM]
+        items = tuple((i, p.index) for i, p in enumerate(game.pieces) if p is not None)
+        terminal, beam = _search(occ, items, BEAM, POOL)
         if not terminal:
             return beam[0][4] or actions[0]
-        best_value, best_head = None, None
+        ranked = []
         for v, new_occ, head in sorted(terminal, key=lambda t: -t[0])[:POOL]:
             value = v - DEAD_W * _dead_types(new_occ) - DEATH_W * _dead_tray_prob(new_occ)
+            ranked.append((value, new_occ, head))
+        ranked.sort(key=lambda t: -t[0])
+        trays = [_draw_tray(self.rng) for _ in range(DRAWS)]
+        best_value, best_head = None, None
+        for value, new_occ, head in ranked[:REVIEW]:
+            live = stuck = 0
+            for tray in trays:
+                if not any(_anchors(new_occ, p) for _, p in tray):
+                    continue
+                live += 1
+                if not _search(new_occ, tray, BEAM, POOL)[0]:
+                    stuck += 1
+            if live:
+                value -= STUCK_W * stuck / live
             if best_value is None or value > best_value:
                 best_value, best_head = value, head
         return best_head
