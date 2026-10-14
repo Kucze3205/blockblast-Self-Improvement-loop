@@ -87,7 +87,7 @@ OCC_W = 1.4
 LINE_W = 4.2
 ISO_W = 0.75
 TRANS_W = 1.5
-DRAWS = 4
+DRAWS = 64
 REVIEW = 3
 STUCK_W = 400.0
 _BOARD = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W))
@@ -211,7 +211,21 @@ def _search(occ, items, beam_w, pool_n):
 
 
 def _draw_tray(rng):
-    return tuple((i, rng.choice(rng.choice(PIECE_TYPES))) for i in range(3))
+    return tuple(rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3))
+
+
+def _completable(occ, poses):
+    if not poses:
+        return True
+    for i, pose in enumerate(poses):
+        rest = poses[:i] + poses[i + 1:]
+        anchors = _anchors(occ, pose)
+        while anchors:
+            low = anchors & -anchors
+            anchors ^= low
+            if _completable(_place(occ, pose, low.bit_length() - 1)[0], rest):
+                return True
+    return False
 
 
 class TrayBeamPolicy:
@@ -236,10 +250,10 @@ class TrayBeamPolicy:
         for value, new_occ, head in ranked[:REVIEW]:
             live = stuck = 0
             for tray in trays:
-                if not any(_anchors(new_occ, p) for _, p in tray):
+                if not any(_anchors(new_occ, p) for p in tray):
                     continue
                 live += 1
-                if not _search(new_occ, tray, BEAM, POOL)[0]:
+                if not _completable(new_occ, tray):
                     stuck += 1
             if live:
                 value -= STUCK_W * stuck / live
