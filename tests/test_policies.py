@@ -14,6 +14,7 @@ from game import Game
 from pieces import PIECE_POOL
 from policies import (
     BOUNDARY_WEIGHT,
+    FINALISTS,
     ISOLATED_WEIGHT,
     TRANSITION_WEIGHT,
     _fit_penalty,
@@ -156,6 +157,13 @@ class TrayBeamPolicyTest(unittest.TestCase):
             samples = [_sample_tray(rng) for _ in range(16)]
             values = _plan_values(_to_bits(game.board.grid), list(game.pieces), samples)
             self.assertTrue(set(values) <= set(game.available_actions()))
+
+    def test_finalists_are_bounded_by_finalist_count(self):
+        rng = random.Random(8)
+        tray = [PIECE_POOL[0]] * 3
+        samples = [_sample_tray(rng) for _ in range(16)]
+        values = _plan_values(0, tray, samples)
+        self.assertLessEqual(len(values), FINALISTS)
 
     def test_stuck_share_is_zero_on_empty_board(self):
         rng = random.Random(7)

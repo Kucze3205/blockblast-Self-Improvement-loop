@@ -258,15 +258,18 @@ def _plan_values(bits, pieces, samples):
                     ))
         children.sort(key=lambda child: child[0], reverse=True)
         if depth == len(slots) - 1:
+            # children posortowane malejąco: pierwszy zapis ruchu to jego najlepszy plan
+            best_by_first = {}
+            for value, after, first, _ in children:
+                best_by_first.setdefault(first, (value, after))
             values = {}
-            for value, after, first, _ in children[:finalists]:
-                full = (
+            for first, (value, after) in list(best_by_first.items())[:finalists]:
+                values[first] = (
                     value
                     - _fit_penalty(after)
                     - POCKET_WEIGHT * _pocket_cells(after)
                     - LAMBDA_DEATH * _stuck_share(after, samples)
                 )
-                values[first] = max(values.get(first, float("-inf")), full)
             return values
         frontier = []
         for child in children:
