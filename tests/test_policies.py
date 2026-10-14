@@ -12,7 +12,7 @@ from board import Board
 from game import Game
 from pieces import PIECE_POOL
 from policies import (
-    FULL, _bits, _clear, _fit_table, _fits, _isolated, _joint_ok, _risk, _transitions, build,
+    _bits, _clear, _fits, _isolated, _joint_failure, _joint_ok, _transitions, build,
 )
 
 
@@ -55,12 +55,6 @@ class TestBitboardHelpers(unittest.TestCase):
     def test_enclosed_empty_cell_is_isolated(self):
         corner_enclosed = (1 << 1) | (1 << 8)
         self.assertEqual(_isolated(corner_enclosed), 1)
-
-    def test_risk_is_zero_when_every_piece_fits(self):
-        self.assertEqual(_risk(_fit_table(0)), 0.0)
-
-    def test_risk_is_one_when_no_piece_fits(self):
-        self.assertAlmostEqual(_risk(_fit_table(FULL)), 1.0)
 
 
 def _placeable(board, piece):
@@ -112,8 +106,13 @@ class TestJointPlaceability(unittest.TestCase):
         vertical3 = _pose([[1], [1], [1]])
         bar4 = _pose([[1, 1, 1, 1]])
         self.assertTrue(all(_fits(board, pose) for pose in (vertical3, bar4)))
-        self.assertTrue(_joint_ok(board, (vertical3, bar4)))
-        self.assertFalse(_joint_ok(board, (vertical3, bar4, bar4)))
+        self.assertTrue(_joint_ok(board, (vertical3, bar4), {}))
+        self.assertFalse(_joint_ok(board, (vertical3, bar4, bar4), {}))
+
+    def test_tray_with_no_piece_fitting_now_is_counted_dead(self):
+        board = _bits(_grid(["#######."] + ["########"] * 7))
+        vertical3 = _pose([[1], [1], [1]])
+        self.assertEqual(_joint_failure(board, [(vertical3,) * 3], {}), 1.0)
 
     def test_matches_board_simulation(self):
         rng = random.Random(7)
@@ -127,9 +126,8 @@ class TestJointPlaceability(unittest.TestCase):
             board = _bits(game.board.grid)
             for _ in range(60):
                 poses = tuple(rng.randrange(len(PIECE_POOL)) for _ in range(3))
-                if all(_fits(board, pose) for pose in poses):
-                    expected = _reference_ok(game.board, [PIECE_POOL[pose] for pose in poses])
-                    self.assertEqual(_joint_ok(board, poses), expected, poses)
+                expected = _reference_ok(game.board, [PIECE_POOL[pose] for pose in poses])
+                self.assertEqual(_joint_ok(board, poses, {}), expected, poses)
 
 
 if __name__ == "__main__":
