@@ -13,9 +13,15 @@ from board import Board
 from game import Game
 from pieces import PIECE_POOL
 from policies import (
+    BOUNDARY_WEIGHT,
+    ISOLATED_WEIGHT,
+    TRANSITION_WEIGHT,
+    _fit_penalty,
     _place_and_clear,
     _placements,
+    _plan_values,
     _pocket_cells,
+    _structure_cost,
     _to_bits,
     _tray_playable,
     build,
@@ -31,6 +37,27 @@ def random_board(rng, fill):
             if rng.random() < fill:
                 board.grid[y][x] = 1
     return board
+
+
+def naive_structure_cost(grid):
+    isolated = transitions = boundary = 0
+    for y in range(8):
+        for x in range(8):
+            if not grid[y][x]:
+                if x in (0, 7) or y in (0, 7):
+                    boundary += 1
+                neighbours = [
+                    grid[y + dy][x + dx]
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                    if 0 <= x + dx < 8 and 0 <= y + dy < 8
+                ]
+                if all(neighbours):
+                    isolated += 1
+            if x < 7:
+                transitions += grid[y][x] != grid[y][x + 1]
+            if y < 7:
+                transitions += grid[y][x] != grid[y + 1][x]
+    return ISOLATED_WEIGHT * isolated + TRANSITION_WEIGHT * transitions + BOUNDARY_WEIGHT * boundary
 
 
 def playable_on_board(board, pieces):
@@ -83,6 +110,21 @@ class BitboardTest(unittest.TestCase):
         self.assertEqual(_pocket_cells(FULL & ~0b111), 0)
 
 
+class StructureTest(unittest.TestCase):
+    def test_structure_cost_matches_naive_count(self):
+        rng = random.Random(5)
+        for _ in range(5):
+            board = random_board(rng, 0.45)
+            self.assertAlmostEqual(
+                _structure_cost(_to_bits(board.grid)),
+                naive_structure_cost(board.grid),
+            )
+
+    def test_fit_penalty_is_zero_on_empty_board_and_positive_on_full_board(self):
+        self.assertEqual(_fit_penalty(0), 0)
+        self.assertGreater(_fit_penalty(FULL), 0)
+
+
 class TrayPlayableTest(unittest.TestCase):
     def test_agrees_with_board_search(self):
         rng = random.Random(3)
@@ -95,7 +137,15 @@ class TrayPlayableTest(unittest.TestCase):
             )
 
 
-class SurvivalPolicyTest(unittest.TestCase):
+class TrayBeamPolicyTest(unittest.TestCase):
+    def test_plan_values_name_only_legal_actions(self):
+        rng = random.Random(6)
+        for seed in range(4):
+            game = Game(seed)
+            game.board.grid = random_board(rng, 0.3).grid
+            values = _plan_values(_to_bits(game.board.grid), list(game.pieces))
+            self.assertTrue(set(values) <= set(game.available_actions()))
+
     def test_build_returns_policy_that_picks_a_legal_action(self):
         policy = build(None)
         policy.reset(0)

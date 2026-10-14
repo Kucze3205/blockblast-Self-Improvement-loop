@@ -118,6 +118,10 @@ def _place_and_clear(bits, mask):
     return bits & ~drop, len(lines)
 
 
+def _popcount(bits):
+    return bin(bits).count("1")
+
+
 def _pocket_cells(bits):
     """Puste pola w obszarach mniejszych niż najmniejszy klocek trzykomórkowy."""
     free = [not ((bits >> i) & 1) for i in range(64)]
@@ -154,55 +158,124 @@ def _tray_playable(bits, pieces):
     return False
 
 
-_FIT_TABLE = []
+_FULL = (1 << 64) - 1
+_COL0 = sum(1 << (8 * y) for y in range(8))
+_COL7 = _COL0 << 7
+_EDGE = _COL0 | _COL7 | 0xFF | (0xFF << 56)
+_NOT_COL0 = _FULL & ~_COL0
+_NOT_COL7 = _FULL & ~_COL7
+_ROWS_0_TO_6 = (1 << 56) - 1
+
+LINE_WEIGHT = 4.2
+CLEARED_CELL_WEIGHT = 1.4
+ISOLATED_WEIGHT = 0.75
+TRANSITION_WEIGHT = 1.5
+BOUNDARY_WEIGHT = 2.0
+POCKET_WEIGHT = 6.0
+BEAM_WIDTH = 24
+FINALISTS = 8
+FINALISTS_TIGHT = 20
+TIGHT_FREE_CELLS = 22
+
+_TYPE_MASKS = []
 
 
-def _fit_table():
-    if not _FIT_TABLE:
+def _type_masks():
+    if not _TYPE_MASKS:
         for type_indices in PIECE_TYPES:
-            share = 1 / (len(PIECE_TYPES) * len(type_indices))
-            for index in type_indices:
-                _FIT_TABLE.append((share, list(_placements(PIECE_POOL[index]).values())))
-    return _FIT_TABLE
+            _TYPE_MASKS.append([list(_placements(PIECE_POOL[i]).values()) for i in type_indices])
+    return _TYPE_MASKS
 
 
-def _fit_probability(bits):
-    """Prawdopodobieństwo, że losowy klocek z generatora mieści się na planszy."""
-    return sum(share for share, masks in _fit_table() if any(not (bits & m) for m in masks))
+def _fit_penalty(bits):
+    """Kara za klocki bez miejsca: szansa dopasowania po typach generatora i kara za martwe typy."""
+    fits = []
+    for poses in _type_masks():
+        fitting = sum(1 for masks in poses if any(not (bits & m) for m in masks))
+        fits.append(fitting / len(poses))
+    alive = [f for f in fits if f > 0]
+    avg_alive = sum(alive) / len(alive) if alive else 0.0
+    avg_all = sum(fits) / len(fits)
+    return 400 * (1 - avg_alive) ** 3 + 80 * (1 - avg_all) + 12.3 * (len(fits) - len(alive))
 
 
-class SurvivalPolicy:
-    """Przeżycie przed punktami: tacka zostaje układalna, potem większa szansa na zmieszczenie
-    losowego klocka, potem mniej pustych pól w kieszeniach, potem więcej linii. Punkty to remis."""
+def _structure_cost(bits):
+    free = _FULL & ~bits
+    neighbours = ((free << 1) & _NOT_COL0) | ((free >> 1) & _NOT_COL7) | (free << 8) | (free >> 8)
+    isolated = _popcount(free & ~neighbours)
+    transitions = _popcount((bits ^ (bits >> 1)) & _NOT_COL7) + _popcount((bits ^ (bits >> 8)) & _ROWS_0_TO_6)
+    boundary_empty = _popcount(free & _EDGE)
+    return ISOLATED_WEIGHT * isolated + TRANSITION_WEIGHT * transitions + BOUNDARY_WEIGHT * boundary_empty
 
-    name = "survival"
+
+def _place_gain(bits, mask):
+    placed = bits | mask
+    after, lines = _place_and_clear(bits, mask)
+    cleared = _popcount(placed) - _popcount(after)
+    return after, LINE_WEIGHT * lines + CLEARED_CELL_WEIGHT * cleared
+
+
+def _viable(bits, pieces):
+    return all(any(not (bits & m) for m in _placements(p).values()) for p in pieces) and _tray_playable(bits, pieces)
+
+
+def _plan_values(bits, pieces):
+    """Najlepsza wartość pełnego planu dla każdego pierwszego ruchu tacki."""
+    slots = [i for i, p in enumerate(pieces) if p is not None]
+    if not slots:
+        return {}
+    finalists = FINALISTS_TIGHT if 64 - _popcount(bits) <= TIGHT_FREE_CELLS else FINALISTS
+    frontier = [(0.0, bits, None, ())]
+    for depth in range(len(slots)):
+        children = []
+        for value, board, first, used in frontier:
+            for slot in slots:
+                if slot in used:
+                    continue
+                for (x, y), mask in _placements(pieces[slot]).items():
+                    if board & mask:
+                        continue
+                    after, gain = _place_gain(board, mask)
+                    children.append((
+                        value + gain - _structure_cost(after),
+                        after,
+                        first if first is not None else (slot, x, y),
+                        used + (slot,),
+                    ))
+        children.sort(key=lambda child: child[0], reverse=True)
+        if depth == len(slots) - 1:
+            values = {}
+            for value, after, first, _ in children[:finalists]:
+                full = value - _fit_penalty(after) - POCKET_WEIGHT * _pocket_cells(after)
+                values[first] = max(values.get(first, float("-inf")), full)
+            return values
+        frontier = []
+        for child in children:
+            remaining = [pieces[s] for s in slots if s not in child[3]]
+            if _viable(child[1], remaining):
+                frontier.append(child)
+                if len(frontier) == BEAM_WIDTH:
+                    break
+
+
+class TrayBeamPolicy:
+    """Wiązka po całej tacce; liść z liniami i strukturą, finaliści z karą za dopasowanie."""
+
+    name = "tray_beam"
 
     def reset(self, game_seed):
         pass
 
     def act(self, game, actions):
-        bits = _to_bits(game.board.grid)
-        best, best_key = actions[0], None
-        for action in actions:
-            key = self._key(game, bits, action)
-            if best_key is None or key > best_key:
-                best, best_key = action, key
-        return best
-
-    def _key(self, game, bits, action):
-        idx, x, y = action
-        piece = game.pieces[idx]
-        after, lines = _place_and_clear(bits, _placements(piece)[(x, y)])
-        rest = [p for j, p in enumerate(game.pieces) if j != idx and p is not None]
-        return (
-            _tray_playable(after, rest),
-            _fit_probability(after),
-            -_pocket_cells(after),
-            lines,
-            _immediate_gain(game, action),
-        )
+        values = _plan_values(_to_bits(game.board.grid), list(game.pieces))
+        scores = {action: values.get(action, float("-inf")) for action in actions}
+        top = max(scores.values())
+        ties = [action for action in actions if scores[action] == top]
+        if len(ties) == 1:
+            return ties[0]
+        return max(ties, key=lambda action: _immediate_gain(game, action))
 
 
 def build(weights):
     # Sygnatura z ewaluatora; polityka nie ma wag, więc argument jest ignorowany.
-    return SurvivalPolicy()
+    return TrayBeamPolicy()
