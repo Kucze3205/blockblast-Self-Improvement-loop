@@ -93,16 +93,20 @@ _POSES = [_pose_bits(p.shape) for p in PIECE_POOL]
 _TYPE_PROBS = [(1.0 / (15 * len(poses)), poses) for poses in PIECE_TYPES]
 INTERIOR = sum(1 << (W * y + x) for y in range(1, W - 1) for x in range(1, W - 1))
 BOUNDARY = FULL ^ INTERIOR
+NOT_LEFT = sum(1 << (W * y + x) for y in range(W) for x in range(1, W))
 NOT_RIGHT = sum(1 << (W * y + x) for y in range(W) for x in range(W - 1))
 NOT_BOTTOM = FULL >> W
 LAMBDA_DEATH = 400.0
-W_CLEAR = 10.0
-W_CELLS = 1.0
+W_CLEAR = 4.2
+W_CELLS = 1.4
+W_ISOLATED = 0.75
 W_EDGE = 2.0
-W_TRANS = 0.5
+W_TRANS = 1.5
 W_MISS = 80.0
 W_DEAD = 12.3
 FINALISTS = 8
+FINALISTS_TIGHT = 20
+TIGHT_FREE_CELLS = 22
 CLOSE_SAMPLES = 256
 
 
@@ -148,20 +152,27 @@ def _transitions(occ):
     return bin((occ ^ (occ >> 1)) & NOT_RIGHT).count("1") + bin((occ ^ (occ >> W)) & NOT_BOTTOM).count("1")
 
 
+def _isolated(occ):
+    empty = ~occ & FULL
+    touched = ((empty << 1) & NOT_LEFT) | ((empty >> 1) & NOT_RIGHT) | (empty << W) | (empty >> W)
+    return bin(empty & ~touched).count("1")
+
+
 def _cheap(occ, cleared):
     edge = bin(~occ & BOUNDARY).count("1")
     return (
         W_CLEAR * cleared
         - W_CELLS * bin(occ).count("1")
+        - W_ISOLATED * _isolated(occ)
         - W_EDGE * edge
         - W_TRANS * _transitions(occ)
     )
 
 
-def _leaf_value(occ, cleared):
+def _risk(occ):
     q, dead_types = _fit_stats(occ)
     miss = 1.0 - q
-    return _cheap(occ, cleared) - (LAMBDA_DEATH * miss ** 3 + W_MISS * miss + W_DEAD * dead_types)
+    return LAMBDA_DEATH * miss ** 3 + W_MISS * miss + W_DEAD * dead_types
 
 
 def _sample_tray(rng):
@@ -213,9 +224,14 @@ def _plan(occ, tray, width, samples):
         if not children:
             return None
         frontier = heapq.nlargest(width, children, key=lambda c: _cheap(c[0], c[3]))
-    scored = [(_leaf_value(c[0], c[3]), c) for c in frontier]
-    finalists = heapq.nlargest(FINALISTS, scored, key=lambda s: s[0])
-    return max(finalists, key=lambda s: s[0] - LAMBDA_DEATH * _stuck_share(s[1][0], samples))[1][2]
+    tight = 64 - bin(occ).count("1") <= TIGHT_FREE_CELLS
+    finalists = heapq.nlargest(
+        FINALISTS_TIGHT if tight else FINALISTS, frontier, key=lambda c: _cheap(c[0], c[3])
+    )
+    return max(
+        finalists,
+        key=lambda c: _cheap(c[0], c[3]) - _risk(c[0]) - LAMBDA_DEATH * _stuck_share(c[0], samples),
+    )[2]
 
 
 class TrayPolicy:
