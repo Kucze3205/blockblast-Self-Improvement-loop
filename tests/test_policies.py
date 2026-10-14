@@ -64,16 +64,17 @@ def playable_on_board(board, pieces):
     """Wzorzec: przeszukanie kolejności kładzenia tacki na symulatorze."""
     if not pieces:
         return True
-    piece, rest = pieces[0], pieces[1:]
-    for y in range(Board.HEIGHT - len(piece.shape) + 1):
-        for x in range(Board.WIDTH - len(piece.shape[0]) + 1):
-            if board.can_place_piece(piece, x, y):
-                nxt = board.copy()
-                nxt.place_piece(piece, x, y)
-                rows, cols = nxt.check_full_lines()
-                nxt.clear_lines(rows, cols)
-                if playable_on_board(nxt, rest):
-                    return True
+    for i, piece in enumerate(pieces):
+        rest = pieces[:i] + pieces[i + 1:]
+        for y in range(Board.HEIGHT - len(piece.shape) + 1):
+            for x in range(Board.WIDTH - len(piece.shape[0]) + 1):
+                if board.can_place_piece(piece, x, y):
+                    nxt = board.copy()
+                    nxt.place_piece(piece, x, y)
+                    rows, cols = nxt.check_full_lines()
+                    nxt.clear_lines(rows, cols)
+                    if playable_on_board(nxt, rest):
+                        return True
     return False
 
 
@@ -135,6 +136,13 @@ class TrayPlayableTest(unittest.TestCase):
                 _tray_playable(_to_bits(board.grid), pieces),
                 playable_on_board(board, pieces),
             )
+
+    def test_piece_order_does_not_matter(self):
+        h3 = next(p for p in PIECE_POOL if p.shape == [[1, 1, 1]])
+        h2 = next(p for p in PIECE_POOL if p.shape == [[1, 1]])
+        # Najpierw H2 domyka wiersz 0 i zwalnia miejsce dla H3, którego przed tym nie ma.
+        grid = [[0 if x < 2 and y in (0, 7) else 1 for x in range(8)] for y in range(8)]
+        self.assertTrue(_tray_playable(_to_bits(grid), [h3, h2]))
 
 
 class TrayBeamPolicyTest(unittest.TestCase):

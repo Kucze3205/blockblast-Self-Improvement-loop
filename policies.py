@@ -150,11 +150,13 @@ def _pocket_cells(bits):
 def _tray_playable(bits, pieces):
     if not pieces:
         return True
-    for mask in _placements(pieces[0]).values():
-        if not (bits & mask):
-            after, _ = _place_and_clear(bits, mask)
-            if _tray_playable(after, pieces[1:]):
-                return True
+    for i, piece in enumerate(pieces):
+        rest = pieces[:i] + pieces[i + 1:]
+        for mask in _placements(piece).values():
+            if not (bits & mask):
+                after, _ = _place_and_clear(bits, mask)
+                if _tray_playable(after, rest):
+                    return True
     return False
 
 
@@ -215,10 +217,6 @@ def _place_gain(bits, mask):
     return after, LINE_WEIGHT * lines + CLEARED_CELL_WEIGHT * cleared
 
 
-def _viable(bits, pieces):
-    return all(any(not (bits & m) for m in _placements(p).values()) for p in pieces) and _tray_playable(bits, pieces)
-
-
 def _plan_values(bits, pieces):
     """Najlepsza wartość pełnego planu dla każdego pierwszego ruchu tacki."""
     slots = [i for i, p in enumerate(pieces) if p is not None]
@@ -252,7 +250,7 @@ def _plan_values(bits, pieces):
         frontier = []
         for child in children:
             remaining = [pieces[s] for s in slots if s not in child[3]]
-            if _viable(child[1], remaining):
+            if _tray_playable(child[1], remaining):
                 frontier.append(child)
                 if len(frontier) == BEAM_WIDTH:
                     break
