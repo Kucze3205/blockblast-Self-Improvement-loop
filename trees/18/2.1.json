@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "aa27f12b012d90939743013295f290dbfe4fea4f",
+ "stan": "ocena w toku",
+ "gist": "Planer tacki na bitboardach i build() dla ewaluatora",
+ "notatki": [
+  "Planer tacki na bitboardach i build() dla ewaluatora\n\nMechanizm: policies.build zwraca TrayPlanner. Ruch wybiera planer po całej tacce\n(3 klocki): wiązka BEAM=24 po kolejnościach postawień, liść\n10*linie - przejścia - 0.5*zapełnienie. Ośmiu najlepszych liści dostaje karę\n400 * P(śmierć na następnej tacce). P to 1-(1-r)^3, gdzie r to waga poz, które\nnie mieszczą się na planszy, plus dla tacek, w których wszystkie trzy mieszczą\nsię osobno, udział z 24 wspólnych próbek tacek (CRN) sprawdzanych DFS-em z\nbudżetem 3000. Ruchy, z których każda gałąź tacki umiera, dostają -400.\n\nDowód z historii: INDEKS trzyma lineage na 0.98–0.996. Próbowano wiązki tacki,\ndokładnego i próbkowanego ryzyka następnej tacki, CRN, liścia z przejściami,\nfinalistów po liściu, deduplikacji i wag uczonych (CEM, TD(0), regresja\nlogistyczna). Węzła 9/2.6 (0.996) ani 17/1.5 (0.988, za wolny) nie da się\nodtworzyć z gita, więc ich kodu nie kopiuję.\n\nDlaczego to nie powtórka: nie ma tu wag uczonych ani kodu z 9/2.6. Nowe jest\npołączenie: pełna wiązka tacki, łączne ryzyko następnej tacki liczone tylko dla\nfinalistów, i implementacja na bitboardach, która ten koszt mieści w czasie na\nruch.\n\nRyzyko: r nie uwzględnia, że klocek, który nie mieści się od razu, może zmieścić\nsię po czyszczeniu linii przez inny klocek z tej samej tacki, więc śmierć jest\nprzeszacowana. Przy wyczerpanym budżecie DFS tacka liczy się jako układalna, więc\nw tym miejscu śmierć jest niedoszacowana. Wynik niezmierzony, ocenia ewaluator.\nLimit czasu nieznany, bo .github jest niedostępne w tej piaskownicy. Wymaga\nPythona >= 3.10 (int.bit_count).\n\nSprawdzone lokalnie, nie jako jakość: tests/test_policies.py 7/7 (transpose,\nclear i fits zgodne z Board; układalność tacki zgodna z brute force na 150\nlosowych przypadkach, 122 układalne i 28 nie; build zwraca ruchy z actions).\n5 partii, 550 ruchów bez wyjątku. Czas na ruch: średnio 5.2 ms, p95 11.4 ms,\nmax 16.7 ms.\n\nCo dalej:\n- Zrobione: planer, build i testy w tym commicie, na bazie caf8e72.\n- Następny krok: po ocenie, jeśli wynik jest poniżej lineage, sprawdzić wpływ\n  DEATH_W i BEAM, zanim zmieni się mechanizm.\n- Nie powtarzać: strojenia wag liścia (LINE_W, TRANS_W, FILL_W) bez zmiany\n  mechanizmu, bo to lokalne optimum z historii.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 56,
+  "usd": 3.2641,
+  "minuty": 14.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T18:54:11Z",
+   "koniec": "2026-10-14T19:08:45Z",
+   "tury": 56,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
