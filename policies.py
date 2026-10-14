@@ -242,7 +242,7 @@ def _plan_values(bits, pieces, samples):
     frontier = [(0.0, bits, None, ())]
     for depth in range(len(slots)):
         children = []
-        for value, board, first, used in frontier:
+        for gains, board, first, used in frontier:
             for slot in slots:
                 if slot in used:
                     continue
@@ -251,21 +251,23 @@ def _plan_values(bits, pieces, samples):
                         continue
                     after, gain = _place_gain(board, mask)
                     children.append((
-                        value + gain - _structure_cost(after),
+                        gains + gain,
                         after,
                         first if first is not None else (slot, x, y),
                         used + (slot,),
                     ))
-        children.sort(key=lambda child: child[0], reverse=True)
+        # Struktura liczy się raz na stanie, nie w każdym kroku tacki.
+        children.sort(key=lambda child: child[0] - _structure_cost(child[1]), reverse=True)
         if depth == len(slots) - 1:
             # children posortowane malejąco: pierwszy zapis ruchu to jego najlepszy plan
             best_by_first = {}
-            for value, after, first, _ in children:
-                best_by_first.setdefault(first, (value, after))
+            for gains, after, first, _ in children:
+                best_by_first.setdefault(first, (gains, after))
             values = {}
-            for first, (value, after) in list(best_by_first.items())[:finalists]:
+            for first, (gains, after) in list(best_by_first.items())[:finalists]:
                 values[first] = (
-                    value
+                    gains
+                    - _structure_cost(after)
                     - _fit_penalty(after)
                     - POCKET_WEIGHT * _pocket_cells(after)
                     - LAMBDA_DEATH * _stuck_share(after, samples)
