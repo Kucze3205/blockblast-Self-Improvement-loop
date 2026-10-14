@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "8a4b1c65584e99281e4f3b90b8b4fcd6260a37c3",
+ "stan": "ocena w toku",
+ "gist": "Dodaj testy polityki przeżycia: bitboardy zgodne z Board, układalność tacki",
+ "notatki": [
+  "Dodaj testy polityki przeżycia: bitboardy zgodne z Board, układalność tacki\n\nTesty: maski postawień zgodne z Board.can_place_piece dla wszystkich 41 poz;\nczyszczenie linii zgodne z Board (plansza i liczba linii); _tray_playable zgodne\nz przeszukiwaniem na symulatorze; build zwraca politykę z reset i act; ruch jest\nlegalny; ten sam seed daje te same ruchy; wybrany ruch zachowuje układalność\ntacki, gdy jakikolwiek ją zachowuje.\n\nDowód: python3 -m unittest tests/test_policies.py, 8 testów OK w 0.3 s.\n\nDlaczego to nie powtórka: testy nie zmieniają polityki ani nie mierzą wyniku.\nSą kontrolą zgodności przed oceną zewnętrzną.\n\nRyzyko: testy sprawdzają zgodność z Board, nie zgodność Board z regułami gry\n(R-1..R-10 są niezmierzone). Nic nie mówią o przeżyciu. Istniejący\ntests/test_engine.py ma 1 błąd sprzed tej zmiany: model.py importuje turtle,\na na maszynie brak tkinter. Nie dotyczy polityki (policies.py nie importuje agent).\n\nCo dalej: zrobione: 9920d7a (polityka). Następny krok: czekać na ocenę\nzewnętrzną tej próby; zielone testy nie są wynikiem.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj jednokrokową politykę przeżycia i build(weights)\n\nMechanizm: SurvivalPolicy wybiera ruch maksymalizujący krotkę\n(układalność pozostałej tacki, P(losowy klocek się zmieści), -kieszenie,\nlinie, punkty). Układalność liczona wyczerpująco na bitboardach; P z 41 poz\ni rozkładu generatora (typ, potem poza, jednostajnie). build(weights) zwraca\ntę politykę: ewaluator wymaga sygnatury, a węzeł 7/5.1 bez build dał 0.000.\n\nDowód z historii:\n- 4/1.2 (kieszenie, n^2 za linie, mobilność w ocenie liścia wiązki): 0.946\n  wobec rodzica 4/1.1 0.954.\n- 9/2.3 (miss = 1 - średnia po typach, martwy typ = 0): 0.986 wobec 2.2 0.987.\n- Najlepszy zmierzony węzeł 9/2.6 (0.996) ma w historii tylko notatki i wyniki.\n  Kodu nie ma ani w repo, ani w git (jeden commit), więc nie da się go przywrócić.\n\nDlaczego to nie powtórka: nie ma wiązki ani CRN, a klucz jest leksykograficzny,\nnie ważoną sumą. Elementy P(zmieści się) (jak q w 9/2.1 i miss w 9/2.3) i kieszeni\n(jak 4/1.2) są znane; nowa jest kombinacja bez przeszukiwania. Sprawdza, czy wiązka\njest konieczna.\n\nRyzyko:\n- Niezmierzone. Ocenę daje ewaluator, nie testy ani test dymny.\n- Test dymny (4 seedy, bez wyniku): 0 nielegalnych ruchów, 1.1-2.0 ms/ruch\n  (zachłanna 0.2). Ginie po 20-50 postawieniach, zachłanna po 17-56.\n  To sygnał, że ta rodzina może być słaba, nie wynik.\n- Czas: przy pełnym przeżyciu (1200 seedów x 500 ruchów x 1.5 ms, około 15 min)\n  mieści się w granicy z indeksu (56.9 min bez flagi, 57.2 za wolna).\n\nCo dalej: zrobione: caf8e72 (baza) i ta zmiana. Następny krok po ocenie: jeśli\nwynik niski, wiązka po tacce z tym kluczem jako liściem, budżet ~3 ms/ruch.\nNie powtarzać samej kary za dopasowanie bez wiązki (9/2.3) ani samych kieszeni\ni linii w liściu (4/1.2).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 60,
+  "usd": 3.679,
+  "minuty": 16.2
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T10:31:37Z",
+   "koniec": "2026-10-14T10:47:50Z",
+   "tury": 60,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
