@@ -87,7 +87,20 @@ _INNER_V = _FULL ^ _ROW[7]
 _EDGE = _ROW[0] | _ROW[7] | _COL[0] | _COL[7]
 _BEAM = 24
 _FINALISTS = 16
-_RISK_WEIGHT = 300.0
+_TRAYS = 64
+_DEATH_WEIGHT = 400.0
+
+
+def _crn_trays(n, seed):
+    rng = random.Random(seed)
+    trays = []
+    for _ in range(n):
+        poses = [rng.choice(PIECE_TYPES[rng.randrange(len(PIECE_TYPES))]) for _ in range(3)]
+        trays.append(tuple(sorted(poses)))
+    return trays
+
+
+_CRN = _crn_trays(_TRAYS, 16)
 
 
 def _mask(pose, x, y):
@@ -132,6 +145,30 @@ def _place(bits, mask):
     return filled & ~clear, lines
 
 
+def _layable(bits, poses, memo):
+    if not poses:
+        return True
+    key = (bits, poses)
+    if key in memo:
+        return memo[key]
+    ok = False
+    for i, p in enumerate(poses):
+        if i and p == poses[i - 1]:
+            continue
+        rest = poses[:i] + poses[i + 1:]
+        for _, _, m in _POSITIONS[p]:
+            if bits & m:
+                continue
+            nb, _ = _place(bits, m)
+            if _layable(nb, rest, memo):
+                ok = True
+                break
+        if ok:
+            break
+    memo[key] = ok
+    return ok
+
+
 def _leaf(bits, lines):
     empty = _FULL ^ bits
     near = ((empty >> 1) & _NOT_C7) | ((empty << 1) & _NOT_C0) | (empty >> 8) | (empty << 8)
@@ -142,16 +179,10 @@ def _leaf(bits, lines):
             - 1.5 * trans - 2.0 * bin(empty & _EDGE).count("1") + 4.2 * lines)
 
 
-def _fits(bits, pose):
-    return any((bits & m) == 0 for _, _, m in _POSITIONS[pose])
-
-
-def _risk(bits):
-    q = 0.0
-    for poses in PIECE_TYPES:
-        share = 1.0 / (len(PIECE_TYPES) * len(poses))
-        q += share * sum(1 for p in poses if not _fits(bits, p))
-    return 1.0 - (1.0 - q) ** 3
+def _dead_share(bits):
+    memo = {}
+    dead = sum(1 for tray in _CRN if not _layable(bits, tray, memo))
+    return dead / len(_CRN)
 
 
 def _plan(bits, pending):
@@ -180,7 +211,10 @@ def _plan(bits, pending):
     finals.sort(key=lambda f: -_leaf(f[0], f[2]))
     best, best_val = None, None
     for nb, move, total in finals[:_FINALISTS]:
-        val = _leaf(nb, total) - _RISK_WEIGHT * _risk(nb)
+        leaf = _leaf(nb, total)
+        if best_val is not None and leaf <= best_val:
+            break
+        val = leaf - _DEATH_WEIGHT * _dead_share(nb)
         if best_val is None or val > best_val:
             best, best_val = move, val
     return best

@@ -4,7 +4,7 @@ import unittest
 from board import Board
 from game import Game
 from pieces import PIECE_POOL
-from policies import _bits, _mask, _place, build
+from policies import _bits, _layable, _mask, _place, build
 
 
 class PlacementMatchesBoardTest(unittest.TestCase):
@@ -59,6 +59,41 @@ class PolicyPlaysLegalMovesTest(unittest.TestCase):
                         break
                 histories.append(history)
             self.assertEqual(histories[0], histories[1])
+
+
+def _engine_layable(board, pieces):
+    if not pieces:
+        return True
+    for i, piece in enumerate(pieces):
+        rest = pieces[:i] + pieces[i + 1:]
+        for y in range(9 - len(piece.shape)):
+            for x in range(9 - len(piece.shape[0])):
+                if board.can_place_piece(piece, x, y):
+                    nxt = board.copy()
+                    nxt.place_piece(piece, x, y)
+                    rows, cols = nxt.check_full_lines()
+                    nxt.clear_lines(rows, cols)
+                    if _engine_layable(nxt, rest):
+                        return True
+    return False
+
+
+class LayableMatchesEngineTest(unittest.TestCase):
+    def test_layable_matches_engine_search(self):
+        rng = random.Random(11)
+        outcomes = []
+        for _ in range(120):
+            board = Board()
+            fill = rng.uniform(0.2, 0.8)
+            for r in range(8):
+                for c in range(8):
+                    board.grid[r][c] = 1 if rng.random() < fill else 0
+            poses = tuple(sorted(rng.randrange(len(PIECE_POOL)) for _ in range(3)))
+            expected = _engine_layable(board, [PIECE_POOL[p] for p in poses])
+            self.assertEqual(_layable(_bits(board.grid), poses, {}), expected)
+            outcomes.append(expected)
+        self.assertGreater(sum(outcomes), 10)
+        self.assertGreater(len(outcomes) - sum(outcomes), 10)
 
 
 if __name__ == "__main__":
