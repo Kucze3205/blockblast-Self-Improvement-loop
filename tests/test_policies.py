@@ -3,6 +3,7 @@ import os
 import random
 import sys
 import unittest
+from itertools import permutations
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -24,6 +25,23 @@ def random_grid(rng):
             return grid
 
 
+def tray_fits_in_order(grid, pieces):
+    if not pieces:
+        return True
+    for y in range(Board.HEIGHT):
+        for x in range(Board.WIDTH):
+            board = Board()
+            board.grid = [row[:] for row in grid]
+            if not board.can_place_piece(pieces[0], x, y):
+                continue
+            board.place_piece(pieces[0], x, y)
+            rows, cols = board.check_full_lines()
+            board.clear_lines(rows, cols)
+            if tray_fits_in_order(board.grid, pieces[1:]):
+                return True
+    return False
+
+
 class BuildTest(unittest.TestCase):
     def test_build_zwraca_polityke_grajaca_legalnie(self):
         policy = policies.build(None)
@@ -37,7 +55,20 @@ class BuildTest(unittest.TestCase):
 class BitboardTest(unittest.TestCase):
     def test_prawdopodobienstwa_sumuja_sie_do_jednosci(self):
         self.assertAlmostEqual(sum(survival.POSE_PROB), 1.0)
-        self.assertAlmostEqual(survival._fit_prob(0), 1.0)
+
+    def test_ukladalnosc_tacki_zgodna_z_brute_force(self):
+        rng = random.Random(11)
+        outcomes = set()
+        for _ in range(40):
+            grid = random_grid(rng)
+            bits = survival.to_bits(grid)
+            tray = survival._draw_tray(rng)
+            expected = any(
+                tray_fits_in_order(grid, [tray[i] for i in order]) for order in permutations(range(3))
+            )
+            self.assertEqual(survival._completable(bits, tray, (0, 1, 2)), expected)
+            outcomes.add(expected)
+        self.assertEqual(outcomes, {True, False})
 
     def test_dopasowanie_i_czyszczenie_zgodne_z_Board(self):
         rng = random.Random(7)

@@ -1,4 +1,6 @@
 """Wybór ruchu po całej tacce na bitboardach z oceną końca tacki."""
+import random
+
 from pieces import PIECE_POOL, PIECE_TYPES
 
 N = 8
@@ -6,10 +8,10 @@ TAU = 0.2
 LINE_W = 3.0
 CONTACT_W = 0.5
 RISK_W = 400.0
-MOB_W = 60.0
 COV_W = 4.0
 BEAM = 40
 FINAL = 16
+SAMPLES = 24
 
 ROW_MASKS = [0xFF << (N * r) for r in range(N)]
 COL_MASKS = [sum(1 << (N * r + c) for r in range(N)) for c in range(N)]
@@ -98,14 +100,25 @@ def _search(bits, slots, pieces):
     return terminals
 
 
-def _fit_prob(bits):
-    q = 0.0
-    for p, entries in enumerate(PLACEMENTS):
-        for entry in entries:
-            if not bits & entry[0]:
-                q += POSE_PROB[p]
-                break
-    return q
+def _draw_tray(rng):
+    tray = []
+    for _ in range(3):
+        poses = rng.choice(PIECE_TYPES)
+        tray.append(PIECE_POOL[rng.choice(poses)])
+    return tray
+
+
+def _completable(board, tray, rest):
+    if not rest:
+        return True
+    for k, slot in enumerate(rest):
+        left = rest[:k] + rest[k + 1:]
+        for entry in PLACEMENTS[tray[slot].index]:
+            if board & entry[0]:
+                continue
+            if _completable(_place(board, entry)[0], tray, left):
+                return True
+    return False
 
 
 def _cover_probs(bits):
@@ -122,31 +135,32 @@ def _cover_probs(bits):
     return cover
 
 
-def _value(state):
+def _value(state, risk):
     bits, _, _, contacts, lines = state
-    miss = 1.0 - _fit_prob(bits)
     cover = _cover_probs(bits)
     dead = sum(1 for c in range(N * N) if ((bits >> c) & 1) == 0 and cover[c] < TAU)
     empties = N * N - bin(bits).count("1")
     return (empties + LINE_W * lines + CONTACT_W * contacts
-            - RISK_W * miss ** 3 - MOB_W * miss - COV_W * dead)
+            - RISK_W * risk - COV_W * dead)
 
 
 class SurvivalPolicy:
     name = "survival"
 
     def reset(self, game_seed):
-        pass
+        self.rng = random.Random(f"tray:{game_seed}")
 
     def act(self, game, actions):
         slots = tuple(i for i, piece in enumerate(game.pieces) if piece is not None)
         terminals = _search(to_bits(game.board.grid), slots, game.pieces)
         if not terminals:
             return actions[0]
+        trays = [_draw_tray(self.rng) for _ in range(SAMPLES)]
         terminals.sort(key=_cheap, reverse=True)
         best_first, best_value = None, None
         for state in terminals[:FINAL]:
-            value = _value(state)
+            fails = sum(1 for tray in trays if not _completable(state[0], tray, (0, 1, 2)))
+            value = _value(state, fails / SAMPLES)
             if best_value is None or value > best_value:
                 best_first, best_value = state[2], value
         return best_first
