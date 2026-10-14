@@ -85,6 +85,8 @@ POOL = 16
 EDGE_PENALTY = 2.0
 CELL_W = 1.4
 LINE_W = 4.2
+POCKET_W = 3.0
+_BOARD = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W))
 _ROW = [sum(1 << (y * STRIDE + x) for x in range(W)) for y in range(H)]
 _COL = [sum(1 << (y * STRIDE + x) for y in range(H)) for x in range(W)]
 _BORDER = sum(
@@ -139,6 +141,13 @@ def _place(occ, pose, anchor):
     return occ & ~clear, lines
 
 
+def _pockets(occ):
+    left, right = occ << 1, occ >> 1
+    up, down = occ << STRIDE, occ >> STRIDE
+    three = (left & right & up) | (left & right & down) | (left & up & down) | (right & up & down)
+    return (three & _BOARD & ~occ).bit_count()
+
+
 def _dead_types(occ):
     dead = 0
     for poses in PIECE_TYPES:
@@ -184,6 +193,7 @@ class TrayBeamPolicy:
                         new_occ, lines = _place(occ_s, pose, anchor)
                         s = score + CELL_W * cells + LINE_W * lines
                         s -= EDGE_PENALTY * (~new_occ & _BORDER).bit_count()
+                        s -= POCKET_W * _pockets(new_occ)
                         head = first or (slot, anchor % STRIDE, anchor // STRIDE)
                         if not left:
                             terminal.append((s, new_occ, head))
