@@ -2,16 +2,26 @@
  "rodzic": "1.1",
  "rodzic_sha": "ce1faefa5d1f86bc5237726894640737c9f70aa1",
  "kolejnosc": 3,
- "sha": "ce1faefa5d1f86bc5237726894640737c9f70aa1",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "dfc15db238fefea9e1a2ad6c4f9460a8b463eb51",
+ "stan": "ocena w toku",
+ "gist": "Dodaj próbkowaną domykalność następnej tacki do wyboru finalistów wiązki",
+ "notatki": [
+  "Dodaj próbkowaną domykalność następnej tacki do wyboru finalistów wiązki\n\nMechanizm:\n- Wiązka bez zmian (szerokość 40 z 2a52b28). Finalistów (FINALISTS = 8) wybiera się po liściu cheap - 1000*(1-q)^3, jak dotąd.\n- Spośród finalistów maksymalizowany jest wynik: liść - 1000 * udział próbek, w których następna tacka się nie układa.\n- Udział liczy się po 256 próbkach (CLOSE_SAMPLES) losowanych na każdy ruch z osobnego strumienia rng (\"closability:{game_seed}\"), wspólnych dla finalistów. Polityka nie widzi przyszłych tacek gry.\n- Licznik to tacki, w których coś się mieści, ale nie układają się w całości. _completes to dokładny DFS po kolejności klocków i kotwicach na bitboardach, z czyszczeniem linii.\n- Kara łącznie = 1000 * P(tacka się nie układa). (1-q)^3 to P(żaden z trzech klocków się nie mieści), a udział to P(coś się mieści, ale nie układa się). Zdarzenia są rozłączne, więc śmierć nie liczy się dwa razy.\n\nDowód z historii:\n- 13/1.4 (0,981): domykalność następnej tacki (stuck) w ryzyku finalistów, 256 stałych tacek, kara 400 z rozłącznym P^3.\n- 13/2.2 (0,634, 32 próbki) wobec 13/2.3 (0,977, 256 próbek): liczba próbek ma znaczenie. Tam struktura to SearchPolicy, nie wiązka na bitboardach. Dlatego 256, a nie 64.\n- 9/2.6 (0,996): przegląd następnej tacki pomija nieumieszczalne próbki, bez podwójnej kary. Różnica: 9/2.6 uśredniał po wykonalnych próbkach. Tu mianownik to wszystkie próbki, bo wtedy kara to dokładnie P(nie układa się).\n\nDlaczego to nie powtórka:\n- ce1faef i 2a52b28 mają liść z dokładnym q, bez próbkowanej domykalności dla finalistów. Ta zmiana to dodaje.\n- To nie jest ogon z 9/2.5 (0,9918) ani 9/2.7 (0,991). Tamten karał stan po następnej tacce, czyli o jeden poziom dalej. Tu chodzi o następną tackę z bieżącego stanu, jak w 13/1.4.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator.\n- Testy (nie wynik): _completes zgodne z brute force na Board, 1428 par stan-tacka z 40 partii, 0 niezgodnych. Test dymny: 10 partii, do 500 postawień, 0 nielegalnych ruchów.\n- Koszt: 30,9 ms na ruch (256 próbek), 10,1 ms przy 64, 3,2 ms w 2a52b28. Limit czasu w tej sesji nieczytelny (.github to urządzenie znakowe). Skala z 13/1.4 (22 ms na ruch -> 2,4 min) daje ok. 3-4 min, bez pomiaru. W historii 9/2.7 (8,3 min) i 3/1.3 (10,1) przeszły, a 10/2.8 (10,8) i 7/1.4 (12,1) dostały za wolna.\n- Waga na próbkę to 1000/256 ≈ 3,9 pkt, przy 13/2.3 było 400/256 ≈ 1,6. Przy 32 próbkach wynik spadł do 0,634, więc szum jest realnym czynnikiem.\n- Próbki zmieniają się na każdy ruch (13/1.4 miał stały zestaw), więc decyzje mogą się różnić między ruchami.\n- Pełny DFS następnej tacki na 12 próbkach w 1/2.5 był za wolny (57-58 min, zapis 9/2.5). Tu jest na bitboardach, ale koszt trzeba zobaczyć w ocenie.\n\nCo dalej:\n- Zrobione: domykalność następnej tacki dla finalistów, 256 próbek (ten commit).\n- Następny krok: ocena tego węzła. Jeśli za wolna, zejść do 128 próbek albo liczyć udział tylko dla czterech finalistów (jak planuje 13/1.4). Jeśli wynik niski przy czasie w porządku, sprawdzić wariancję (stały zestaw zamiast losowego na ruch), zanim ruszę wagę.\n- Czego nie powtarzać: ogona na stanie po następnej tacce (9/1.5, 9/2.5, 9/2.7); 32 próbek domykalności (13/2.2); samego (1-q)^3 jako ryzyka (ce1faef, 2a52b28).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Ustaw wiązkę po tacce na 40 zamiast 8, bo 8 wypadło poza udane węzły\n\nMechanizm:\n- TrayPolicy domyślnie width=40 (było 8) na każdym poziomie wiązki. Liść bez zmian:\n  cheap - 1000 * (1 - q)^3, gdzie q liczone dokładnie.\n\nDowód z historii:\n- 13/1.1 (0,190): wiązka 3, liść z grawitacją i szumne ryzyko.\n- 13/1.2 (0,955): wiązka 40, liść bez grawitacji, dokładne ryzyko tacki.\n- 8/1.1 (0,975): wiązka 40 po kolejnościach i pozycjach klocków bieżącej tacki.\n- Nasz 1.1 (0,531): wiązka 8. Reszta części tacki jest taka jak w udanych węzłach,\n  więc szerokość to parametr, który odbiega od nich. Notatka 1.1 podała 8 bez uzasadnienia.\n\nDlaczego to nie powtórka: nie dodaje mechanizmu, tylko poprawia błędny parametr\nistniejącego. Liść zostaje ten sam, więc zmiana wyniku zależy od szerokości.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator. Koszt: 3,5 ms na ruch zamiast 0,76 (test dymny:\n  5 partii, cap 150, 0 nielegalnych ruchów; to nie jest pomiar wyniku).\n- Limit czasu shardu z .github/evaluator/config.json jest nieczytelny w tym środowisku\n  (.github to urządzenie znakowe). Węzły 8/1.6 i 9/2.7 mają ocenę przy 7,6 i 8,3 min,\n  a 1.1 zmierzył 0,1 min.\n\nCo dalej:\n- Zrobione: width=40 (ten commit).\n- Następny krok: domykalność następnej tacki dla finalistów, na próbkach wspólnych dla\n  kandydatów, bez podwójnej kary za tacki bez pasującego klocka (13/1.4, 9/2.6).\n- Czego nie powtarzać: strojenia wag bez zmiany mechanizmu; wiązki 3 z liściem z grawitacją (13/1.1).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 50,
+  "usd": 3.5088,
+  "minuty": 17.7
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T10:48:49Z",
+   "koniec": "2026-10-14T11:06:30Z",
+   "tury": 50,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
