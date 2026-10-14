@@ -2,16 +2,25 @@
  "rodzic": "2.2",
  "rodzic_sha": "9dae5a6abddd15c0bce605f83cfa82d8185296dd",
  "kolejnosc": 6,
- "sha": "9dae5a6abddd15c0bce605f83cfa82d8185296dd",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "c0f14f9a778f658ecb51b4e5dc2c9fb15edca35f",
+ "stan": "ocena w toku",
+ "gist": "Wiązka 40 i 256 tacek CRN; ruch awaryjny zachowuje układalność tacki",
+ "notatki": [
+  "Wiązka 40 i 256 tacek CRN; ruch awaryjny zachowuje układalność tacki\n\nMechanizm:\n- _BEAM 24 -> 40 i _TRAYS 64 -> 256 w ryzyku finalistów. Pierwsze 64 tacki CRN się nie zmieniają (losowanie jest sekwencyjne).\n- _single (ruch awaryjny, gdy _plan zwróci None) porównuje najpierw, czy reszta tacki zostaje układalna, a dopiero potem _leaf. Stary wybór tylko po _leaf mógł zostawić układalną tacę nieukładalną. Błąd znaleziony w kodzie _single.\n- Liść z członem E i 16 finalistów bez zmian (z 9dae5a6).\n\nDowód z historii:\n- 16/2.2 (9dae5a6): beam 24, 64 próbki, s_sym 0.97998, 51 przegranych, czas 0.5 min, za_wolna false.\n- 13/2.3: beam 40, 256 próbek, bez członu E: s_sym 0.97712, czas 3.2 min, za_wolna false.\n- 13/2.4: to samo plus człon E: s_sym 0.99129, czas 3.2 min, za_wolna false.\n13/2.4 różni się od 13/2.3 tylko członem E, więc ten człon dał ok. 0.014. Ten węzeł łączy wiązkę i próbki z 13/2.4 z członem E z 16/2.2.\n\nDlaczego to nie powtórka:\n- Najbliżej jest 13/2.4. Różnice: 16 finalistów zamiast 8/20, bez członu dead types (redundantny przy P_dead), ryzyko to jeden odsetek nieukładalnych tacek CRN zamiast dokładnego P(brak pasującego) i próbkowanego stuck, oraz nowy ruch awaryjny.\n- Ostrzeżenie z 9dae5a6 (więcej niż 64 próbek CRN bez zmiany planera; 9/2.7: 0.991 wobec 0.996) nie dotyczy wprost, bo beam też się zmienia, a próbki służą ryzyku finalistów, nie przeglądowi następnej tacki. Zwiększenie próbek jest jednak częścią tej zmiany, więc ryzyko powtórki zostaje po stronie próbek.\n\nRyzyko:\n- Wynik niezmierzony. Lokalnie: 21/21 testów OK; smoke 3 partie, 450 ruchów: 0 nielegalnych, 0 wrong_placement, średnio 11.5 ms/ruch, max 266 ms.\n- Czas nie zmierzony. 13/2.4 z tą samą wiązką i próbkami miał 3.2 min i nie był za wolna. Limit w .github/evaluator/config.json jest nieczytelny, więc nie wiem, czy ten węzeł się mieści.\n- Rozbieżność: lokalna diagnoza 2.2 dała ok. 40% przegranych (80/200), a ewaluator 4.25% (51/1200). Nie wyjaśnione; lokalnych liczb nie traktować jako wyniku.\n- Poprawka _single dotyczy rzadkiej ścieżki, więc jej zysk może być mały.\n\nCo dalej:\n- Zrobione: 2.2 = 9dae5a6 (0.97998). 2.3 = ten commit, wynik niezmierzony.\n- Następny krok: ocena 2.3 względem 2.2 (0.97998) i 13/2.4 (0.99129). Jeśli za wolna, zmniejszyć _TRAYS albo _BEAM, jedno naraz. Jeśli nie przebije 2.2, rozdzielić zmiany wiązki i próbek w osobnych węzłach, zamiast dokładać próbek.\n- Czego nie powtarzać: samego zwiększania próbek CRN bez zmiany planera (9/2.7); członu dead types obok P_dead (13/2.4).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 91,
+  "usd": 7.3264,
+  "minuty": 42.2
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T08:58:11Z",
+   "koniec": "2026-10-14T09:40:21Z",
+   "tury": 91,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
