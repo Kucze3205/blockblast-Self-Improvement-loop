@@ -2,16 +2,25 @@
  "rodzic": "2.4",
  "rodzic_sha": "70d725fedc4c96d2fa88bc41dd10ae5dd0716286",
  "kolejnosc": 10,
- "sha": "70d725fedc4c96d2fa88bc41dd10ae5dd0716286",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "84e3cb98f12bc1006d0d7e9f896e7ee0d036ccaf",
+ "stan": "ocena w toku",
+ "gist": "Liść tylko na stanie: struktura raz na stanie tacki, nie w każdym kroku",
+ "notatki": [
+  "Liść tylko na stanie: struktura raz na stanie tacki, nie w każdym kroku\n\nMechanizm:\nBaza to 70d725f (węzeł 2.4). _plan_values sumowało -_structure_cost po każdym z trzech kroków tacki, więc struktura każdego pośredniego stanu wchodziła do rankingu wiązki i do wyboru finalistów, a w ostatniej warstwie liczyła się trzy razy. Teraz wiązka i finaliści porządkują po zyskach minus struktura stanu, w którym jest plan, a w ostatniej warstwie strukturę odejmuje się raz, od stanu końcowego. Wagi, kara za dopasowanie, kieszenie, próbki i szerokość wiązki bez zmian.\n\nDowód z historii:\n- Notatka 8ac2bed opisuje liść jak w 8/1.1, czyli wartość stanu końcowego. Kod 2.2–2.4 dodawał strukturę po każdym kroku.\n- 1.4 (0,980) wybiera finalistów po liściu stanu końcowego (_cheap(final) w .historia/17/1.patch). 2.4 (0,950) wybiera ich po sumie kroków. Różnią się też szerokość wiązki i próbki, więc to hipoteza, nie wniosek.\n\nDlaczego to nie powtórka:\nNie zmienia wag ani kary za dopasowanie. Zmienia tylko, który stan dostaje strukturę, a więc zbiór ruchów trafiających pod karę za nieułożalne następne tacki. Wartość pełnego planu jest teraz tą samą funkcją co _cheap z 1.4, z dokładnością do stałej. Różnią się zbiory finalistów i kary.\n\nRyzyko:\n- Wynik niezmierzony; ocenia ewaluator.\n- Jeśli sumowanie po krokach chroniło przed pośrednimi ruchami psującymi późniejsze ułożenie tacki, nowy ranking ich nie widzi. Układalność nadal sprawdza _tray_playable, więc legalność się nie zmienia.\n- Smoke: 3 partie, 483 ruchy, 0 wrong_placement, 38 ms na ruch. Testy policies 14/14. To nie jest pomiar wyniku.\n\nCo dalej:\n- Zrobione: ten commit (węzeł 2.5).\n- Następny kandydat, nieprzetestowany: kara za dopasowanie. Sześcian w _fit_penalty liczy się z (1−śr) po żywych typach, a liniowy człon z (1−śr) po wszystkich. Przy wielu martwych typach sześcian jest za mały. Wzór z 17/1.3 (jak 13/1.4) i 1.patch ma jedno P = 1 − średnia po wszystkich typach. Osobny węzeł, żeby efekt był mierzalny.\n- Potem: próbki zamrożone na partię (jak 17/1.4) zamiast co ruch; szerokość wiązki 40 zamiast 24.\n- Czego nie powtarzać: podnoszenia LAMBDA_DEATH bez zmiany zbioru finalistów.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 34,
+  "usd": 2.9882,
+  "minuty": 14.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T13:44:44Z",
+   "koniec": "2026-10-14T13:59:13Z",
+   "tury": 34,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
