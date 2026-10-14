@@ -78,16 +78,18 @@ def _immediate_gain(game, action):
 
 
 STRIDE, W, H = 9, 8, 8  # bit = y*STRIDE + x; kolumna 8 to strażnik, nigdy nie zajęta
-BEAM = 16
+BEAM = 8
 POOL = 16
 LINE_W = 4.2
+OCC_W = 1.4
+ISO_W = 0.75
+TRANS_W = 1.5
 EDGE_W = 2.0
-POCKET_W = 3.0
-HOLE_W = 2.0
 DEAD_W = 6.0
-RISK_W = 40.0
 DEATH_W = 1000.0
 _BOARD = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W))
+_HPAIR = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W - 1))
+_VPAIR = sum(1 << (y * STRIDE + x) for y in range(H - 1) for x in range(W))
 _ROW = [sum(1 << (y * STRIDE + x) for x in range(W)) for y in range(H)]
 _COL = [sum(1 << (y * STRIDE + x) for y in range(H)) for x in range(W)]
 _BORDER = sum(
@@ -142,29 +144,17 @@ def _place(occ, pose, anchor):
     return occ & ~clear, lines
 
 
-def _pockets(occ):
-    left, right = occ << 1, occ >> 1
-    up, down = occ << STRIDE, occ >> STRIDE
-    three = (left & right & up) | (left & right & down) | (left & up & down) | (right & up & down)
-    return (three & _BOARD & ~occ).bit_count()
-
-
-def _holes(occ):
-    seen = holes = 0
-    for y in range(H):
-        bits = (occ >> (y * STRIDE)) & ((1 << W) - 1)
-        holes += (seen & ~bits & ((1 << W) - 1)).bit_count()
-        seen |= bits
-    return holes
+def _board_cost(occ):
+    empty = _BOARD & ~occ
+    empty_nb = (empty >> 1) | (empty << 1) | (empty >> STRIDE) | (empty << STRIDE)
+    isolated = (empty & ~empty_nb).bit_count()
+    transitions = ((occ ^ (occ >> 1)) & _HPAIR).bit_count() + ((occ ^ (occ >> STRIDE)) & _VPAIR).bit_count()
+    border = (empty & _BORDER).bit_count()
+    return OCC_W * occ.bit_count() + ISO_W * isolated + TRANS_W * transitions + EDGE_W * border
 
 
 def _cheap(occ, lines):
-    return (
-        LINE_W * lines
-        - EDGE_W * (~occ & _BORDER).bit_count()
-        - POCKET_W * _pockets(occ)
-        - HOLE_W * _holes(occ)
-    )
+    return LINE_W * lines - _board_cost(occ)
 
 
 def _risk(occ):
@@ -176,7 +166,7 @@ def _risk(occ):
 
 def _full_value(occ, lines):
     q, dead = _risk(occ)
-    return _cheap(occ, lines) - DEAD_W * dead - RISK_W * q - DEATH_W * q ** 3
+    return _cheap(occ, lines) - DEAD_W * dead - DEATH_W * q ** 3
 
 
 class TrayBeamPolicy:
