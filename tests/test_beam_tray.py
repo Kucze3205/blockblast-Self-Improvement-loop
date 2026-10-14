@@ -113,6 +113,16 @@ class TrayPlayableTest(unittest.TestCase):
                 expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
             self.assertEqual(policy._next_value(b, triples, poses), expected)
 
+    def test_survives_full_board_dies(self):
+        one_cell = next(p.index for p in PIECE_POOL if p.name == "1x1")
+        tray = [one_cell] * 3
+        self.assertFalse(B._survives(B.FULL, [tray]))
+
+    def test_survives_empty_board_takes_single_cells(self):
+        one_cell = next(p.index for p in PIECE_POOL if p.name == "1x1")
+        tray = [one_cell] * 3
+        self.assertTrue(B._survives(0, [tray, tray]))
+
     def test_policy_plays_legal_moves(self):
         game = Game(1)
         policy = policies.build(None)

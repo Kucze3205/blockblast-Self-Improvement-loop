@@ -25,6 +25,9 @@ FINAL_K_TIGHT = 20
 TIGHT_FREE = 22
 TRAY_FAIL = 400.0
 MIX_TRAYS = 64
+ROLL_R = 16
+ROLL_BEAM = 3
+ROLL_W = TRAY_FAIL
 # P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
 P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
 
@@ -185,6 +188,15 @@ def plan(board, slots, width, cap, partial=False):
     return beam
 
 
+def _survives(b, trays):
+    for poses in trays:
+        states = plan(b, list(enumerate(poses)), ROLL_BEAM, ROLL_BEAM)
+        if not states:
+            return False
+        b = max(states, key=lambda s: cheap(s[0], s[2]))[0]
+    return True
+
+
 class BeamPolicy:
     name = "beam"
 
@@ -217,10 +229,12 @@ class BeamPolicy:
         contenders = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
         best_move, best_total = None, None
         trays = [_sample_tray(self.rng) for _ in range(LOOK_TRAYS)]
+        rolls = [[_sample_tray(self.rng), _sample_tray(self.rng)] for _ in range(ROLL_R)]
         for first, (value, b) in contenders:
-            # śmierć na następnej tacce karze już risk i tail_penalty, więc tu liczymy tylko wykonalne
+            # śmierć w następnych tackach liczą rolloutu, nie stała kara: bez podwójnego liczenia
             nxt = [v for v in (self._next_value(b, triples, poses) for poses in trays) if v is not None]
-            total = value + (sum(nxt) / len(nxt) if nxt else -TRAY_FAIL)
+            alive = sum(_survives(b, roll) for roll in rolls) / ROLL_R
+            total = value + (sum(nxt) / len(nxt) if nxt else 0.0) - ROLL_W * (1.0 - alive)
             if best_total is None or total > best_total:
                 best_move, best_total = first, total
         return best_move
