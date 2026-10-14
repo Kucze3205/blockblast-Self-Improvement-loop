@@ -138,6 +138,13 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(len(checked), planner.FINALISTS)
         self.assertLessEqual(set(checked), expected)
 
+    def test_dead_first_move_never_beats_living_move(self):
+        complete = [(-100.0, 0, (), (0, 0, 0), 0)]
+        dead = [(1, 0, 0)]
+        with mock.patch.object(planner, "search", return_value=(complete, dead)):
+            with mock.patch.object(planner, "dead_prob", return_value=1.0):
+                self.assertEqual(planner.plan_move(0, [], []), (0, 0, 0))
+
     def test_unfit_piece_freed_by_clear_is_not_death(self):
         grid = [[1] * W for _ in range(H)]
         grid[0][W - 1] = 0

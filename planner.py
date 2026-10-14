@@ -1,4 +1,5 @@
 """Planer tacki na bitboardach: wiązka po klockach tacki i ryzyko następnej tacki."""
+import math
 import random
 
 from board import Board
@@ -199,7 +200,7 @@ def plan_move(board, slots, trays):
         (cheap - DEATH_W * dead_prob(nb, trays), first)
         for first, (cheap, nb) in finalists
     ]
-    scored += [(-DEATH_W, first) for first in set(dead) if first not in best]
+    scored += [(-math.inf, first) for first in set(dead) if first not in best]
     return max(scored, key=lambda s: s[0])[1]
 
 
