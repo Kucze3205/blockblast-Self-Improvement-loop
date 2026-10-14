@@ -78,10 +78,10 @@ def _immediate_gain(game, action):
 
 
 STRIDE, W, H = 9, 8, 8  # bit = y*STRIDE + x; kolumna 8 to strażnik, nigdy nie zajęta
-BEAM = 8
+BEAM = 120
 DEATH_W = 1000.0
 DEAD_W = 6.0
-POOL = 16
+POOL = 120
 EDGE_PENALTY = 2.0
 OCC_W = 1.4
 LINE_W = 4.2
