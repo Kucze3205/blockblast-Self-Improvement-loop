@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "ce1faefa5d1f86bc5237726894640737c9f70aa1",
+ "stan": "ocena w toku",
+ "gist": "Dodaj policies.build: wiązka po tacce na bitboardach z dokładnym ryzykiem następnej tacki",
+ "notatki": [
+  "Dodaj policies.build: wiązka po tacce na bitboardach z dokładnym ryzykiem następnej tacki\n\nMechanizm:\n- build(weights) zwraca TrayPolicy z reset(seed) i act(game, actions); wagi są nieużywane.\n- Plansza to int 64-bitowy. Legalne kotwice pozy liczą się przesunięciami i AND\n  z maską kotwic, bez pętli po pozycjach. Linie czyszczone maskami wierszy i kolumn.\n- Wiązka po całej tacce (szerokość 8). Węzły sortowane po cheap: linie, komórki,\n  pola brzegowe, przejścia wewnątrz planszy. Finał oceniany przez\n  cheap - 1000 * (1 - q)^3, gdzie q = P(losowy klocek mieści się), liczone dokładnie\n  z rozkładu 1/15 na typ i 1/n na pozy typu.\n- Reszta tacki musi mieścić się po każdym postawieniu, tak jak Game._can_place_any.\n\nDowód z historii (indeksy, nie patche, których w tym klonie nie ma):\n- 9/1.1 (0,950) i 8/1.1 (0,975): wiązka po tacce z ryzykiem.\n- 13/2.3 (0,977): ryzyko z dokładnego P(brak pasującego).\n- 9/2.2 (0,987): przejścia liczone wewnątrz planszy, ściany poza nimi.\nTa próba łączy te trzy elementy na bitboardach. Nie ma próbkowania domykalności\nani drugiego poziomu tacki, więc to nie jest powtórka 9/1.x ani 13/2.x.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator. Wagi (1000, 10, 1, 2, 0,5) to założenia, nie strojenie.\n- Test dymny (nie pomiar): 3 partie, cap 150 postawień, 0 nielegalnych ruchów,\n  0,79 ms na ruch. Przegrane po 38 i 104 postawieniach, więc spodziewać się\n  niskiego s_sym, dopóki nie dojdzie domykalność próbek tacek.\n- tests/test_engine.py: 1 błąd, brak modułu tkinter w środowisku (był przed zmianą).\n\nCo dalej:\n- Zrobione: policies.build na wiązce 8 z bitboardami i dokładnym q (ten commit).\n- Następny krok: domykalność z 64 próbek tacek zamiast samego (1-q)^3.\n- Czego nie powtarzać: samego strojenia wag bez zmiany mechanizmu.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 53,
+  "usd": 2.4763,
+  "minuty": 12.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T10:31:32Z",
+   "koniec": "2026-10-14T10:43:39Z",
+   "tury": 53,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
