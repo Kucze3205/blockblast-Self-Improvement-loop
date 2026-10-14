@@ -83,10 +83,13 @@ DEATH_W = 1000.0
 DEAD_W = 6.0
 POOL = 16
 EDGE_PENALTY = 2.0
-CELL_W = 1.4
+OCC_W = 1.4
 LINE_W = 4.2
-POCKET_W = 3.0
+ISO_W = 0.75
+TRANS_W = 1.5
 _BOARD = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W))
+_HPAIR = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W - 1))
+_VPAIR = sum(1 << (y * STRIDE + x) for y in range(H - 1) for x in range(W))
 _ROW = [sum(1 << (y * STRIDE + x) for x in range(W)) for y in range(H)]
 _COL = [sum(1 << (y * STRIDE + x) for y in range(H)) for x in range(W)]
 _BORDER = sum(
@@ -102,7 +105,7 @@ for _piece in PIECE_POOL:
     _offs = [r * STRIDE + c for r, row in enumerate(_shape) for c, v in enumerate(row) if v]
     _pmask = sum(1 << o for o in _offs)
     _inside = sum(1 << (y * STRIDE + x) for y in range(H - _h + 1) for x in range(W - _w + 1))
-    _PLAN.append((_offs, _pmask, _inside, len(_offs)))
+    _PLAN.append((_offs, _pmask, _inside))
 _POSE_PROB = [0.0] * len(PIECE_POOL)
 for _poses in PIECE_TYPES:
     for _p in _poses:
@@ -119,7 +122,7 @@ def _occupancy(board):
 
 
 def _anchors(occ, pose):
-    offs, _, inside, _ = _PLAN[pose]
+    offs, _, inside = _PLAN[pose]
     blocked = 0
     for o in offs:
         blocked |= occ >> o
@@ -141,11 +144,13 @@ def _place(occ, pose, anchor):
     return occ & ~clear, lines
 
 
-def _pockets(occ):
-    left, right = occ << 1, occ >> 1
-    up, down = occ << STRIDE, occ >> STRIDE
-    three = (left & right & up) | (left & right & down) | (left & up & down) | (right & up & down)
-    return (three & _BOARD & ~occ).bit_count()
+def _board_cost(occ):
+    empty = _BOARD & ~occ
+    empty_nb = (empty >> 1) | (empty << 1) | (empty >> STRIDE) | (empty << STRIDE)
+    isolated = (empty & ~empty_nb).bit_count()
+    transitions = ((occ ^ (occ >> 1)) & _HPAIR).bit_count() + ((occ ^ (occ >> STRIDE)) & _VPAIR).bit_count()
+    border = (empty & _BORDER).bit_count()
+    return OCC_W * occ.bit_count() + ISO_W * isolated + TRANS_W * transitions + EDGE_PENALTY * border
 
 
 def _dead_types(occ):
@@ -184,22 +189,19 @@ class TrayBeamPolicy:
                 for slot in rest:
                     pose = game.pieces[slot].index
                     left = tuple(r for r in rest if r != slot)
-                    cells = _PLAN[pose][3]
                     anchors = _anchors(occ_s, pose)
                     while anchors:
                         low = anchors & -anchors
                         anchor = low.bit_length() - 1
                         anchors ^= low
                         new_occ, lines = _place(occ_s, pose, anchor)
-                        s = score + CELL_W * cells + LINE_W * lines
-                        s -= EDGE_PENALTY * (~new_occ & _BORDER).bit_count()
-                        s -= POCKET_W * _pockets(new_occ)
+                        s = score + LINE_W * lines
                         head = first or (slot, anchor % STRIDE, anchor // STRIDE)
                         if not left:
-                            terminal.append((s, new_occ, head))
+                            terminal.append((s - _board_cost(new_occ), new_occ, head))
                             continue
                         unfit = sum(1 for r in left if not _anchors(new_occ, game.pieces[r].index))
-                        rank = (unfit, -s)
+                        rank = (unfit, _board_cost(new_occ) - s)
                         key = (new_occ, left)
                         if key not in nxt or rank < nxt[key][0]:
                             nxt[key] = (rank, s, new_occ, left, head)
@@ -209,13 +211,13 @@ class TrayBeamPolicy:
             beam = []
             for (unfit, _), s, new_occ, left, head in pool:
                 s -= DEAD_W * _dead_types(new_occ)
-                beam.append(((unfit, -s), s, new_occ, left, head))
+                beam.append(((unfit, _board_cost(new_occ) - s), s, new_occ, left, head))
             beam = sorted(beam, key=lambda t: t[0])[:BEAM]
         if not terminal:
             return beam[0][4] or actions[0]
         best_value, best_head = None, None
-        for s, new_occ, head in sorted(terminal, key=lambda t: -t[0])[:POOL]:
-            value = s - DEAD_W * _dead_types(new_occ) - DEATH_W * _dead_tray_prob(new_occ)
+        for v, new_occ, head in sorted(terminal, key=lambda t: -t[0])[:POOL]:
+            value = v - DEAD_W * _dead_types(new_occ) - DEATH_W * _dead_tray_prob(new_occ)
             if best_value is None or value > best_value:
                 best_value, best_head = value, head
         return best_head
