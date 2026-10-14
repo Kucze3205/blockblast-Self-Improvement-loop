@@ -2,16 +2,25 @@
  "rodzic": "1.1",
  "rodzic_sha": "ea982c6bc8dd6a3df200dbe198c31faa393a288a",
  "kolejnosc": 3,
- "sha": "ea982c6bc8dd6a3df200dbe198c31faa393a288a",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "337a5c8c46c5bc800ba86ff54ad1ef30a295e548",
+ "stan": "ocena w toku",
+ "gist": "Polityka tacki: kara za tackę, której klocki nie układają się łącznie",
+ "notatki": [
+  "Polityka tacki: kara za tackę, której klocki nie układają się łącznie\n\nMechanizm: dla każdej z 16 końcowych plansz planera losujemy 64 następne tacki (CRN: te same dla wszystkich kandydatów w ruchu). Tacka jest martwa, gdy każdy jej klocek pasuje osobno, ale nie da się postawić wszystkich po kolei bez wcześniejszego końca gry. _joint_ok to dokładny DFS o tej samej regule co game._can_place_any. Wartość kandydata: score - 6*izolowane - 300*R1 - 400*R2. R1 to dotychczasowe ryzyko, że którykolwiek z trzech nowych klocków nie pasuje; R2 to udział martwych tacek wśród próbek, w których wszystkie klocki pasują. Zdarzenia są rozłączne, więc nie liczą się dwa razy.\n\nDowód z historii:\n- 9/1.1 (0,950) i 9/2.1 (0,963) mają tego samego rodzica, korzeń. 9/2.1 dodaje przegląd następnej tacki na wspólnych losowaniach (CRN): +0,013.\n- 9/2.6 (0,996, najlepszy węzeł drzewa 9) pomija w tym przeglądzie nieumieszczalne próbki, bez podwójnej kary. To ten sam podział co R1/R2 tutaj.\n- 9/1.3 (0,989) dodaje karę za martwe tacki mieszane do planera bitowego z 9/2.2 (0,987): +0,002. Sama kara daje mało, więc wynik zależy od podziału.\n- Seed 1 w 16/1.1 kończy się po 55 ruchach: kolejna tacka ma square3, a jedyne wolne 3x3 zajęła poprzednia tacka. To zdarzenie R1, nie R2, więc ten commit go bezpośrednio nie łapie.\n\nDlaczego to nie powtórka: 16/1.1 nie ma przeglądu następnej tacki. 16/2.1 (0,965) nie ma członu łącznego (sprawdzone grepem w 16/2.patch). Tu człon jest na bazie wiązki 24/16 z R1.\n\nRyzyko:\n- Wynik nieznany. Ocenia ewaluator.\n- Czas lokalnie: 1,87 → 13,5 ms na ruch (x7) na seedach 1-3, 150 ruchów. Przy ocenie 0,2 min z 16/1.1 to rząd 1,4 min. Limit ustala ewaluator.\n- Smoke: 450 wywołań planera bez None, 1 wywołanie z martwym klockiem w tacce, 0 nielegalnych ruchów. To sprawdzenie działania, nie wynik.\n- R2 jest szumny: jedna tacka z 64 to 6,25 pkt. Wspólne losowania ograniczają szum różnic między kandydatami, nie poziom bezwzględny.\n- Test regresyjny opiera się na jednym przypadku z partii losowej (seed 15, głębokość 15). Zgodność z symulacją na Board sprawdzono na losowych trójkach.\n\nCo dalej:\n- Zrobione: ea982c6 (1.1, wiązka z R1). Ten commit: człon R2.\n- Następny krok: ocena tego commitu względem 16/1.1 (0,937) i 16/2.1 (0,965).\n- Czego nie powtarzać: podbijania RISK_W albo liczby próbek bez pomiaru czasu. Jeśli wynik będzie płaski, następny kandydat to klasowy człon risk jak 9/1.4 (0,989 -> 0,995).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 57,
+  "usd": 4.6342,
+  "minuty": 21.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T08:33:12Z",
+   "koniec": "2026-10-14T08:54:49Z",
+   "tury": 57,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
