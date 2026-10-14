@@ -199,10 +199,11 @@ def _joint_failure(board, samples, memo):
 def _plan(board, pieces, samples, memo):
     beam = [(0, board, 0, pieces, None)]
     for _ in pieces:
-        children = []
+        children = {}
         for _, b, lines, rest, first in beam:
             for pos, (tray_idx, pose) in enumerate(rest):
                 left = rest[:pos] + rest[pos + 1:]
+                left_slots = tuple(idx for idx, _ in left)
                 for x, y, mask in POSE_PLACEMENTS[pose]:
                     if b & mask:
                         continue
@@ -210,10 +211,12 @@ def _plan(board, pieces, samples, memo):
                     if left and not any(_fits(nxt, other) for _, other in left):
                         continue
                     total = lines + cleared
-                    move = first if first is not None else (tray_idx, x, y)
-                    children.append((_beam_score(nxt, total), nxt, total, left, move))
-        children.sort(key=lambda child: -child[0])
-        beam = children[:BEAM]
+                    key = (nxt, total, left_slots)
+                    if key not in children:
+                        move = first if first is not None else (tray_idx, x, y)
+                        children[key] = (_beam_score(nxt, total), nxt, total, left, move)
+        ranked = sorted(children.values(), key=lambda child: -child[0])
+        beam = ranked[:BEAM]
     best_value, best_move = None, None
     for score, b, _, _, move in beam[:FINAL]:
         value = score - ISOLATED_W*_isolated(b) - TRAY_FAIL_W*_joint_failure(b, samples, memo)
