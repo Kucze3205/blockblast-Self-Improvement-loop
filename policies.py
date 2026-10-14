@@ -100,6 +100,8 @@ W_CLEAR = 10.0
 W_CELLS = 1.0
 W_EDGE = 2.0
 W_TRANS = 0.5
+FINALISTS = 8
+CLOSE_SAMPLES = 256
 
 
 def _shape_key(piece):
@@ -155,7 +157,35 @@ def _leaf_value(occ, cleared):
     return _cheap(occ, cleared) - LAMBDA_DEATH * dead
 
 
-def _plan(occ, tray, width):
+def _sample_tray(rng):
+    return tuple(rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3))
+
+
+def _completes(occ, poses):
+    for i, pid in enumerate(poses):
+        rest = poses[:i] + poses[i + 1:]
+        pose = _POSES[pid]
+        anchors = _legal_anchors(occ, pose)
+        while anchors:
+            if not rest:
+                return True
+            low = anchors & -anchors
+            anchors ^= low
+            nxt, _ = _clear(occ | (pose[0] << (low.bit_length() - 1)))
+            if any(_legal_anchors(nxt, _POSES[r]) for r in rest) and _completes(nxt, rest):
+                return True
+    return False
+
+
+def _stuck_share(occ, samples):
+    stuck = 0
+    for tray in samples:
+        if not _completes(occ, tray) and any(_legal_anchors(occ, _POSES[p]) for p in tray):
+            stuck += 1
+    return stuck / len(samples)
+
+
+def _plan(occ, tray, width, samples):
     frontier = [(occ, tuple(tray), None, 0)]
     for _ in range(len(tray)):
         children = []
@@ -176,7 +206,9 @@ def _plan(occ, tray, width):
         if not children:
             return None
         frontier = heapq.nlargest(width, children, key=lambda c: _cheap(c[0], c[3]))
-    return max(frontier, key=lambda c: _leaf_value(c[0], c[3]))[2]
+    scored = [(_leaf_value(c[0], c[3]), c) for c in frontier]
+    finalists = heapq.nlargest(FINALISTS, scored, key=lambda s: s[0])
+    return max(finalists, key=lambda s: s[0] - LAMBDA_DEATH * _stuck_share(s[1][0], samples))[1][2]
 
 
 class TrayPolicy:
@@ -186,11 +218,13 @@ class TrayPolicy:
         self.width = width
 
     def reset(self, game_seed):
-        pass
+        # Inny strumień niż Generator gry, inaczej polityka widziałaby przyszłe tacki.
+        self.rng = random.Random(f"closability:{game_seed}")
 
     def act(self, game, actions):
         tray = [(i, _SHAPE_POSE[_shape_key(p)]) for i, p in enumerate(game.pieces) if p is not None]
-        move = _plan(_occupancy(game.board.grid), tray, self.width)
+        samples = [_sample_tray(self.rng) for _ in range(CLOSE_SAMPLES)]
+        move = _plan(_occupancy(game.board.grid), tray, self.width, samples)
         return move if move is not None else actions[0]
 
 
