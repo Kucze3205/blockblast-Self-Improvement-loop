@@ -159,7 +159,7 @@ class PlannerTests(unittest.TestCase):
         self.assertGreater(len(best), planner.FINALISTS)
         expected = {nb for _, nb in best.values()}
         with mock.patch.object(planner, "dead_prob", return_value=0.0) as dead_prob:
-            planner.plan_move(board, slots, [])
+            planner.plan_move(board, slots, [], [])
         checked = [call.args[0] for call in dead_prob.call_args_list]
         self.assertEqual(len(checked), planner.FINALISTS)
         self.assertLessEqual(set(checked), expected)
@@ -169,7 +169,13 @@ class PlannerTests(unittest.TestCase):
         dead = [(1, 0, 0)]
         with mock.patch.object(planner, "search", return_value=(complete, dead)):
             with mock.patch.object(planner, "dead_prob", return_value=1.0):
-                self.assertEqual(planner.plan_move(0, [], []), (0, 0, 0))
+                self.assertEqual(planner.plan_move(0, [], [], []), (0, 0, 0))
+
+    def test_hard_fail_weights_sum_to_one_and_full_board_fails_all(self):
+        triples = planner.hard_triples(random.Random(5))
+        self.assertAlmostEqual(sum(w for _, w in triples), 1.0)
+        self.assertAlmostEqual(planner.hard_fail(planner.FULL, triples), 1.0)
+        self.assertLess(planner.hard_fail(0, triples), 0.5)
 
     def test_review_skips_unplaceable_next_trays(self):
         def fake_search(board, slots, beam=planner.BEAM):
@@ -192,7 +198,7 @@ class PlannerTests(unittest.TestCase):
 
         with mock.patch.object(planner, "search", side_effect=fake_search):
             with mock.patch.object(planner, "dead_prob", return_value=0.0):
-                self.assertEqual(planner.plan_move(0, [(0, 0)], [(0, 0, 0)]), (1, 0, 0))
+                self.assertEqual(planner.plan_move(0, [(0, 0)], [(0, 0, 0)], []), (1, 0, 0))
 
     def test_unfit_piece_freed_by_clear_is_not_death(self):
         grid = [[1] * W for _ in range(H)]

@@ -1,4 +1,5 @@
 """Planer tacki na bitboardach: wiązka po klockach tacki i ryzyko następnej tacki."""
+import itertools
 import math
 import random
 
@@ -25,6 +26,8 @@ TRAY_SIZE = 3
 REVIEW_CANDIDATES = 3
 REVIEW_TRAYS = 3
 REVIEW_BEAM = 4
+HARD_TYPES = (3, 4, 6, 7, 10)
+HARD_W = DEATH_W * (len(HARD_TYPES) / len(PIECE_TYPES)) ** TRAY_SIZE
 
 TRANS_ROW = [
     sum(((v >> i) & 1) != ((v >> (i + 1)) & 1) for i in range(W - 1))
@@ -153,6 +156,31 @@ def dead_prob(b, trays):
     return p_single * d_stuck + (1.0 - p_single) * q
 
 
+def _hard_share(combo):
+    perms = math.factorial(TRAY_SIZE)
+    for t in set(combo):
+        perms //= math.factorial(combo.count(t))
+    return perms / len(HARD_TYPES) ** TRAY_SIZE
+
+
+def hard_triples(rng):
+    draws = {t: [rng.choice(PIECE_TYPES[t]) for _ in range(TRAY_SIZE)] for t in HARD_TYPES}
+    out = []
+    for combo in itertools.combinations_with_replacement(HARD_TYPES, TRAY_SIZE):
+        used = {}
+        poses = []
+        for t in combo:
+            k = used.get(t, 0)
+            used[t] = k + 1
+            poses.append(draws[t][k])
+        out.append((tuple(poses), _hard_share(combo)))
+    return out
+
+
+def hard_fail(b, triples):
+    return sum(w for poses, w in triples if not places_all(b, poses, [JOINT_BUDGET]))
+
+
 def _cheap(b, lines):
     return (
         LINE_W * lines
@@ -213,7 +241,7 @@ def _review(board, trays):
     return sum(values) / len(values) if values else -DEATH_W
 
 
-def plan_move(board, slots, trays):
+def plan_move(board, slots, trays, triples):
     complete, dead = search(board, slots)
     best = {}
     for cheap, nb, _, firsts, _ in complete:
@@ -222,7 +250,10 @@ def plan_move(board, slots, trays):
                 best[first] = (cheap, nb)
     finalists = sorted(best.items(), key=lambda kv: kv[1][0], reverse=True)[:FINALISTS]
     scored = sorted(
-        [(cheap - DEATH_W * dead_prob(nb, trays), first, nb) for first, (cheap, nb) in finalists],
+        [
+            (cheap - DEATH_W * dead_prob(nb, trays) - HARD_W * hard_fail(nb, triples), first, nb)
+            for first, (cheap, nb) in finalists
+        ],
         key=lambda s: s[0],
         reverse=True,
     )[:REVIEW_CANDIDATES]
@@ -247,4 +278,5 @@ class TrayPlanner:
         board = to_bits(game.board.grid)
         slots = [(i, piece.index) for i, piece in enumerate(game.pieces) if piece is not None]
         trays = [self._draw_tray() for _ in range(TRAY_SAMPLES)]
-        return plan_move(board, slots, trays)
+        triples = hard_triples(self._rng)
+        return plan_move(board, slots, trays, triples)
