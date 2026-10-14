@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "48f685ad1342fe621c3a05ad276089acf8454292",
+ "stan": "ocena w toku",
+ "gist": "Dodaj przeżycie z rolloutów dwóch tacek zamiast stałej kary za śmierć",
+ "notatki": [
+  "Dodaj przeżycie z rolloutów dwóch tacek zamiast stałej kary za śmierć\n\nMechanizm: dla trzech kandydatów wiązki liczone jest przeżycie w 16 wspólnych\nparach tacek (CRN). Każda tacka jest układana zachłanną wiązką 3 po cheap.\nKara to ROLL_W (400) * (1 - przeżycie). Fallback -TRAY_FAIL z przeglądu\nnastępnej tacki usunięto, żeby śmierć nie była liczona trzy razy.\n\nDowód z historii: hipoteza, nie wynik. W indeksach nie ma rolloutów ani MC\n(szukano: rollout, monte, MCTS, 0 trafień). Najbliżej są 9/1.5 i 9/2.5\n(lookahead poziomu 2, 0.9918) oraz 13/2.3 (dokładne P i 256 próbek\ndomykalności). Tu przeżycie jest estymowane przez politykę, a nie przez\nwykładalność jednej tacki.\n\nDlaczego to nie powtórka: nowy estymator (przeżycie pod polityką zamiast\nwykładalności) i wymiana fallbacku, a nie kolejna waga.\n\nRyzyko: podwójne liczenie śmierci z risk i tail_penalty nadal możliwe, bo\nROLL_W = TRAY_FAIL. Szesnaście prób to gruba skala (1/16). Koszt około\n92 ms na ruch w sandboksie wobec około 57 ms przed zmianą. Wynik niezmierzony.\nTesty: 9/9 OK. Test dymny: 300 legalnych ruchów bez wyjątku.\n\nCo dalej:\n- zrobione: fc5ce55 (odtworzenie 9/2.6), ten commit (rollouty)\n- następny krok: ocena węzła; jeśli wynik spadnie poniżej 9/2.6 (0.99589),\n  sprawdzić, czy przegrane gry nadal giną po dwóch tackach\n- czego nie powtarzać: zwiększania liczby rolloutów bez zmiany estymatora\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Przywróć politykę tacki z najlepszego węzła 9/2.6 (policies.build)\n\nMechanizm: beam.py (wiązka po całej tacce na bitboardach, ryzyko trudnych\ntacek, ogon mieszanych tacek, przegląd następnej tacki) i policies.build(weights)\nzwracające BeamPolicy. Korzeń nie ma build, więc ocena dawała 0.\n\nDowód z historii: .historia/najlepszy.patch = 9/2.6, s_sym 0.99589 przy\n16 przegranych z 1200 (.historia/9/2.6.json). Patch stosuje się czysto\n(git apply --check). tests/test_beam_tray.py: 7/7 OK. Test dymny: 3 partie,\n900 legalnych ruchów, bez wyjątku.\n\nDlaczego to nie powtórka: nie jest to nowy wynik, tylko odtworzenie 9/2.6\njako punkt startowy. Nowy mechanizm idzie w następnym commicie.\n\nRyzyko: wynik tego commita nie jest zmierzony. Czas na ruch w sandboksie\nokoło 57 ms (test dymny), a węzeł 9/2.6 miał 6.9 min oceny symulatora.\n\nCo dalej:\n- zrobione: odtworzenie bazy 9/2.6 (ten commit)\n- następny krok: człon przeżycia z krótkich rolloutów (2 tacki, CRN) dla\n  kandydatów wiązki\n- czego nie powtarzać: samego odtworzenia 9/2.6 jako wyniku\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 45,
+  "usd": 2.3676,
+  "minuty": 10.9
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T22:23:05Z",
+   "koniec": "2026-10-14T22:33:58Z",
+   "tury": 45,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
