@@ -290,7 +290,7 @@ hook dopisuje agentowi „Zostało X min sesji.”.
 
 **Co widzi agent:** checkout `work/` z jednym refem (gałąź łańcucha), bez remote'a i bez
 poświadczeń (`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`, token GitHuba tylko w krokach maszynerii);
-`.historia/` (indeks, rekordy ocenionych węzłów, patche innych łańcuchów, poprzednie drzewa bez
+`.historia/` (indeks, rekordy ocenionych węzłów, patche innych łańcuchów, kod najlepszego węzła ze wszystkich drzew, poprzednie drzewa bez
 kodu); skill `implementer` i subagent `researcher` skopiowane do `~/.claude`. Checkout gałęzi
 pętli jest usuwany przed sesją i wraca po niej.
 

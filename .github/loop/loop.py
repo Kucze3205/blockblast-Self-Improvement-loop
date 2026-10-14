@@ -269,7 +269,7 @@ def widok(rec):
 
 
 def historia(base, tree, node, out, diff):
-    """Rozkłada `.historia/`: indeks, rekordy ocenionych węzłów, patche innych łańcuchów (diff(sha) -> tekst)."""
+    """Rozkłada `.historia/`: indeks, rekordy ocenionych węzłów, patche innych łańcuchów i najlepszego węzła (diff(sha) -> tekst)."""
     tree = int(tree)
     cur = evaluated(base, tree)
     lines = ["# Indeks prób", "", "## Drzewo %d (bieżące)" % tree, ""] + table(cur)
@@ -298,6 +298,13 @@ def historia(base, tree, node, out, diff):
             fh.write("\n".join(["# Drzewo %d" % t, ""] + table(recs)) + "\n")
         best = max((v for v in map(s_v, recs.values()) if v is not None), default=None)
         lines.append("| %d | %s | %d | `%d/INDEKS.md` |" % (t, fmt(best), len(recs), t))
+    best = max(((s_v(r), -t, -r["kolejnosc"], t, n, r["sha"]) for t, recs in [(tree, cur)] + [(t, evaluated(base, t)) for t in older]
+                for n, r in recs.items() if s_v(r) is not None), default=None)
+    if best and not (best[3] == tree and best[4].split(".")[0] == own):
+        _, _, _, t, n, sha = best
+        with open(os.path.join(out, "najlepszy.patch"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(diff(sha))
+        lines += ["", "Kod najlepszego węzła ze wszystkich drzew (%s/%s, s_v %s) względem korzenia: `najlepszy.patch`." % (t, n, fmt(best[0]))]
     lines += ["", "Pełne rekordy (wyniki per partia, plansze przegranych, notatki): `<drzewo>/<węzeł>.json`."]
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "INDEKS.md"), "w", encoding="utf-8", newline="\n") as fh:

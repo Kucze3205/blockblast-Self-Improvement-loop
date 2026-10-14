@@ -210,6 +210,24 @@ class HistoriaTest(Drzewo):
         self.assertIn("| 1.1 | korzen | 0.500 | — | 3.8 | g |", idx)
         self.assertIn("| 2.1 | korzen | 0.600 | — | 57.8 za wolna | g |", idx)
 
+    def test_najlepszy_wezel_ze_wszystkich_drzew_jako_patch(self):
+        self.oceniony("1.1", "P", s_sym=0.9, tree=1)
+        self.oceniony("2.1", "Q", s_sym=0.4, tree=1)
+        self.oceniony("1.1", "A", s_sym=0.5, tree=2)
+        out = os.path.join(self.base, ".historia")
+        loop.historia(self.base, 2, "2.2", out, lambda sha: "patch " + sha)
+        with open(os.path.join(out, "najlepszy.patch"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "patch P")
+        with open(os.path.join(out, "INDEKS.md"), encoding="utf-8") as fh:
+            self.assertIn("(1/1.1, s_v 0.900)", fh.read())
+
+    def test_najlepszy_we_wlasnym_lancuchu_nie_dostaje_patcha(self):
+        self.oceniony("1.1", "P", s_sym=0.9, tree=2)
+        self.oceniony("2.1", "Q", s_sym=0.4, tree=2)
+        out = os.path.join(self.base, ".historia")
+        loop.historia(self.base, 2, "1.2", out, lambda sha: "patch " + sha)
+        self.assertFalse(os.path.exists(os.path.join(out, "najlepszy.patch")))
+
     def test_rekord_dla_agenta_bez_listy_przezyc(self):
         self.oceniony("1.1", "A", s_sym=0.5)
         rec = self.rec("1.1")

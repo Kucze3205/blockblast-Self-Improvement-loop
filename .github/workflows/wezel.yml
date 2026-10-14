@@ -103,7 +103,7 @@ jobs:
           python3 .github/loop/loop.py start "$DRZEWO" "$WEZEL" "$KOLEJNOSC" "$KORZEN" > "$RUNNER_TEMP/start.env"
           . "$RUNNER_TEMP/start.env"
           bash .github/loop/zapisz.sh "węzeł $DRZEWO/$WEZEL: sesja" "trees/$DRZEWO/$WEZEL.json"
-          git fetch -q --no-tags origin "+refs/heads/trees/$DRZEWO/*:refs/remotes/origin/trees/$DRZEWO/*"
+          git fetch -q --no-tags origin "+refs/heads/trees/*:refs/remotes/origin/trees/*"
           python3 .github/loop/loop.py historia "$DRZEWO" "$WEZEL" "$WORK/.historia" "$KORZEN"
           cd ..
           # jeden ref, bez remote'a i bez poświadczeń: gałąź łańcucha albo korzeń dla nowego łańcucha
