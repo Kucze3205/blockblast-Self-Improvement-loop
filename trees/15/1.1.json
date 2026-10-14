@@ -3,15 +3,22 @@
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
  "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
+ "stan": "ocena w toku",
  "gist": "",
  "notatki": [],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 43,
+  "usd": 2.3152,
+  "minuty": 13.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T04:03:21Z",
+   "koniec": "2026-10-14T04:16:46Z",
+   "tury": 43,
+   "przyczyna": "terminal_reason=api_error exit=1"
+  }
+ ]
 }
