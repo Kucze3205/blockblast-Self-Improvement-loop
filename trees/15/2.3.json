@@ -2,16 +2,25 @@
  "rodzic": "2.2",
  "rodzic_sha": "08fdc244db23134add9e9d1ecf6147cb2ecdecda",
  "kolejnosc": 6,
- "sha": "08fdc244db23134add9e9d1ecf6147cb2ecdecda",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "9d657c3100c7f4bdddde0caccd279eddf622cd11",
+ "stan": "ocena w toku",
+ "gist": "Dodaj przegląd następnej tacki: kara za próbkowane tacki, których nie da się ułożyć",
+ "notatki": [
+  "Dodaj przegląd następnej tacki: kara za próbkowane tacki, których nie da się ułożyć\n\nMechanizm: dla trzech najlepszych zakończeń tacki (po karach z HEAD) losuje 4 następne tacki,\nte same dla wszystkich kandydatów (CRN). Tacka, w której żaden klocek nie pasuje, jest pomijana,\nbo tę śmierć liczy już q³. Pozostałe sprawdza wiązką (BEAM 8, POOL 16); tacka, której nie da się\nułożyć w całości, kosztuje kandydata 400 * (utykające / sprawdzone).\n\nDowód z historii: przegląd trzech kandydatów dał 0.986 (12/1.5) i 0.990 (8/1.5), a pominięcie\nnieumieszczalnych próbek 0.996 (9/2.6). Lokalnie w 08fdc24 43 z 47 przegranych to tacka nieułożalna\nod startu, czyli to, co kara ma łapać (klasyfikacja lokalna, nie oficjalna).\n\nDlaczego to nie powtórka: 15/2.2 ma tylko analityczne q³ dla następnej tacki, bez przeglądu próbek.\nMechanizm z 12/1.5 i 8/1.5 jest tu nałożony na liść kosztu planszy z 15/2.2, więc to nowa\nkombinacja. 10/2.8 (ważenie P × średnie najlepsze V) przekroczył limit, 10.8 min; tu 3 kandydaty i 4 próbki.\n\nRyzyko: koszt lokalny 20.7 ms na ruch wobec 1.21 ms w HEAD (×17). Przy HEAD 0.2 min w ocenie\nszacuję ok. 4 min, poniżej progu ok. 8.9 min, ale to tylko szacunek. Wynik niezmierzony. Lokalnie,\n30 partii: HEAD 244 ruchów, nowe 281, 0 nielegalnych ruchów. Lokalny silnik nie odtwarza liczb\noficjalnych (p22: lokalnie 246, oficjalnie 449), więc nie twierdzę o poprawie.\n\nCo dalej: zrobione: 08fdc24 (koszt planszy), 2d291a5 (kieszenie), 24e8305 (wiązka).\nNastępny krok: czekać na ocenę tego SHA. Jeśli „za wolna”, zmniejszyć BEAM w przeglądzie (np. do 4),\nbez zmiany wag. Czego nie powtarzać: kar za kieszenie i nagród za komórki (2.1, 2.2).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 64,
+  "usd": 4.0318,
+  "minuty": 23.2
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T04:37:24Z",
+   "koniec": "2026-10-14T05:00:36Z",
+   "tury": 64,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
