@@ -87,6 +87,9 @@ TRANS_W = 1.5
 EDGE_W = 2.0
 DEAD_W = 6.0
 DEATH_W = 1000.0
+STUCK_W = 1000.0
+DRAWS = 64
+REVIEW = 3
 _BOARD = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W))
 _HPAIR = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W - 1))
 _VPAIR = sum(1 << (y * STRIDE + x) for y in range(H - 1) for x in range(W))
@@ -169,11 +172,38 @@ def _full_value(occ, lines):
     return _cheap(occ, lines) - DEAD_W * dead - DEATH_W * q ** 3
 
 
+def _placeable(occ, poses):
+    if len(poses) == 1:
+        return _anchors(occ, poses[0]) != 0
+    for i, pose in enumerate(poses):
+        rest = poses[:i] + poses[i + 1:]
+        anchors = _anchors(occ, pose)
+        while anchors:
+            low = anchors & -anchors
+            anchors ^= low
+            if _placeable(_place(occ, pose, low.bit_length() - 1)[0], rest):
+                return True
+    return False
+
+
+def _draw_tray(rng):
+    return tuple(rng.choice(rng.choice(PIECE_TYPES)) for _ in range(3))
+
+
+def _stuck_share(occ, trays):
+    stuck = 0
+    for tray in trays:
+        # tacka bez pasującego klocka osobno jest już w DEATH_W·q³
+        if any(_anchors(occ, p) for p in tray) and not _placeable(occ, tray):
+            stuck += 1
+    return stuck / len(trays)
+
+
 class TrayBeamPolicy:
     name = "tray_beam_risk"
 
     def reset(self, game_seed):
-        pass
+        self.rng = random.Random(f"tray:{game_seed}")
 
     def act(self, game, actions):
         occ = _occupancy(game.board)
@@ -215,7 +245,12 @@ class TrayBeamPolicy:
         if not terminal:
             return partial
         finalists = sorted(terminal, key=lambda t: -t[0])[:POOL]
-        return max(finalists, key=lambda t: _full_value(t[1], t[2]))[3]
+        ranked = sorted(finalists, key=lambda t: -_full_value(t[1], t[2]))[:REVIEW]
+        trays = [_draw_tray(self.rng) for _ in range(DRAWS)]
+        return max(
+            ranked,
+            key=lambda t: _full_value(t[1], t[2]) - STUCK_W * _stuck_share(t[1], trays),
+        )[3]
 
 
 def build(weights):
