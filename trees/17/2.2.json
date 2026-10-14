@@ -2,16 +2,25 @@
  "rodzic": "2.1",
  "rodzic_sha": "8a4b1c65584e99281e4f3b90b8b4fcd6260a37c3",
  "kolejnosc": 4,
- "sha": "8a4b1c65584e99281e4f3b90b8b4fcd6260a37c3",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "8ac2bed49aa70d20520846aca3e1a60028d347c6",
+ "stan": "ocena w toku",
+ "gist": "Wiązka po tacce z liściem 8/1.1 zamiast klucza leksykograficznego",
+ "notatki": [
+  "Wiązka po tacce z liściem 8/1.1 zamiast klucza leksykograficznego\n\nMechanizm:\nPlaner po całej tacce (do trzech postawień, wiązka 24) zastępuje klucz leksykograficzny z 17/2.1. Liść jest jak w 8/1.1: linie 4.2 oraz 1.4 za każdą wyczyszczoną komórkę (przy stałej liczbie postawionych komórek to ta sama kolejność co −1.4·zajęte), izolowane puste −0.75 (pusty bez pustego sąsiada), przejścia wewnątrz planszy −1.5, puste przy brzegu −2.0. Wiązka odrzuca stany, z których tacki nie da się dokończyć (_tray_playable). Osiem najlepszych liści (20, gdy ≤22 wolnych pól) dostaje karę za dopasowanie po typach (400·(1−śr)³ + 80·(1−śr) + 12,3·martwe typy) i −6 za pole w kieszeni.\n\nDowód z historii:\n- 17/1.1 (0,531): wiązka 8, przejścia 0,5, kara tylko za śmierć. 9/1.1 (0,950) miała wiązkę 24 i przejścia 1,0.\n- 8/1.1 (0,975): ten sam liść i wagi z 5/2.1, kara za dopasowanie po typach dla ośmiu liści. Inne przeszukiwanie.\n- 17/2.1 (0,130): klucz leksykograficzny, struktura planszy działała tylko przy remisie.\n\nDlaczego to nie powtórka:\nNie jest to klucz 17/2.1 ani 17/1.1. Liść i kara za dopasowanie pochodzą z 8/1.1, a wiązka ma szerokość 24 i odrzuca martwe tacki. To celowa poprawka dwóch błędów z 17/1.1 (wąska wiązka, za słabe przejścia), nie nowy mechanizm.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator.\n- Smoke: 2 partie bez wyjątku, 0 wrong_placement, 2,7 ms na ruch. Próba zbyt mała, by cokolwiek o wyniku mówić.\n- Nie ma przeglądu następnej tacki (CRN z 9/2.1–2.6). Jeśli ten węzeł da za krótkie przeżycie, to jest kolejny krok.\n\nCo dalej:\nZrobione: ten commit (17/2.2), testy 11/11. Następny krok: ocena węzła. Przy niskim wyniku najpierw sprawdzić partie o najkrótszym przeżyciu, zanim zmieni się wagi. Czego nie powtarzać: klucza leksykograficznego z 17/2.1 i wiązki 8 z 17/1.1.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 49,
+  "usd": 3.5604,
+  "minuty": 16.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T10:48:49Z",
+   "koniec": "2026-10-14T11:05:07Z",
+   "tury": 49,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
