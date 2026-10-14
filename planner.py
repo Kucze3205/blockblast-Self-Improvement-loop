@@ -7,11 +7,15 @@ from pieces import PIECE_POOL, PIECE_TYPES
 W, H = Board.WIDTH, Board.HEIGHT
 ROW = [0xFF << (W * r) for r in range(H)]
 COL = [sum(1 << (W * r + c) for r in range(H)) for c in range(W)]
+FULL = (1 << (W * H)) - 1
+BORDER = ROW[0] | ROW[H - 1] | COL[0] | COL[W - 1]
 
 DEATH_W = 400.0
-TRANS_W = 1.0
-FILL_W = 0.5
-LINE_W = 10.0
+LINE_W = 4.2
+TRANS_W = 1.5
+FILL_W = 1.4
+ISO_W = 0.75
+EDGE_W = 2.0
 BEAM = 24
 FINALISTS = 8
 TRAY_SAMPLES = 24
@@ -88,6 +92,16 @@ def trans(b):
     return total
 
 
+def isolated(b):
+    e = FULL & ~b
+    touch = ((e >> 1) & ~COL[W - 1]) | ((e << 1) & ~COL[0]) | (e << W) | (e >> W)
+    return (e & ~touch).bit_count()
+
+
+def edge_empty(b):
+    return (FULL & ~b & BORDER).bit_count()
+
+
 def fits(b, pose):
     for m in MASKS[pose]:
         if not (b & m):
@@ -136,7 +150,13 @@ def dead_prob(b, trays):
 
 
 def _cheap(b, lines):
-    return LINE_W * lines - TRANS_W * trans(b) - FILL_W * b.bit_count()
+    return (
+        LINE_W * lines
+        - TRANS_W * trans(b)
+        - FILL_W * b.bit_count()
+        - ISO_W * isolated(b)
+        - EDGE_W * edge_empty(b)
+    )
 
 
 def _expand(state):

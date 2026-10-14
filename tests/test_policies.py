@@ -86,6 +86,24 @@ class BitboardTests(unittest.TestCase):
         self.assertEqual(planner.trans(1 << (W * 3 + 3)), 4)
         self.assertEqual(planner.trans(0), 0)
 
+    def test_isolated_and_edge_empty_match_definition(self):
+        rng = random.Random(6)
+        for _ in range(200):
+            grid = [[1 if rng.random() < 0.5 else 0 for _ in range(W)] for _ in range(H)]
+            isolated = edge = 0
+            for y in range(H):
+                for x in range(W):
+                    if grid[y][x]:
+                        continue
+                    if y in (0, H - 1) or x in (0, W - 1):
+                        edge += 1
+                    neighbours = [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
+                    if all(not (0 <= ny < H and 0 <= nx < W) or grid[ny][nx] for ny, nx in neighbours):
+                        isolated += 1
+            bits = planner.to_bits(grid)
+            self.assertEqual(planner.isolated(bits), isolated)
+            self.assertEqual(planner.edge_empty(bits), edge)
+
     def test_tray_placeability_matches_brute_force(self):
         rng = random.Random(4)
         for _ in range(150):
