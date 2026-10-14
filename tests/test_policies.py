@@ -5,6 +5,7 @@ import os
 import random
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -99,6 +100,25 @@ class BitboardTests(unittest.TestCase):
         self.assertAlmostEqual(sum(planner.POSE_WEIGHT), 1.0)
         only_hole = planner.to_bits([[1] * W for _ in range(H)]) & ~1
         self.assertGreater(planner.single_risk(only_hole), 0.9)
+
+
+class PlannerTests(unittest.TestCase):
+    def test_death_is_scored_on_best_leaf_per_first_move(self):
+        rng = random.Random(0)
+        board = planner.to_bits(random_grid(rng))
+        slots = [(i, rng.randrange(len(PIECE_POOL))) for i in range(3)]
+        complete, _ = planner.search(board, slots)
+        best = {}
+        for cheap, nb, _, first, _ in complete:
+            if first not in best or cheap > best[first][0]:
+                best[first] = (cheap, nb)
+        self.assertGreater(len(best), planner.FINALISTS)
+        expected = {nb for _, nb in best.values()}
+        with mock.patch.object(planner, "dead_prob", return_value=0.0) as dead_prob:
+            planner.plan_move(board, slots, [])
+        checked = [call.args[0] for call in dead_prob.call_args_list]
+        self.assertEqual(len(checked), planner.FINALISTS)
+        self.assertLessEqual(set(checked), expected)
 
 
 class PolicyTests(unittest.TestCase):
