@@ -167,12 +167,16 @@ def search(board, slots):
 
 def plan_move(board, slots, trays):
     complete, dead = search(board, slots)
-    complete.sort(key=lambda s: s[0], reverse=True)
+    best = {}
+    for cheap, nb, _, first, _ in complete:
+        if first not in best or cheap > best[first][0]:
+            best[first] = (cheap, nb)
+    finalists = sorted(best.items(), key=lambda kv: kv[1][0], reverse=True)[:FINALISTS]
     scored = [
         (cheap - DEATH_W * dead_prob(nb, trays), first)
-        for cheap, nb, _, first, _ in complete[:FINALISTS]
+        for first, (cheap, nb) in finalists
     ]
-    scored += [(-DEATH_W, first) for first in dead]
+    scored += [(-DEATH_W, first) for first in set(dead) if first not in best]
     return max(scored, key=lambda s: s[0])[1]
 
 
