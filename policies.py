@@ -90,16 +90,18 @@ def _legal_anchors(board_bits, pose):
 
 
 _POSES = [_pose_bits(p.shape) for p in PIECE_POOL]
-_PROB_POSES = [(1.0 / (15 * len(PIECE_TYPES[p.type_index])), _POSES[i]) for i, p in enumerate(PIECE_POOL)]
+_TYPE_PROBS = [(1.0 / (15 * len(poses)), poses) for poses in PIECE_TYPES]
 INTERIOR = sum(1 << (W * y + x) for y in range(1, W - 1) for x in range(1, W - 1))
 BOUNDARY = FULL ^ INTERIOR
 NOT_RIGHT = sum(1 << (W * y + x) for y in range(W) for x in range(W - 1))
 NOT_BOTTOM = FULL >> W
-LAMBDA_DEATH = 1000.0
+LAMBDA_DEATH = 400.0
 W_CLEAR = 10.0
 W_CELLS = 1.0
 W_EDGE = 2.0
 W_TRANS = 0.5
+W_MISS = 80.0
+W_DEAD = 12.3
 FINALISTS = 8
 CLOSE_SAMPLES = 256
 
@@ -130,12 +132,16 @@ def _clear(occ):
     return occ & ~kill, cleared
 
 
-def _fit_probability(occ):
+def _fit_stats(occ):
     q = 0.0
-    for prob, pose in _PROB_POSES:
-        if _legal_anchors(occ, pose):
-            q += prob
-    return q
+    dead = 0
+    for prob, poses in _TYPE_PROBS:
+        fit = sum(1 for p in poses if _legal_anchors(occ, _POSES[p]))
+        if fit:
+            q += prob * fit
+        else:
+            dead += 1
+    return q, dead
 
 
 def _transitions(occ):
@@ -153,8 +159,9 @@ def _cheap(occ, cleared):
 
 
 def _leaf_value(occ, cleared):
-    dead = (1.0 - _fit_probability(occ)) ** 3
-    return _cheap(occ, cleared) - LAMBDA_DEATH * dead
+    q, dead_types = _fit_stats(occ)
+    miss = 1.0 - q
+    return _cheap(occ, cleared) - (LAMBDA_DEATH * miss ** 3 + W_MISS * miss + W_DEAD * dead_types)
 
 
 def _sample_tray(rng):
@@ -219,12 +226,12 @@ class TrayPolicy:
 
     def reset(self, game_seed):
         # Inny strumień niż Generator gry, inaczej polityka widziałaby przyszłe tacki.
-        self.rng = random.Random(f"closability:{game_seed}")
+        rng = random.Random(f"closability:{game_seed}")
+        self.samples = [_sample_tray(rng) for _ in range(CLOSE_SAMPLES)]
 
     def act(self, game, actions):
         tray = [(i, _SHAPE_POSE[_shape_key(p)]) for i, p in enumerate(game.pieces) if p is not None]
-        samples = [_sample_tray(self.rng) for _ in range(CLOSE_SAMPLES)]
-        move = _plan(_occupancy(game.board.grid), tray, self.width, samples)
+        move = _plan(_occupancy(game.board.grid), tray, self.width, self.samples)
         return move if move is not None else actions[0]
 
 
