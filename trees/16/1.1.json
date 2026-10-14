@@ -2,16 +2,17 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "be550a5135ea47d4083ec4e77400dd888e9cc1db",
- "stan": "sesja",
- "gist": "Usuń martwy import turtle z model.py, który blokował import agenta bez tkintera",
+ "sha": "ea982c6bc8dd6a3df200dbe198c31faa393a288a",
+ "stan": "ocena w toku",
+ "gist": "Polityka tacki: wiązka 24/16 z liniowym ryzykiem klocka bez miejsca",
  "notatki": [
+  "Polityka tacki: wiązka 24/16 z liniowym ryzykiem klocka bez miejsca\n\nMechanizm: build() zwraca TrayPolicy. Każdy ruch planuje całą tackę poziom po poziomie, wiązką 24: wynik wiązki = 10*linie - 1*przejścia wewnątrz planszy (ściany się nie liczą). Z ostatniego poziomu zostaje 16 finalistów; każdy dostaje wynik - 6*izolowane puste pola - 300*ryzyko, gdzie ryzyko = 1-(1-q)^3, a q = P(pojedynczy klocek nie mieści się), liczone dokładnie z rozkładu 1/15 na typ i 1/n na pozę. Wykonywany jest pierwszy ruch najlepszego finalisty; gdy planu nie ma, actions[0].\n\nDowód z historii:\n- 9/1.1 (0.950): ta sama rodzina (wiązka po tacce, finaliści, ryzyko 1-(1-q)^3 z wagą 300, BEAM 24, FINAL 16).\n- 9/2.2 (0.987 wobec 0.963 w 2.1): przejścia liczone wewnątrz planszy, ściany poza nimi.\n- 15/2.4 (0.940) -> 15/2.5 (0.980): wąska wiązka gubiła optymalne ułożenia, poszerzenie ją poprawiło. Stąd 24 zamiast 6/3/2.\n- Poprzednia wersja tej gałęzi (niezacommitowana) miała korzeń ograniczony do 6 kandydatów po cechach i ryzyko 40*log(przeżycie). W smoke jej partie kończyły się po ok. 100 postawieniach. To powód zmiany, nie wynik.\n\nDlaczego to nie powtórka: wagi są bliskie 9/1.1, ale cechy inne: izolowane pojedyncze pola zamiast kieszeni mniejszych niż 3 pola, przejścia wewnątrz planszy, planowanie poziom po poziomie zamiast rekurencji. Bez próbkowania tacek (7/1.3, 7/2.3, 8/1.6), tylko dokładne P.\n\nRyzyko:\n- Wynik niezmierzony; mierzy go ocena. Nie twierdzę, że to lepsze od 9/1.1 ani od 9/2.6 (0.996).\n- Smoke, 2 partie: 255 ruchów bez wyjątku, wszystkie legalne. Czas na ruch: średnio 1.63 ms, p95 4.47 ms, max 7.14 ms.\n- Partia z seedem 1 skończyła się po 55 postawieniach. Plan zwrócił None tylko w ostatnim, przegranym ruchu (11 legalnych ruchów, po każdym tacka bez miejsca). Przyczyny wczesnej śmierci nie wyizolowałem.\n- Próg czasu z historii: 8.9 min w porządku, 12.1 min za wolna (9/1.1). Czasu oceny nie zmierzyłem.\n- build ignoruje weights.\n\nCo dalej:\n- zrobione: ten commit (SHA w git log).\n- następny krok: ocena tego węzła. Jeśli wynik będzie niski, zbadać partię seed 1 (55 postawień) i ruchy przed przegraną, zanim zmieni się wagi.\n- czego nie powtarzać: wiązki 6/3/2 z ryzykiem 40*log(przeżycie); próbkowania tacek jako głównego sygnału.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
   "Usuń martwy import turtle z model.py, który blokował import agenta bez tkintera\n\nSedno: `from turtle import done` wymaga tkintera, którego nie ma na runnerze, więc\n`import agent` padał z ModuleNotFoundError i jeden test z tests.test_engine kończył się błędem.\nMechanizm: usunięta pierwsza linia. Nazwa `done` w model.py to wyłącznie parametr i zmienne\nlokalne w train_step; nigdy nie była funkcją z turtle.\nDowód lokalny: unittest tests.test_engine przed zmianą 16 OK + 1 error, po zmianie 17 OK.\nDlaczego to nie powtórka: poprzednie drzewa miały policies.build, ale import agenta i tak\nmusiał przejść; tu usuwam przyczynę, nie objaw.\nRyzyko: brak zmiany logiki, tylko martwy import.\n\nCo dalej: zrobione: caf8e72 (korzeń) + ten commit. Następny krok: policies.build(weights)\nz polityką po tacce, bez importu torcha. Czego nie powtarzać: importu turtle w model.py.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
  ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 12.5
+  "tury": 59,
+  "usd": 4.665,
+  "minuty": 34.2
  },
  "oczekiwanie_min": 58.3,
  "kontynuacje_tur": 0,
@@ -21,6 +22,12 @@
    "koniec": "2026-10-14T07:12:36Z",
    "tury": 0,
    "przyczyna": "terminal_reason=rate_limit exit=143"
+  },
+  {
+   "start": "2026-10-14T08:10:06Z",
+   "koniec": "2026-10-14T08:31:50Z",
+   "tury": 59,
+   "przyczyna": "terminal_reason=completed"
   }
  ]
 }
