@@ -145,6 +145,29 @@ class PlannerTests(unittest.TestCase):
             with mock.patch.object(planner, "dead_prob", return_value=1.0):
                 self.assertEqual(planner.plan_move(0, [], []), (0, 0, 0))
 
+    def test_review_skips_unplaceable_next_trays(self):
+        def fake_search(board, slots, beam=planner.BEAM):
+            if slots[0][1] == 1:
+                return [(-40.0, 0, (), (0, 0, 0), 0), (-60.0, 0, (), (0, 0, 0), 0)], []
+            return [], [None]
+
+        with mock.patch.object(planner, "search", side_effect=fake_search):
+            self.assertEqual(planner._review(0, [(1, 1, 1), (2, 2, 2)]), -40.0)
+            self.assertEqual(planner._review(0, [(2, 2, 2)]), -planner.DEATH_W)
+
+    def test_review_can_reorder_finalists(self):
+        complete = [(-90.0, 1, (), (0, 0, 0), 0), (-100.0, 2, (), (1, 0, 0), 0)]
+        review = {1: -200.0, 2: -50.0}
+
+        def fake_search(board, slots, beam=planner.BEAM):
+            if board == 0:
+                return complete, []
+            return [(review[board], 0, (), (0, 0, 0), 0)], []
+
+        with mock.patch.object(planner, "search", side_effect=fake_search):
+            with mock.patch.object(planner, "dead_prob", return_value=0.0):
+                self.assertEqual(planner.plan_move(0, [(0, 0)], [(0, 0, 0)]), (1, 0, 0))
+
     def test_unfit_piece_freed_by_clear_is_not_death(self):
         grid = [[1] * W for _ in range(H)]
         grid[0][W - 1] = 0

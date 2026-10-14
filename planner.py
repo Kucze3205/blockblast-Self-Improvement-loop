@@ -22,6 +22,9 @@ FINALISTS = 8
 TRAY_SAMPLES = 24
 JOINT_BUDGET = 3000
 TRAY_SIZE = 3
+REVIEW_CANDIDATES = 3
+REVIEW_TRAYS = 3
+REVIEW_BEAM = 4
 
 TRANS_ROW = [
     sum(((v >> i) & 1) != ((v >> (i + 1)) & 1) for i in range(W - 1))
@@ -174,7 +177,7 @@ def _expand(state):
     return out
 
 
-def search(board, slots):
+def search(board, slots, beam=BEAM):
     frontier = [(0.0, board, tuple(slots), None, 0)]
     complete, dead = [], []
     while frontier:
@@ -185,8 +188,19 @@ def search(board, slots):
                 dead.append(state[3])
             for kid in kids:
                 (nxt if kid[2] else complete).append(kid)
-        frontier = sorted(nxt, key=lambda s: s[0], reverse=True)[:BEAM]
+        frontier = sorted(nxt, key=lambda s: s[0], reverse=True)[:beam]
     return complete, dead
+
+
+def _next_value(board, tray):
+    complete, _ = search(board, [(i, pose) for i, pose in enumerate(tray)], REVIEW_BEAM)
+    return max((cheap for cheap, *_ in complete), default=None)
+
+
+# Nieukładalne tacki pomijane, bo dead_prob już je karze; gdy żadna nie działa, -DEATH_W.
+def _review(board, trays):
+    values = [v for v in (_next_value(board, tray) for tray in trays) if v is not None]
+    return sum(values) / len(values) if values else -DEATH_W
 
 
 def plan_move(board, slots, trays):
@@ -196,12 +210,14 @@ def plan_move(board, slots, trays):
         if first not in best or cheap > best[first][0]:
             best[first] = (cheap, nb)
     finalists = sorted(best.items(), key=lambda kv: kv[1][0], reverse=True)[:FINALISTS]
-    scored = [
-        (cheap - DEATH_W * dead_prob(nb, trays), first)
-        for first, (cheap, nb) in finalists
-    ]
-    scored += [(-math.inf, first) for first in set(dead) if first not in best]
-    return max(scored, key=lambda s: s[0])[1]
+    scored = sorted(
+        [(cheap - DEATH_W * dead_prob(nb, trays), first, nb) for first, (cheap, nb) in finalists],
+        key=lambda s: s[0],
+        reverse=True,
+    )[:REVIEW_CANDIDATES]
+    reviewed = [(score + _review(nb, trays[:REVIEW_TRAYS]), first) for score, first, nb in scored]
+    reviewed += [(-math.inf, first) for first in set(dead) if first not in best]
+    return max(reviewed, key=lambda s: s[0])[1]
 
 
 class TrayPlanner:
