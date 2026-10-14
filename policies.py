@@ -8,6 +8,7 @@ import random
 
 from board import Board
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
+from survival import SurvivalPolicy
 
 
 class RandomPolicy:
@@ -74,3 +75,7 @@ def _immediate_gain(game, action):
         if not any(any(row) for row in board.grid):
             gain += FULL_CLEAR_BONUS
     return gain
+
+
+def build(weights=None):
+    return SurvivalPolicy()
