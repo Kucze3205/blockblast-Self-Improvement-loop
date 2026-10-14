@@ -2,16 +2,25 @@
  "rodzic": "1.4",
  "rodzic_sha": "798cb26af88100c465e9d7e033f211b47bfe4888",
  "kolejnosc": 9,
- "sha": "798cb26af88100c465e9d7e033f211b47bfe4888",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "b67b1e82adf681a8320c6e2453dcbe1fb7d6aea5",
+ "stan": "ocena w toku",
+ "gist": "Kara za zablokowaną tackę dla wszystkich finalistów, nie tylko trzech",
+ "notatki": [
+  "Kara za zablokowaną tackę dla wszystkich finalistów, nie tylko trzech\n\nMechanizm:\nW 1.4 (798cb26) ranking _full_value przycinał kandydatów do REVIEW = 3, a karę za tacki,\nktórych nie da się ułożyć, liczono dopiero dla tych trzech. Kandydaci 4-16 nie mogli\nwygrać, nawet gdyby ich kara była zerowa. Teraz max idzie po wszystkich finalistach\n(do POOL = 16). Usunięto tylko stałą REVIEW; STUCK_W = 1000, DRAWS = 64, wagi, BEAM i POOL bez zmian.\n\nDowód z historii:\n- 1.3 (0,905) → 1.4 (0,935): przegląd na wspólnych tackach dał +0,030. Notatka 1.4\n  nie uzasadnia wyboru trzech kandydatów.\n- Drzewo 9, 9/1.3: kara ogonowa liczona dla każdego finalnego kandydata, razem z\n  planerem bitowym: 2.2 (0,987) → 1.3 (0,989). Zysk mały; ogon z 1.3 wrócił w 2.4 (0,995),\n  który był bazą 2.5 i 2.6.\n- Ostrzeżenie: 9/2.5 dodał ogon do przeglądu następnej tacki i wynik spadł (0,995 → 0,992).\n\nDlaczego to nie powtórka:\nTo poprawka konkretnego błędu w 1.4: przycięcie działało przed karą. Nie dodaję nowego\ndetektora, nie zmieniam wag i nie zwiększam liczby losowań.\n\nRyzyko:\n- Wynik niezmierzony. Ocenia ewaluator.\n- Czas: w smoke act 3,13 → 12,83 ms/ruch (×4,1), w tym samym przebiegu dla obu wersji.\n  Limit czasu (limit_shardu_s) nieczytelny w tej sesji. Dla porównania: ocena 1.4 trwała\n  0,4 min, a 2.3 trwała 2,6 min i została oceniona.\n- Szum: jedna zablokowana tacka z 64 to 15,6 pkt. Kara wpływa teraz na wybór spośród\n  16 kandydatów, więc może przesunąć wybór na ruch gorszy pod względem _full_value.\n- Kara zależy od rozkładu generatora (Z-6), który nie jest zmierzony.\n\nSprawdzenia (to nie wynik):\n- tests/test_engine.py: 16 zaliczonych, 1 nieudany: brak modułu tkinter przy imporcie\n  turtle w model.py. Nie dotyczy policies.py.\n- Smoke, partie 100-102, do 120 ruchów: 0 nielegalnych ruchów, bez wyjątków.\n\nCo dalej:\n- Zrobione: 798cb26 (1.4).\n- Następny krok: czekać na ocenę tego SHA. Porównać s_sym z 1.4 (0,935). Najlepszy\n  wynik drzewa 15 to 2.4 (0,940) w łańcuchu 2.\n- Jeśli 'za wolna': DRAWS = 32, bez powrotu do przycinania.\n- Jeśli s_sym < 0,935: najpierw sprawdzić, które partie zmieniły wybór względem 1.4,\n  zanim ruszy się STUCK_W.\n- Czego nie powtarzać: przycinania finalistów przed karą za zablokowaną tackę;\n  przeglądu na 4 losowaniach z beamem (2.3).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 41,
+  "usd": 2.7287,
+  "minuty": 10.8
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T05:23:32Z",
+   "koniec": "2026-10-14T05:34:18Z",
+   "tury": 41,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
