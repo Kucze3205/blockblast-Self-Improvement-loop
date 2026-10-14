@@ -2,14 +2,18 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "dbe77c3ef7c563cc5437aa4969e66a1e2bfc3cfa",
+ "stan": "ocena w toku",
+ "gist": "Usuń zbędny import turtle z model.py, który ciągnął tkinter",
+ "notatki": [
+  "Usuń zbędny import turtle z model.py, który ciągnął tkinter\n\nMechanizm: linia `from turtle import done` nie jest używana na poziomie modułu. Wszystkie wystąpienia `done` od linii 117 to parametr albo zmienne lokalne funkcji. Usunięcie przywraca import agent w środowisku bez tkinter.\n\nDowód z historii: grep w model.py pokazuje `done` tylko w train_step i w lokalnych zmiennych.\n\nDlaczego to nie powtórka: naprawa błędu importu, nie zmiana polityki; policies.build nie zależy od model.py.\n\nRyzyko: brak zmiany zachowania. Testy: tests/test_engine i tests/test_search_policy, 19 z 19 OK (przed: 1 błąd importu tkinter).\n\nCo dalej:\n- Zrobione: ten commit (po 1d833e0).\n- Następny krok: ocena gałęzi; test_agent.py w katalogu głównym też importuje agent i może teraz przejść.\n- Czego nie powtarzać: importów z turtle i tkinter w modułach używanych przez polityki.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj testy zgodności wiązki z planszą i legalności ruchów\n\nMechanizm: nie zmienia zachowania polityki. Test 1: _place (bitowa plansza, linie wierszy i kolumn) zgodne z Board.place_piece, check_full_lines i clear_lines na 400 losowych planszach (co najmniej 100 sprawdzonych). Test 2: act zwraca tylko ruchy z listy actions i jest deterministyczny na trzech seedach przez 40 ruchów.\n\nDowód z historii: 14/1.3 miał testy liścia i licznika linii zgodne z brute force. Tu ta sama kontrola dotyczy nowej reprezentacji 64-bitowej.\n\nDlaczego to nie powtórka: sprawdza nową reprezentację bitową, nie tablicową.\n\nRyzyko: testy sprawdzają poprawność, nie jakość. Wynik niezmierzony; mierzy go ocena.\n\nCo dalej:\n- Zrobione: ten commit (po 06f8832).\n- Następny krok: ocena gałęzi. Wagi liścia zmieniać dopiero po analizie przegranych gier.\n- Czego nie powtarzać: testów, które tylko sprawdzają, że build istnieje.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj policies.build: wiązka tacki z liściem kształtu i ryzykiem następnej tacki\n\nMechanizm:\n- policies.build(weights) zwraca SearchPolicy z reset(seed) i act(game, actions). weights są ignorowane, bez losowości, więc wynik zależy tylko od stanu gry.\n- act: wiązka 24 po wszystkich kolejnościach i pozycjach klocków tacki na planszy 64-bitowej. Liść: -1.4*zajęte - 0.75*izolowane puste - 1.5*przejścia (tylko wewnątrz planszy) - 2.0*puste na brzegu + 4.2*linie; linie liczone po drodze przez całą tackę.\n- 16 najlepszych końcowych plansz dostaje -300*R, gdzie R = 1-(1-q)^3, a q = dokładne P(pojedynczy klocek z generatora nie ma miejsca), liczone z rozkładu typ 1/15, poza 1/n.\n- Gdy nie ma pełnego planu tacki, wybierany jest pojedynczy ruch o najlepszym liściu.\n\nDowód z historii:\n- Człony liścia (zajęte, izolowane, przejścia, brzeg) są z 14/1.3 i 13/2.4 (człon E).\n- Dokładne q i kara 300 na finalistach są z 9/1.1.\n\nDlaczego to nie powtórka:\n- Nie ma próbkowania tacek (14/1.3, 9/2.6), ogona (9/1.5, 9/2.5) ani członu martwych typów. Ryzyko jest jedną karą, bez podwójnego liczenia śmierci.\n- Nowe połączenie: liść z izolowanymi polami i brzegiem z dokładnym ryzykiem jednej tacki na finalistach.\n\nRyzyko:\n- Wynik niezmierzony; mierzy go ocena. Brak pomiaru przeżycia w tym commicie.\n- Smoke, nie wynik: 1280 ruchów w 5 partiach, 0 wyjątków, 0 nielegalnych, średnio 2,5 ms na ruch, maks. 12 ms.\n- Zgodność _place z Board sprawdzona ad hoc na 2000 losowych przypadkach, 0 rozbieżności.\n- Model.py ma `from turtle import done`, który psuje import agent bez tkinter. Nie ruszane tutaj.\n\nCo dalej:\n- Zrobione: ten commit (policies.build, wiązka 24, finaliści 16).\n- Następny krok: test w tests/test_search_policy.py i ocena tego węzła. Jeśli wynik będzie słaby, przed zmianą wag sprawdzić, czy wczesne przegrane to brak miejsca na 3x3 albo 1x5, czy izolowane pola.\n- Czego nie powtarzać: próbkowania tacek jako głównego ryzyka (14/1.3) i ogona w przeglądzie (9/2.5).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 11.7
+  "tury": 56,
+  "usd": 3.4822,
+  "minuty": 28.5
  },
  "oczekiwanie_min": 59.0,
  "kontynuacje_tur": 0,
@@ -19,6 +23,12 @@
    "koniec": "2026-10-14T07:11:54Z",
    "tury": 0,
    "przyczyna": "terminal_reason=rate_limit exit=143"
+  },
+  {
+   "start": "2026-10-14T08:10:08Z",
+   "koniec": "2026-10-14T08:26:56Z",
+   "tury": 56,
+   "przyczyna": "terminal_reason=completed"
   }
  ]
 }
