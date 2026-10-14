@@ -2,16 +2,25 @@
  "rodzic": "2.3",
  "rodzic_sha": "1e0b9943960ff9d4238acc0e0f33eb2ce4a558a7",
  "kolejnosc": 7,
- "sha": "1e0b9943960ff9d4238acc0e0f33eb2ce4a558a7",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "77f82b210c38048e60c1659eca5376cdee4fe3c6",
+ "stan": "ocena w toku",
+ "gist": "Przegląd następnej tacki dla trzech najlepszych ruchów",
+ "notatki": [
+  "Przegląd następnej tacki dla trzech najlepszych ruchów\n\nMechanizm: trzy najlepsze ruchy (wynik - 400·P martwej tacki) dostają te same trzy losowania następnej tacki (CRN, pierwsze z 24 próbek, które już liczy dead_prob). Dla każdego losowania wiązka 4 po klockach daje najlepsze domknięcie wg _cheap. Losowania, których tacki nie da się ułożyć, są pomijane, a gdy żadne nie jest wykonalne, przegląd wynosi -400. Wynik ruchu = wynik finalisty + średnia przeglądu, bez wag. search dostał parametr beam (domyślnie BEAM).\n\nDowód z historii:\n- 12/1.5 (0,9863): ten sam kształt przeglądu (trzy ruchy, cztery losowania) na bazie 1.4 (0,979).\n- 9/2.6 (0,9959): pomijanie nieukładalnych losowań zamiast podwójnej kary. 9/2.5 z ogonem w przeglądzie dał 0,9918.\n- Łańcuch 2 (2.1-2.3) nie ma przeglądu następnej tacki. 2.3 stoi na 0,9544.\n\nDlaczego to nie powtórka: węzły 2.1-2.3 to wiązka, ryzyko i śmierć bez przeglądu. Przegląd dochodzi do bazy 2.3 i nie zastępuje żadnego elementu. Różnice od 12/1.5: wiązka 4 zamiast 12 i trzy losowania zamiast czterech (czas), a w przeglądzie wynik bez członu ryzyka (tylko _cheap).\n\nRyzyko:\n- Wynik niezmierzony lokalnie. Ocenia ewaluator.\n- Czas: smoke 3 partie, średnio 19,8 ms na ruch, p95 30 ms (2.3 na tej samej maszynie: 6,3 ms średnio, p95 13 ms). Wiązka 12 z trzema ruchami i czterema losowaniami dała 47 ms na ruch, za dużo. Czas symulacji rośnie z liczbą ruchów, więc przy wyższej przeżywalności może przekroczyć limit (za wolna).\n- Względem wiązki 24 wiązka 4 w przeglądzie zwraca 95,4 % układalnych tacek (wiązka 12: 98,5 %) i tę samą najlepszą wartość w 71 % przypadków (wiązka 12: 89 %). Pomiar na losowych gęstych planszach, nie na partiach.\n- Podwójne liczenie śmierci zostaje tam, gdzie żadne losowanie się nie układa (-400 w przeglądzie i w dead_prob), zgodnie z 9/2.6.\n\nCo dalej:\n- zrobione: 1e0b994 (2.3), ten commit (2.4).\n- następny krok: ocena 2.4 względem 2.3 (0,9544) i flagi za_wolna. Jeśli za wolna, zmniejszyć REVIEW_CANDIDATES albo REVIEW_TRAYS, nie wiązkę przeglądu.\n- czego nie powtarzać: wiązki 12 w przeglądzie przy trzech ruchach i czterech losowaniach (47 ms na ruch); ogona w przeglądzie (9/2.5).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 57,
+  "usd": 3.9657,
+  "minuty": 24.9
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T20:05:10Z",
+   "koniec": "2026-10-14T20:30:04Z",
+   "tury": 57,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
