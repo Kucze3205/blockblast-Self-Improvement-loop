@@ -182,7 +182,7 @@ def _plan(occ, tray, width):
 class TrayPolicy:
     name = "tray"
 
-    def __init__(self, width=8):
+    def __init__(self, width=40):
         self.width = width
 
     def reset(self, game_seed):
