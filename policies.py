@@ -7,6 +7,7 @@ co polityka umie, a nie jak wypada w trakcie nauki (#8).
 import random
 
 from board import Board
+from pieces import PIECE_POOL, PIECE_TYPES
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 
@@ -74,3 +75,158 @@ def _immediate_gain(game, action):
         if not any(any(row) for row in board.grid):
             gain += FULL_CLEAR_BONUS
     return gain
+
+
+STRIDE, W, H = 9, 8, 8  # bit = y*STRIDE + x; kolumna 8 to strażnik, nigdy nie zajęta
+BEAM = 16
+POOL = 16
+LINE_W = 4.2
+EDGE_W = 2.0
+POCKET_W = 3.0
+HOLE_W = 2.0
+DEAD_W = 6.0
+RISK_W = 40.0
+DEATH_W = 1000.0
+_BOARD = sum(1 << (y * STRIDE + x) for y in range(H) for x in range(W))
+_ROW = [sum(1 << (y * STRIDE + x) for x in range(W)) for y in range(H)]
+_COL = [sum(1 << (y * STRIDE + x) for y in range(H)) for x in range(W)]
+_BORDER = sum(
+    1 << (y * STRIDE + x)
+    for y in range(H)
+    for x in range(W)
+    if x in (0, W - 1) or y in (0, H - 1)
+)
+_PLAN = []
+for _piece in PIECE_POOL:
+    _shape = _piece.shape
+    _h, _w = len(_shape), len(_shape[0])
+    _offs = [r * STRIDE + c for r, row in enumerate(_shape) for c, v in enumerate(row) if v]
+    _pmask = sum(1 << o for o in _offs)
+    _inside = sum(1 << (y * STRIDE + x) for y in range(H - _h + 1) for x in range(W - _w + 1))
+    _PLAN.append((_offs, _pmask, _inside, len(_offs)))
+_POSE_PROB = [0.0] * len(PIECE_POOL)
+for _poses in PIECE_TYPES:
+    for _p in _poses:
+        _POSE_PROB[_p] = 1.0 / (len(PIECE_TYPES) * len(_poses))
+
+
+def _occupancy(board):
+    occ = 0
+    for y, row in enumerate(board.grid):
+        for x, cell in enumerate(row):
+            if cell:
+                occ |= 1 << (y * STRIDE + x)
+    return occ
+
+
+def _anchors(occ, pose):
+    offs, _, inside, _ = _PLAN[pose]
+    blocked = 0
+    for o in offs:
+        blocked |= occ >> o
+    return inside & ~blocked
+
+
+def _place(occ, pose, anchor):
+    occ |= _PLAN[pose][1] << anchor
+    clear = 0
+    lines = 0
+    for m in _ROW:
+        if (occ & m) == m:
+            clear |= m
+            lines += 1
+    for m in _COL:
+        if (occ & m) == m:
+            clear |= m
+            lines += 1
+    return occ & ~clear, lines
+
+
+def _pockets(occ):
+    left, right = occ << 1, occ >> 1
+    up, down = occ << STRIDE, occ >> STRIDE
+    three = (left & right & up) | (left & right & down) | (left & up & down) | (right & up & down)
+    return (three & _BOARD & ~occ).bit_count()
+
+
+def _holes(occ):
+    seen = holes = 0
+    for y in range(H):
+        bits = (occ >> (y * STRIDE)) & ((1 << W) - 1)
+        holes += (seen & ~bits & ((1 << W) - 1)).bit_count()
+        seen |= bits
+    return holes
+
+
+def _cheap(occ, lines):
+    return (
+        LINE_W * lines
+        - EDGE_W * (~occ & _BORDER).bit_count()
+        - POCKET_W * _pockets(occ)
+        - HOLE_W * _holes(occ)
+    )
+
+
+def _risk(occ):
+    fit = [bool(_anchors(occ, p)) for p in range(len(PIECE_POOL))]
+    q = sum(prob for p, prob in enumerate(_POSE_PROB) if not fit[p])
+    dead = sum(1 for poses in PIECE_TYPES if not any(fit[p] for p in poses))
+    return q, dead
+
+
+def _full_value(occ, lines):
+    q, dead = _risk(occ)
+    return _cheap(occ, lines) - DEAD_W * dead - RISK_W * q - DEATH_W * q ** 3
+
+
+class TrayBeamPolicy:
+    name = "tray_beam_risk"
+
+    def reset(self, game_seed):
+        pass
+
+    def act(self, game, actions):
+        occ = _occupancy(game.board)
+        slots = tuple(i for i, p in enumerate(game.pieces) if p is not None)
+        beam = [(0, occ, slots, None)]
+        terminal = []
+        partial = actions[0]
+        while beam:
+            nxt = {}
+            for lines, occ_s, rest, first in beam:
+                for slot in rest:
+                    pose = game.pieces[slot].index
+                    left = tuple(r for r in rest if r != slot)
+                    anchors = _anchors(occ_s, pose)
+                    while anchors:
+                        low = anchors & -anchors
+                        anchors ^= low
+                        anchor = low.bit_length() - 1
+                        new_occ, placed = _place(occ_s, pose, anchor)
+                        total = lines + placed
+                        head = first or (slot, anchor % STRIDE, anchor // STRIDE)
+                        if not left:
+                            terminal.append((_cheap(new_occ, total), new_occ, total, head))
+                            continue
+                        unfit = sum(1 for r in left if not _anchors(new_occ, game.pieces[r].index))
+                        cheap = _cheap(new_occ, total)
+                        key = (new_occ, left)
+                        if key not in nxt or (unfit, -cheap) < nxt[key][:2]:
+                            nxt[key] = (unfit, -cheap, total, new_occ, left, head)
+            pool = sorted(nxt.values(), key=lambda t: t[:2])[:POOL]
+            if pool:
+                partial = pool[0][5]
+            beam = []
+            for unfit, _, total, new_occ, left, head in pool:
+                value = _full_value(new_occ, total)
+                beam.append(((unfit, -value), total, new_occ, left, head))
+            beam = sorted(beam, key=lambda t: t[0])[:BEAM]
+            beam = [(total, occ_b, left, head) for _, total, occ_b, left, head in beam]
+        if not terminal:
+            return partial
+        finalists = sorted(terminal, key=lambda t: -t[0])[:POOL]
+        return max(finalists, key=lambda t: _full_value(t[1], t[2]))[3]
+
+
+def build(weights):
+    return TrayBeamPolicy()
