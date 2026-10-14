@@ -1,4 +1,5 @@
 """Testy tacki w beam.py: wersja bitowa względem referencji na listach, ogon mieszanych tacek."""
+import itertools
 import os
 import random
 import sys
@@ -93,7 +94,7 @@ class TrayPlayableTest(unittest.TestCase):
         self.assertFalse(B._tray_ok(B.FULL, [one_cell]))
 
     def test_mixed_trays_have_a_non_hard_piece(self):
-        for tray in B._mixed_trays(random.Random(3)):
+        for tray, _w in B._mixed_trays(random.Random(3)):
             self.assertTrue(any(PIECE_POOL[i].type_index not in B.HARD_TYPES for i in tray))
 
     def test_tail_penalty_is_zero_on_empty_board(self):
@@ -126,6 +127,42 @@ class TrayPlayableTest(unittest.TestCase):
             game.step(move)
             if game.done:
                 break
+
+
+class TailWeightTest(unittest.TestCase):
+    def test_proposal_is_a_distribution(self):
+        self.assertAlmostEqual(sum(B.TILT), 1.0)
+
+    def test_mixed_samples_are_mixed_and_complete(self):
+        samples = B._mixed_trays(random.Random(6))
+        self.assertEqual(len(samples), B.MIX_TRAYS)
+        for tray, w in samples:
+            self.assertTrue(any(PIECE_POOL[i].type_index not in B.HARD_TYPES for i in tray))
+            self.assertGreater(w, 0.0)
+
+    def test_weights_are_unbiased_over_type_triples(self):
+        total_w = total_wg = total_target = 0.0
+        for ts in itertools.product(range(B.N_TYPES), repeat=3):
+            if all(t in B.HARD_TYPES for t in ts):
+                continue
+            q = B.TILT[ts[0]] * B.TILT[ts[1]] * B.TILT[ts[2]] / (1 - B.TILT_HARD)
+            w = B.MIX_SCALE * B.TILT_RATIO[ts[0]] * B.TILT_RATIO[ts[1]] * B.TILT_RATIO[ts[2]]
+            g = sum(t in B.HARD_TYPES for t in ts)
+            total_w += q * w
+            total_wg += q * w * g
+            total_target += g / (B.N_TYPES ** 3 * (1 - B.P_HARD))
+        self.assertAlmostEqual(total_w, 1.0, places=9)
+        self.assertAlmostEqual(total_wg, total_target, places=9)
+
+    def test_mean_weight_over_samples_is_one(self):
+        rng = random.Random(9)
+        weights = [w for _ in range(300) for _, w in B._mixed_trays(rng)]
+        self.assertAlmostEqual(sum(weights) / len(weights), 1.0, delta=0.05)
+
+    def test_tail_penalty_on_full_board_is_weighted_mean(self):
+        trays = B._mixed_trays(random.Random(2))
+        expected = B.TRAY_FAIL * sum(w for _, w in trays) / len(trays)
+        self.assertAlmostEqual(B.tail_penalty(B.FULL, trays), expected)
 
 
 if __name__ == "__main__":

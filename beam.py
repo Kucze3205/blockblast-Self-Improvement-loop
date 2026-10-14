@@ -27,6 +27,13 @@ TRAY_FAIL = 400.0
 MIX_TRAYS = 64
 # P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
 P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
+# Próbki ogona z q_t = α/15 + (1-α)·pola_t/Σpola; waga p/q na klocek ≤ 1/α
+MIX_ALPHA = 0.5
+TYPE_CELLS = [sum(map(sum, PIECE_POOL[PIECE_TYPES[t][0]].shape)) for t in range(N_TYPES)]
+TILT = [MIX_ALPHA / N_TYPES + (1 - MIX_ALPHA) * c / sum(TYPE_CELLS) for c in TYPE_CELLS]
+TILT_RATIO = [1 / (N_TYPES * q) for q in TILT]
+TILT_HARD = sum(TILT[t] for t in HARD_TYPES) ** 3
+MIX_SCALE = (1 - TILT_HARD) / (1 - P_HARD)
 
 
 def _placements(piece):
@@ -121,14 +128,18 @@ def _hard_triples(rng):
 
 
 def _mixed_trays(rng):
-    trays = [_sample_tray(rng) for _ in range(MIX_TRAYS)]
-    return [t for t in trays if any(PIECE_POOL[i].type_index not in HARD_TYPES for i in t)]
+    out = []
+    while len(out) < MIX_TRAYS:
+        types = rng.choices(range(N_TYPES), weights=TILT, k=3)
+        if all(t in HARD_TYPES for t in types):
+            continue
+        w = MIX_SCALE * TILT_RATIO[types[0]] * TILT_RATIO[types[1]] * TILT_RATIO[types[2]]
+        out.append(([rng.choice(PIECE_TYPES[t]) for t in types], w))
+    return out
 
 
 def tail_penalty(b, trays):
-    if not trays:
-        return 0.0
-    return TRAY_FAIL * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays)
+    return TRAY_FAIL * sum(w for t, w in trays if not _tray_ok(b, t)) / len(trays)
 
 
 def risk(b, triples):
