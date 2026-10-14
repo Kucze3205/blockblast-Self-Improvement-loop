@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "2d291a57f5bb28264c088c1ce60eb057f300b67a",
+ "stan": "ocena w toku",
+ "gist": "Dodaj karę za kieszenie (puste pole z 3 zajętymi sąsiadami) do kosztu ruchu w wiązce tacki",
+ "notatki": [
+  "Dodaj karę za kieszenie (puste pole z 3 zajętymi sąsiadami) do kosztu ruchu w wiązce tacki\n\nMechanizm:\n- Za każde postawienie w wiązce odejmowane jest POCKET_W=3,0 razy liczba kieszeni po wyczyszczeniu linii. Kieszeń to puste pole z co najmniej 3 zajętymi sąsiadami w obrębie planszy; liczone bitowo na masce z krokiem 9, więc strażnik kolumny 8 blokuje zawijanie.\n- Reszta bez zmian względem 24e8305: wiązka BEAM=8 z puli POOL=16, ranking po liczbie klocków bez miejsca, końcowa kara DEATH_W*q^3 i DEAD_W*martwe typy.\n\nDowód z historii:\n- Kieszenie w drzewie 4 (węzeł 4/1.2, s_sym 0,901) to ten sam człon: puste pole z co najmniej 3 zablokowanymi sąsiadami, liczony bitowo. Tam miał wagę 35 w innej ocenie (bonus n^2 za linie, DFS, ryzyko hard).\n- Sprawdzenie brute force przeciw liczeniu sąsiadów na planszy: 173 stany, 86 z kieszeniami, 0 rozbieżności.\n- Fit i martwe typy bez zmian: 147 stanów, 0 rozbieżności.\n- Smoke, 3 partie: 0 wyjątków, 0 nielegalnych ruchów, 0 rozbieżności linii, czas średnio 0,47 ms, maks. 2,6 ms. Długości partii (23, 103, 147 ruchów) to tylko dym, nie wynik.\n\nDlaczego to nie powtórka:\n- Kieszenie były w drzewie 4, ale nie w tej strukturze: wiązka po tacce, ranking po liczbie klocków bez miejsca i dokładne q^3 z drzewa 9 i 13. Składnik jest ten sam, kombinacja nowa.\n- Mobilność odrzucona: była już w drzewie 4 (4/3.1, w granicach szumu), więc nie ruszana.\n\nRyzyko:\n- Wynik niezmierzony, liczy ewaluator.\n- POCKET_W=3,0 wybrane przeze mnie, bez pomiaru. W drzewie 4 kieszeń miała inną skalę.\n- Smoke nadal kończy partie wcześnie. Heurystyka wciąż nie ma gradientu w środku gry, bo q^3 jest bliskie zera przed końcem gry.\n\nCo dalej:\n- zrobione: 24e8305 (build i wiązka), ten commit (kieszenie)\n- następny krok: ocena tego węzła. Jeśli wynik nadal niski, sprawdzić, czy zawodzi zwykłe postawienie czy końcowy warunek tacki, zanim dodam kolejny człon\n- czego nie powtarzać: mobilności jako członu liścia (drzewo 4, 4/3.1) i samych zmian wag EDGE, CELL\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Dodaj build(weights) z wiązkowym planowaniem tacki, bo bez niego ocena daje 0\n\nMechanizm:\n- build(weights) zwraca TrayBeamPolicy z reset(seed) i act(game, actions); weights jest ignorowane, bez torch i tkinter.\n- Plansza 8x8 jako bitboard z krokiem 9 (kolumna 8 to strażnik). Kotwice wszystkich 41 poz z przesunięć i maski zajętości.\n- Wiązka po pozostałych klockach tacki: BEAM=8 z puli POOL=16, deduplikacja po (plansza, pozostałe sloty). Sortowanie: najpierw mniej klocków bez miejsca, potem CELL_W*komórki + LINE_W*linie - EDGE_PENALTY*wolne pola obwodu - DEAD_W*martwe typy.\n- Koniec tacki: wartość = punkty - DEAD_W*martwe typy - DEATH_W*q^3, gdzie q = suma P(poza nie mieści się). q^3 to dokładne P(nowa tacka martwa), bo trzy losowania są niezależne.\n\nDowód z historii:\n- Człon brzegowy E (-2 za wolne pole obwodu) i martwe typy pochodzą z węzła 13/2.4 (s_sym 0,9913). Tutaj ryzyko jest analityczne, a nie z 256 próbek.\n- Deduplikacja wiązki z 6/4.3.\n- Formuły sprawdzone brute force przeciw board.can_place_piece na 90 stanach: 0 rozbieżności (dopasowanie poz, martwe typy, q^3).\n- Smoke, 3 partie: 0 wyjątków, 0 nielegalnych ruchów, 0 rozbieżności liczby wyczyszczonych linii, czas średnio 0,46 ms, maks. 2,2 ms na ruch.\n\nDlaczego to nie powtórka:\n- Brak DFS i adaptacyjnego FINAL z 4.x; ryzyko dokładne zamiast próbkowania; brak przeglądu następnej tacki z drzewa 9.\n- Składniki E, martwe typy i deduplikacja są z 13 i 6, ale to nowe połączenie z analitycznym q^3 i rankingiem po liczbie klocków bez miejsca.\n\nRyzyko:\n- Wynik niezmierzony, liczy ewaluator.\n- Smoke: partie kończą się wcześnie (35, 73 i 90 ruchów w trzech seedach). Heurystyka nie karze dziur ani fragmentacji, a q^3 jest bliskie zera w środku gry, więc nie ma gradientu, który by to wyrównał. Oczekuję niskiego wyniku; to pierwsze, co sprawdzić po ocenie.\n- DEATH_W=1000, DEAD_W=6, CELL_W=1,4, LINE_W=4,2, EDGE_PENALTY=2, BEAM=8, POOL=16 wybrałem sam, bez pomiaru. Wartości DEATH_W w notatkach 13 nie ma.\n\nCo dalej:\n- zrobione: build() i wiązka tacki (ten commit)\n- następny krok: człon otwartości (mobilność: suma P(poza) razy liczba kotwic), żeby środek gry miał gradient\n- czego nie powtarzać: samych zmian wag EDGE i CELL bez nowego składnika; q^3 jako jedynego sygnału ryzyka\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 76,
+  "usd": 4.5189,
+  "minuty": 18.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T04:03:20Z",
+   "koniec": "2026-10-14T04:21:28Z",
+   "tury": 76,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
