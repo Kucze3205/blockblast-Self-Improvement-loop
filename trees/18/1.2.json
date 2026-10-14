@@ -2,16 +2,25 @@
  "rodzic": "1.1",
  "rodzic_sha": "e58ffc79d45901a9a9f7b709d5364fe59de0121d",
  "kolejnosc": 3,
- "sha": "e58ffc79d45901a9a9f7b709d5364fe59de0121d",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "687eff0b7bf380f17d22786480370fa79aa78b33",
+ "stan": "ocena w toku",
+ "gist": "Ocena końca tacki: próbkowana wykładalność następnej tacki zamiast miss³",
+ "notatki": [
+  "Ocena końca tacki: próbkowana wykładalność następnej tacki zamiast miss³\n\nMechanizm:\n- Wiązka po tacce (BEAM 40) bez zmian. Dla 16 finalistów ryzyko to udział z 24 próbek\n  następnej tacki, które nie układają się w żadnej kolejności na planszy (_completable,\n  przeszukanie z wczesnym wyjściem, bez wiązki). Próbki losowane jak generator (typ 1/15,\n  potem poza równomiernie) i wspólne dla finalistów w ruchu (CRN); generator seedowany\n  seedem partii.\n- _value: puste pola + 3·linie + 0,5·kontakty − 400·ryzyko − 4·martwe. Usunięto 400·miss³\n  i 60·miss: mierzyły tylko, czy pojedynczy klocek się mieści, a nie czy tacka się układa.\n\nDowód z historii (zmierzone, nie z notatek):\n- 18/1.1 (e58ffc7): s_sym 0,538, 936 przegranych, punkty 19605. Diagnoza na seedach 1-10:\n  każda z 10 przegranych partii kończy się zaraz po ruchu awaryjnym actions[0], czyli po\n  pustym wyniku wiązki. 10 z 14 pustych wyników dotyczy 3-klockowej tacki: nowa tacka nie\n  układa się na planszy po poprzedniej tacce.\n- Wiązka 400 nie odzyskuje żadnego z 14 pustych wyników, więc to nie obcięcie wiązki,\n  tylko ocena poprzedniej tacki, która nie widzi układalności następnej.\n- 9/2.6 (0,9959) też dodał wykładalność następnej tacki (9/1.2 i 9/2.6 w drzewie 9).\n\nDlaczego to nie powtórka:\n- Wiązka i człony cover/dead z 18/1.1 zostają. Nowe: próbkowana układalność tacki jako\n  jedyne ryzyko, bez członu z pojedynczych klocków (wcześniej podwójne liczenie tej samej\n  śmierci, jak notuje 9/2.6). To kombinacja sprawdzonych elementów, nie kopia 2.1: tam\n  ryzyko to mieszanka członu z pojedynczych pozycji i próbek.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator. Wagi 400 i TAU 0,2 a priori; 400 jak w 2.1 i 9/2.6.\n- Krok ryzyka to 1/24, czyli ok. 17 jednostek wartości. Finaliści wybrani po _cheap, więc\n  ruch może nie mieć bezpiecznego finalisty spośród 16.\n- Czas ruchu 12,6 ms zamiast 6,3 ms (5 partii, 688 ruchów). Limit czasu oceny nieznany lokalnie.\n- Testy: 5/5, w tym nowy test _completable względem brute force na Board (40 plansz).\n  Nie mierzą jakości gry.\n\nCo dalej:\n- Zrobione: ten commit (survival.py, tests/test_policies.py).\n- Następny krok: po ocenie porównać z 9/2.6 (0,9959). Gorszy wynik: sprawdzić FINAL 16 -> 32\n  albo SAMPLES 24 -> 48, zanim zmieni się mechanizm.\n- Nie powtarzać: miss³ jako proxy śmierci tacki (18/1.1).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 42,
+  "usd": 2.1446,
+  "minuty": 10.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T19:16:08Z",
+   "koniec": "2026-10-14T19:26:32Z",
+   "tury": 42,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
