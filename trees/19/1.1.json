@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "693ec2e72ebe6bff85666b0ac5dc4bed48d8f800",
+ "stan": "ocena w toku",
+ "gist": "Ogon mieszanych tacek: 64 próbki ważone ku dużym klockom zamiast jednostajnych",
+ "notatki": [
+  "Ogon mieszanych tacek: 64 próbki ważone ku dużym klockom zamiast jednostajnych\n\nMechanizm:\nOgon (tail_penalty) szacuje P(tacka nieukładalna | mieszana) z 64 próbek. Dotąd typ losował się jednostajnie (1/15), więc rzadkie zdarzenie na ciasnej planszy prawie nie trafiało do próby i większość kandydatów dostawała 0. Teraz typ losuje się z q_t = 0,5/15 + 0,5·pola_t/Σpola, tacki w całości trudne są odrzucane (liczone dokładnie w risk), a każda próbka dostaje wagę w = (Q_mix/P_mix)·Π (1/15)/q_t. Estymator (1/64)·Σ w·[nieukładalna] ma tę samą wartość oczekiwaną co dotąd, TRAY_FAIL·P(nieukładalna | mieszana). Waga na klocek ≤ 2, więc na tackę ≤ 8.\n\nDowód z historii:\n- Pomiar estymatora na planszach z partii (seedy 1–6, po 6000 próbek na wersję). Tam, gdzie ryzyko jest niezerowe, średnie zgadzają się w granicach pół błędu standardowego (0,0063 vs 0,0062; 0,0770 vs 0,0754), a błąd standardowy spada do 0,64 i 0,77 razy, czyli 1,7–2,4 razy więcej efektywnych próbek.\n- 9/2.7: 128 próbek zamiast 64 dało 0,991 (rodzic 0,996). Ta próba nie zwiększa liczby próbek, tylko przydziela te same 64 ku trudnym tackom i waży je.\n- 5/5.2 zaproponował ważenie próbek ku dużym klockom (importance sampling) jako następny krok. Nie był sprawdzony.\n\nDlaczego to nie powtórka: nie zwiększa budżetu (9/2.7), nie stratyfikuje przeglądu (8/1.8, 0,990 wobec 0,993 w 8/1.6), nie zmienia risk ani liścia ani wiązki. Zmienia rozkład losowania ogona i wagę, nie wartość oczekiwaną.\n\nRyzyko:\n- Wynik niezmierzony. Jeśli błąd ogona nie jest wąskim gardłem, wynik będzie w szumie wobec 9/2.6.\n- Tilt jest zachowawczy: udział trudnych klocków rośnie z 1/3 do 5/12 na klocek. Mocniejszy tilt podniósłby wariancję wag na małych tackach.\n- Czas: smoke 3 partie po 300 ruchów, 59 ms na ruch wobec 57 ms w bazie. Trajektorie są różne, koszt ten sam: 64 wywołania _tray_ok na kandydata. Jedna przegrana w 3 partiach (baza: 0) to za mało, by z niej coś wnosić.\n\nCo dalej:\n- zrobione: ten commit. Testy beam 12/12: dokładna nieobciążoność po 3375 trójkach typów, średnia wag 1 na 19200 próbkach, wartość ogona na pełnej planszy.\n- następny krok: ocena względem 9/2.6 (0,99589). Jeśli wynik ≥ 0,9959, mocniejszy tilt (MIX_ALPHA = 0,25) jako kolejny węzeł. Jeśli < 0,9959, wrócić do 094c143.\n- czego nie powtarzać: zwiększania próbek ogona (9/2.7); stratyfikacji przeglądu (8/1.8).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Baza: kod 9/2.6 jako punkt startowy drzewa 19\n\nMechanizm: bez zmiany. Nakładam najlepszy.patch na korzeń: beam.py (planer tacki na bitboardach, ryzyko trudnych tacek, ogon mieszanych tacek, przegląd następnej tacki), policies.build zwracające BeamPolicy, tests/test_beam_tray.py.\n\nDowód z historii:\n- 9/2.6 (d9e3f27): s_sym 0,99589, 16 przegranych, 6,9 min, najlepszy wynik indeksu (.historia/9/2.6.json).\n- Smoke na tej bazie: 3 partie po 300 ruchów, bez wyjątku, 57 ms na ruch na tej maszynie.\n\nDlaczego to nie powtórka: to punkt startowy, nie próba. Nowa próba będzie w następnym commicie.\n\nRyzyko: wynik niezmierzony w tym drzewie. Testy beam 7/7.\n\nCo dalej:\n- zrobione: ten commit.\n- następny krok: ogon mieszanych tacek z próbkami ważonymi ku dużym klockom (ten sam budżet 64 próbek, estymator nieobciążony).\n- czego nie powtarzać: samego zwiększania próbek ogona (9/2.7, 0,991).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 73,
+  "usd": 4.0092,
+  "minuty": 18.7
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T22:23:01Z",
+   "koniec": "2026-10-14T22:41:44Z",
+   "tury": 73,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
