@@ -2,16 +2,25 @@
  "rodzic": "1.3",
  "rodzic_sha": "49abd4fb0f8114466ee84928640f217531e0a45c",
  "kolejnosc": 7,
- "sha": "49abd4fb0f8114466ee84928640f217531e0a45c",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "798cb26af88100c465e9d7e033f211b47bfe4888",
+ "stan": "ocena w toku",
+ "gist": "Przegląd 3 kandydatów na wspólnych tackach z dokładnym sprawdzeniem",
+ "notatki": [
+  "Przegląd 3 kandydatów na wspólnych tackach z dokładnym sprawdzeniem\n\nMechanizm:\n- Po rankingu _full_value bierze się 3 najlepsze ruchy (REVIEW).\n- Raz na ruch losuje się 64 tacki (DRAWS) i wszyscy kandydaci dostają te same (wspólne losowania).\n- Tacka, w której żaden klocek osobno nie pasuje, jest pomijana, bo już kosztuje w DEATH_W·q³.\n- Pozostałe sprawdza _placeable: przeszukanie wszystkich kolejności kładzenia trzech klocków z czyszczeniem linii po każdym.\n- Wynik kandydata: _full_value − STUCK_W·(zablokowane tacki / DRAWS), STUCK_W = 1000.\n- Losowania pochodzą z random.Random(„tray:<seed gry>”) ustawianego w reset.\n\nDowód z historii:\n- 1.3 (0,905): notatka tego węzła wskazuje przegląd następnej tacki jako krok po ocenie, bo 0,905 > 0,899.\n- 2.3 (linia 2, 0,908) przeglądał 4 losowania beamem (BEAM 8, POOL 16). Cztery próbki nie wykryją zablokowań rzadszych niż kilka procent tacek, a beam może przeoczyć poprawne ułożenie.\n- Drzewo 9 (2.1–2.6, kod poza repo): wspólne losowania i pomijanie nieułożalnych tacek. Przejęte są te dwa elementy, nie kopia kodu.\n\nDlaczego to nie powtórka:\n- Podobna idea do 2.3 (przegląd kandydatów), ale inny detektor (dokładny DFS zamiast beamu), 64 próbki zamiast 4 i normowanie przez DRAWS zamiast przez liczbę żywych tacek.\n- Wagi z 1.3 bez zmian; BEAM i POOL bez zmian.\n\nRyzyko:\n- STUCK_W = 1000 przy 64 próbkach: jedna zablokowana tacka to 15,6 pkt (około 3–4 czyszczeń linii). Szum estymatora może rozstrzygać wybór.\n- BEAM 8 zostaje dla atrybucji. W smoke 1.3 było 851 postawień dla BEAM 8 i 1350 dla BEAM 16 (5 gier). To nie jest zmierzone i wymaga osobnego eksperymentu.\n- Koszt: dokładny DFS jest najdroższy na tackach częściowo zablokowanych. Lokalnie mieści się w budżecie (poniżej).\n\nSprawdzenia (to nie wynik):\n- 5 gier (seedy 100–104) przez policies.build(None), reset, act, step: bez wyjątków, każdy ruch legalny.\n- Czas: HEAD 1,12 ms/ruch, ten commit 2,37 ms/ruch (×2,1).\n- s_sym nie mierzony. 5 gier to za mało, żeby ocenić jakość.\n\nCo dalej:\n- zrobione: 1.3 (49abd4f) — liść z kosztem planszy i ryzykiem martwej tacki; 1.4 — przegląd kandydatów na wspólnych tackach (ten commit).\n- następny krok: czekać na ocenę tego SHA. Jeśli „za wolna”: zmniejszyć DRAWS (np. do 32), bez zmiany wag. Jeśli s_sym < 0,905: najpierw sprawdzić STUCK_W (np. 300), zanim zmieni się mechanizm.\n- czego nie powtarzać: przeglądu na 4 losowaniach z beamem jako detektorem zablokowania (2.3). Nie dodawać forward-checkingu: czyszczenie linii może później otworzyć miejsce, więc odrzucanie ruchów z wyprzedzeniem może odrzucić dobre ruchy.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 37,
+  "usd": 3.5313,
+  "minuty": 18.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T05:04:06Z",
+   "koniec": "2026-10-14T05:22:06Z",
+   "tury": 37,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
