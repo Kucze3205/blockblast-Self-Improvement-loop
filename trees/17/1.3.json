@@ -2,16 +2,25 @@
  "rodzic": "1.2",
  "rodzic_sha": "dfc15db238fefea9e1a2ad6c4f9460a8b463eb51",
  "kolejnosc": 5,
- "sha": "dfc15db238fefea9e1a2ad6c4f9460a8b463eb51",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "37d8b4cb4c54e0d2a9f41c2f7d7ff2a4d1637893",
+ "stan": "ocena w toku",
+ "gist": "Ryzyko jak w 13/1.4: 400*P^3 + 80*P + 12,3*D i stałe 256 tacek na partię",
+ "notatki": [
+  "Ryzyko jak w 13/1.4: 400*P^3 + 80*P + 12,3*D i stałe 256 tacek na partię\n\nMechanizm:\n- Liść: cheap - (400*P^3 + 80*P + 12,3*D), gdzie P = 1 - q, a q liczone po 41 pozach z wagą 1/(15*liczba póz typu). D to liczba typów bez żadnej mieszczącej się pozy. _fit_stats liczy q i D jednym przejściem.\n- Finaliści: - 400 * udział tacek z 256 próbek, w których coś się mieści, ale tacki nie da się ułożyć (_completes). Waga 400 zamiast 1000.\n- Próbki losowane raz na partię w reset, ten sam zestaw na każdy ruch, zamiast nowych przy każdym ruchu.\n- Wiązka 40, 8 finalistów i wagi liścia bez zmian.\n\nDowód z historii:\n- 13/1.2 (0,955): sam sześcian 1000*P^3, bez członu liniowego i martwych typów.\n- 13/1.3 (0,959): 400*P^3 + 80*P + 12,3*D, bez domykalności.\n- 13/1.4 (0,981): to samo ryzyko plus domykalność finalistów na 256 stałych tackach, waga 400.\n- 8/1.1 (0,975): 400*P^3 + 80*P + 12,3*D przy wiązce 40.\n- Nasz 1.2 (0,890): 1000*P^3, bez członu liniowego i martwych typów, próbki na każdy ruch. Różnica do 13/1.4 leży w ryzyku i w próbkach, więc przenoszę oba.\n\nDlaczego to nie powtórka:\n- 1.1 i 1.2 mają sam sześcian z wagą 1000. Ten węzeł zmienia wagę na 400, dodaje człon liniowy i martwe typy oraz stałe próbki. To kombinacja sprawdzonych elementów z 13/1.4 i 8/1.1, nie nowy mechanizm i nie strojenie wag.\n- Wagi liścia (10 na linię, 1 na komórkę, 2 na brzeg, 0,5 na przejście) zostają nasze, nie przepisane z 8/1.1.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator.\n- Testy: pytest tests daje 16 przechodzi i 1 błąd braku tkinter, tak jak przed zmianą. q i liczba martwych typów zgodne z policzeniem wprost na 2000 losowych planszach (różnica 1e-16, 0 rozbieżności). Smoke: 3 partie, 0 nielegalnych ruchów i 0 wrong_placement.\n- Czas: domykalność to nadal 256 sprawdzeń na ruch, tylko zestaw jest jeden na partię. Nie zmierzony; poprzedni węzeł 1.2 miał 4,8 min.\n- Stały zestaw może skorelować decyzje w obrębie partii. Jeśli wynik spadnie, to pierwsze miejsce do sprawdzenia.\n\nCo dalej:\n- Zrobione: ten commit (17/1.3).\n- Następny krok: jeśli wynik będzie >= 0,975, dodać człon trudnych trójek skalowany 1/27 (jak 9/1.4). Jeśli < 0,955, ablacja: najpierw bez 80*P, potem bez 12,3*D, a dopiero potem wagi.\n- Czego nie powtarzać: samego 1000*P^3 (13/1.2, 17/1.2); próbek domykalności losowanych na każdy ruch (17/1.2); 32 próbek domykalności (13/2.2).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 34,
+  "usd": 1.9321,
+  "minuty": 8.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T11:12:20Z",
+   "koniec": "2026-10-14T11:20:52Z",
+   "tury": 34,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
