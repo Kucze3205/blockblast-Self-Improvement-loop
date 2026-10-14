@@ -121,15 +121,41 @@ class BitboardTests(unittest.TestCase):
 
 
 class PlannerTests(unittest.TestCase):
+    def test_dedupe_keeps_reachable_leaves_per_first_move(self):
+        rng = random.Random(5)
+        for _ in range(4):
+            board = planner.to_bits(random_grid(rng))
+            slots = [(i, rng.randrange(len(PIECE_POOL))) for i in range(3)]
+            reachable = {}
+
+            def walk(b, lines, rest, first):
+                if not rest:
+                    reachable.setdefault(first, set()).add((b, lines))
+                    return
+                for k, (slot, pose) in enumerate(rest):
+                    for x, y, m in planner.PLACEMENTS[pose]:
+                        if not b & m:
+                            nb, n = planner.clear(b | m)
+                            walk(nb, lines + n, rest[:k] + rest[k + 1:], first or (slot, x, y))
+
+            walk(board, 0, tuple(slots), None)
+            complete, _ = planner.search(board, slots, beam=10**9)
+            got = {}
+            for _, nb, _, firsts, total in complete:
+                for first in firsts:
+                    got.setdefault(first, set()).add((nb, total))
+            self.assertEqual(got, reachable)
+
     def test_death_is_scored_on_best_leaf_per_first_move(self):
         rng = random.Random(0)
         board = planner.to_bits(random_grid(rng))
         slots = [(i, rng.randrange(len(PIECE_POOL))) for i in range(3)]
         complete, _ = planner.search(board, slots)
         best = {}
-        for cheap, nb, _, first, _ in complete:
-            if first not in best or cheap > best[first][0]:
-                best[first] = (cheap, nb)
+        for cheap, nb, _, firsts, _ in complete:
+            for first in firsts:
+                if first not in best or cheap > best[first][0]:
+                    best[first] = (cheap, nb)
         self.assertGreater(len(best), planner.FINALISTS)
         expected = {nb for _, nb in best.values()}
         with mock.patch.object(planner, "dead_prob", return_value=0.0) as dead_prob:
@@ -139,7 +165,7 @@ class PlannerTests(unittest.TestCase):
         self.assertLessEqual(set(checked), expected)
 
     def test_dead_first_move_never_beats_living_move(self):
-        complete = [(-100.0, 0, (), (0, 0, 0), 0)]
+        complete = [(-100.0, 0, (), frozenset({(0, 0, 0)}), 0)]
         dead = [(1, 0, 0)]
         with mock.patch.object(planner, "search", return_value=(complete, dead)):
             with mock.patch.object(planner, "dead_prob", return_value=1.0):
@@ -156,7 +182,7 @@ class PlannerTests(unittest.TestCase):
             self.assertEqual(planner._review(0, [(2, 2, 2)]), -planner.DEATH_W)
 
     def test_review_can_reorder_finalists(self):
-        complete = [(-90.0, 1, (), (0, 0, 0), 0), (-100.0, 2, (), (1, 0, 0), 0)]
+        complete = [(-90.0, 1, (), frozenset({(0, 0, 0)}), 0), (-100.0, 2, (), frozenset({(1, 0, 0)}), 0)]
         review = {1: -200.0, 2: -50.0}
 
         def fake_search(board, slots, beam=planner.BEAM):

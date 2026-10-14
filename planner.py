@@ -17,7 +17,7 @@ TRANS_W = 1.5
 FILL_W = 1.4
 ISO_W = 0.75
 EDGE_W = 2.0
-BEAM = 24
+BEAM = 120
 FINALISTS = 8
 TRAY_SAMPLES = 24
 JOINT_BUDGET = 3000
@@ -164,7 +164,7 @@ def _cheap(b, lines):
 
 
 def _expand(state):
-    _, b, rest, first, lines = state
+    _, b, rest, firsts, lines = state
     out = []
     for k, (slot, pose) in enumerate(rest):
         left = rest[:k] + rest[k + 1:]
@@ -173,7 +173,7 @@ def _expand(state):
                 continue
             nb, n = clear(b | m)
             total = lines + n
-            out.append((_cheap(nb, total), nb, left, first or (slot, x, y), total))
+            out.append((_cheap(nb, total), nb, left, firsts or frozenset(((slot, x, y),)), total))
     return out
 
 
@@ -181,13 +181,23 @@ def search(board, slots, beam=BEAM):
     frontier = [(0.0, board, tuple(slots), None, 0)]
     complete, dead = [], []
     while frontier:
-        nxt = []
+        nxt, index = [], {}
         for state in frontier:
             kids = _expand(state)
             if not kids:
-                dead.append(state[3])
+                dead.extend(state[3] or (None,))
             for kid in kids:
-                (nxt if kid[2] else complete).append(kid)
+                if not kid[2]:
+                    complete.append(kid)
+                    continue
+                # linie w kluczu: ta sama plansza z inną liczbą linii ma inną wartość w cheap
+                key = (kid[1], tuple(sorted(kid[2])), kid[4])
+                if key in index:
+                    cheap, nb, left, firsts, total = nxt[index[key]]
+                    nxt[index[key]] = (cheap, nb, left, firsts | kid[3], total)
+                else:
+                    index[key] = len(nxt)
+                    nxt.append(kid)
         frontier = sorted(nxt, key=lambda s: s[0], reverse=True)[:beam]
     return complete, dead
 
@@ -206,9 +216,10 @@ def _review(board, trays):
 def plan_move(board, slots, trays):
     complete, dead = search(board, slots)
     best = {}
-    for cheap, nb, _, first, _ in complete:
-        if first not in best or cheap > best[first][0]:
-            best[first] = (cheap, nb)
+    for cheap, nb, _, firsts, _ in complete:
+        for first in firsts:
+            if first not in best or cheap > best[first][0]:
+                best[first] = (cheap, nb)
     finalists = sorted(best.items(), key=lambda kv: kv[1][0], reverse=True)[:FINALISTS]
     scored = sorted(
         [(cheap - DEATH_W * dead_prob(nb, trays), first, nb) for first, (cheap, nb) in finalists],
