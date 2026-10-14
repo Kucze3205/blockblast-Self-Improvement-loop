@@ -2,14 +2,16 @@
  "rodzic": "2.3",
  "rodzic_sha": "84a01e6ec4ce1437a01e9fc3029522c60918def3",
  "kolejnosc": 8,
- "sha": "84a01e6ec4ce1437a01e9fc3029522c60918def3",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "70d725fedc4c96d2fa88bc41dd10ae5dd0716286",
+ "stan": "ocena w toku",
+ "gist": "Finaliści wiązki: najlepszy plan dla każdego pierwszego ruchu",
+ "notatki": [
+  "Finaliści wiązki: najlepszy plan dla każdego pierwszego ruchu\n\nMechanizm:\nBaza to 84a01e6 (węzeł 2.3). Kara za śmierć (dopasowanie, kieszenie, nieułożalne następne tacki) była liczona tylko dla 8 najlepszych pełnych planów wg wartości przed karą. Teraz każdy pierwszy ruch dostaje swój najlepszy plan, a karę liczy się dla pierwszych FINALISTS ruchów. Wagi, próbki i wiązka bez zmian. Liczba wywołań _stuck_share nie rośnie: min(FINALISTS, liczba ruchów) jest ≤ dotychczasowego min(FINALISTS, liczba planów).\n\nDowód (diagnostyka, nie wynik punktowy; 84a01e6):\n- Na 32 ziarnach: 20 z 23 przegranych to tacka wylosowana nieułożalna z częściowym dopasowaniem, 3 to brak pasującego klocka przy losowaniu. Na stanie, z którego wylosowano zabójczą tackę, nieułożalność wynosiła 0,09–0,34 w 16 z 20 przypadków (2048 próbek).\n- Na 8 ziarnach: średnio 14,7 różnych pierwszych ruchów w ostatniej warstwie wiązki, ale tylko 4,7 w finalistach. Kara wybierała więc spośród kilku ruchów, także gdy bezpieczniejszy był w warstwie.\n\nDlaczego to nie powtórka:\n84a01e6 zmieniało wagę i sposób liczenia kary. Tu zmienia się zbiór ruchów, które trafiają pod karę.\n\nRyzyko:\n- Wynik niezmierzony; ocenia ewaluator.\n- Pierwszy ruch ocenia się tylko najlepszym planem. Inny plan tego ruchu z mniejszą karą nie jest brany pod uwagę.\n- Test sprawdza tylko górną granicę liczby finalistów. Na pustej planszy wychodzi 6 ruchów, nie 8, bo wiązka sama zawęża ostatnią warstwę.\n- Smoke: 4 partie bez błędnych postawień, ok. 60 ms na decyzję. To nie jest pomiar ewaluatora.\n\nCo dalej:\n- Zrobione: ten commit; testy policies 14/14.\n- Następny krok: ocena ewaluatorem względem 84a01e6 (s_sym 0,940). Jeśli nie wzrośnie, sprawdzić, które przegrane gry się zmieniły.\n- Kandydat, nieprzetestowany: liczyć tacki bez pasującego klocka w karze za śmierć (3 z 23 przegranych w diagnostyce). Ryzyko podwójnego liczenia z _fit_penalty; drzewo 9 pokazało, że podwójna kara szkodzi.\n- Czego nie powtarzać: samego podnoszenia LAMBDA_DEATH bez zmiany zbioru finalistów.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 13.8
+  "tury": 58,
+  "usd": 5.4644,
+  "minuty": 43.4
  },
  "oczekiwanie_min": 80.3,
  "kontynuacje_tur": 0,
@@ -19,6 +21,12 @@
    "koniec": "2026-10-14T11:50:31Z",
    "tury": 0,
    "przyczyna": "terminal_reason=rate_limit exit=143"
+  },
+  {
+   "start": "2026-10-14T13:10:06Z",
+   "koniec": "2026-10-14T13:39:40Z",
+   "tury": 58,
+   "przyczyna": "terminal_reason=completed"
   }
  ]
 }
