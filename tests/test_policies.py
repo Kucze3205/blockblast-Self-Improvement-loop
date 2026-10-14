@@ -120,6 +120,12 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(len(checked), planner.FINALISTS)
         self.assertLessEqual(set(checked), expected)
 
+    def test_unfit_piece_freed_by_clear_is_not_death(self):
+        grid = [[1] * W for _ in range(H)]
+        grid[0][W - 1] = 0
+        board = planner.to_bits(grid)
+        self.assertEqual(planner.dead_prob(board, [(1, 0, 0)]), 0.0)
+
 
 class PolicyTests(unittest.TestCase):
     def test_build_plays_legal_moves(self):

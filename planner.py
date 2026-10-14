@@ -121,15 +121,18 @@ def places_all(b, poses, budget):
 
 def dead_prob(b, trays):
     p_single = 1.0 - (1.0 - single_risk(b)) ** TRAY_SIZE
-    all_fit = 0
-    joint_fail = 0
+    stuck_n = stuck_dead = fit_n = fit_dead = 0
     for tray in trays:
+        dead = not places_all(b, tray, [JOINT_BUDGET])
         if all(fits(b, p) for p in tray):
-            all_fit += 1
-            if not places_all(b, tray, [JOINT_BUDGET]):
-                joint_fail += 1
-    q = joint_fail / all_fit if all_fit else 0.0
-    return p_single + (1.0 - p_single) * q
+            fit_n += 1
+            fit_dead += dead
+        else:
+            stuck_n += 1
+            stuck_dead += dead
+    d_stuck = stuck_dead / stuck_n if stuck_n else 1.0
+    q = fit_dead / fit_n if fit_n else 0.0
+    return p_single * d_stuck + (1.0 - p_single) * q
 
 
 def _cheap(b, lines):
