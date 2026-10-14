@@ -1,10 +1,11 @@
 import random
 import unittest
+from types import SimpleNamespace
 
 from board import Board
 from game import Game
 from pieces import PIECE_POOL
-from policies import _bits, _layable, _mask, _place, build
+from policies import _POSITIONS, _bits, _layable, _leaf, _mask, _place, _single, build
 
 
 class PlacementMatchesBoardTest(unittest.TestCase):
@@ -94,6 +95,39 @@ class LayableMatchesEngineTest(unittest.TestCase):
             outcomes.append(expected)
         self.assertGreater(sum(outcomes), 10)
         self.assertGreater(len(outcomes) - sum(outcomes), 10)
+
+
+class SingleKeepsTrayLayableTest(unittest.TestCase):
+    def test_single_prefers_moves_that_keep_rest_layable(self):
+        rng = random.Random(23)
+        forced = 0
+        for _ in range(200):
+            fill = rng.uniform(0.4, 0.8)
+            board = Board()
+            for r in range(8):
+                for c in range(8):
+                    board.grid[r][c] = 1 if rng.random() < fill else 0
+            bits = _bits(board.grid)
+            pieces = [SimpleNamespace(index=rng.randrange(len(PIECE_POOL))) for _ in range(3)]
+            game = SimpleNamespace(pieces=pieces)
+            actions = [
+                (i, x, y)
+                for i, piece in enumerate(pieces)
+                for x, y, m in _POSITIONS[piece.index]
+                if not bits & m
+            ]
+            memo = {}
+            outcomes = {}
+            for idx, x, y in actions:
+                nb, cleared = _place(bits, _mask(pieces[idx].index, x, y))
+                rest = tuple(sorted(p.index for j, p in enumerate(pieces) if j != idx))
+                outcomes[(idx, x, y)] = (_layable(nb, rest, memo), _leaf(nb, cleared))
+            if not any(ok for ok, _ in outcomes.values()):
+                continue
+            self.assertTrue(outcomes[_single(bits, game, actions)][0])
+            if not max(outcomes.values(), key=lambda o: o[1])[0]:
+                forced += 1
+        self.assertGreater(forced, 5)
 
 
 if __name__ == "__main__":

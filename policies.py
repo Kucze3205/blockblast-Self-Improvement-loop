@@ -85,9 +85,9 @@ _NOT_C7 = _FULL ^ _COL[7]
 _INNER_H = _FULL ^ _COL[7]
 _INNER_V = _FULL ^ _ROW[7]
 _EDGE = _ROW[0] | _ROW[7] | _COL[0] | _COL[7]
-_BEAM = 24
+_BEAM = 40
 _FINALISTS = 16
-_TRAYS = 64
+_TRAYS = 256
 _DEATH_WEIGHT = 400.0
 
 
@@ -221,12 +221,14 @@ def _plan(bits, pending):
 
 
 def _single(bits, game, actions):
-    best, best_val = None, None
+    memo = {}
+    best, best_key = None, None
     for idx, x, y in actions:
         nb, cleared = _place(bits, _mask(game.pieces[idx].index, x, y))
-        val = _leaf(nb, cleared)
-        if best_val is None or val > best_val:
-            best, best_val = (idx, x, y), val
+        rest = tuple(sorted(p.index for j, p in enumerate(game.pieces) if p is not None and j != idx))
+        key = (_layable(nb, rest, memo), _leaf(nb, cleared))
+        if best_key is None or key > best_key:
+            best, best_key = (idx, x, y), key
     return best
 
 
