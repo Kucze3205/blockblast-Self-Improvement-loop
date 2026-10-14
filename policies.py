@@ -91,6 +91,8 @@ CLEAR_W = 10.0
 TRANSITION_W = 1.0
 ISOLATED_W = 6.0
 RISK_W = 300.0
+TRAY_FAIL_W = 400.0
+TRAY_SAMPLES = 64
 BEAM = 24
 FINAL = 16
 
@@ -156,12 +158,47 @@ def _beam_score(board, lines):
     return CLEAR_W * lines - TRANSITION_W * _transitions(board)
 
 
-def _risk(board):
-    q = sum(POSE_PROBABILITY[pose] for pose in range(len(PIECE_POOL)) if not _fits(board, pose))
+def _fit_table(board):
+    return [_fits(board, pose) for pose in range(len(PIECE_POOL))]
+
+
+def _risk(fit_table):
+    q = sum(POSE_PROBABILITY[pose] for pose, fits in enumerate(fit_table) if not fits)
     return 1.0 - (1.0 - q) ** 3
 
 
-def _plan(board, pieces):
+def _draw(rng):
+    return rng.choice(rng.choice(PIECE_TYPES))
+
+
+def _joint_ok(board, poses):
+    """Czy wszystkie klocki da się postawić po kolei bez wcześniejszego końca gry."""
+    if not poses:
+        return True
+    for pos, pose in enumerate(poses):
+        if pose in poses[:pos]:
+            continue
+        rest = poses[:pos] + poses[pos + 1:]
+        for _, _, mask in POSE_PLACEMENTS[pose]:
+            if board & mask:
+                continue
+            nxt, _ = _clear(board | mask)
+            if rest and not any(_fits(nxt, other) for other in rest):
+                continue
+            if _joint_ok(nxt, rest):
+                return True
+    return False
+
+
+def _joint_failure(board, fit_table, samples):
+    failed = sum(
+        1 for poses in samples
+        if all(fit_table[pose] for pose in poses) and not _joint_ok(board, poses)
+    )
+    return failed / len(samples)
+
+
+def _plan(board, pieces, samples):
     beam = [(0, board, 0, pieces, None)]
     for _ in pieces:
         children = []
@@ -181,7 +218,9 @@ def _plan(board, pieces):
         beam = children[:BEAM]
     best_value, best_move = None, None
     for score, b, _, _, move in beam[:FINAL]:
-        value = score - ISOLATED_W*_isolated(b) - RISK_W*_risk(b)
+        fit_table = _fit_table(b)
+        value = (score - ISOLATED_W*_isolated(b) - RISK_W*_risk(fit_table)
+                 - TRAY_FAIL_W*_joint_failure(b, fit_table, samples))
         if best_value is None or value > best_value:
             best_value, best_move = value, move
     return best_move
@@ -191,12 +230,13 @@ class TrayPolicy:
     name = "tray"
 
     def reset(self, game_seed):
-        pass
+        self.rng = random.Random(f"tray:{game_seed}")
 
     def act(self, game, actions):
         board = _bits(game.board.grid)
         pieces = tuple((idx, piece.index) for idx, piece in enumerate(game.pieces) if piece is not None)
-        move = _plan(board, pieces)
+        samples = [tuple(_draw(self.rng) for _ in range(3)) for _ in range(TRAY_SAMPLES)]
+        move = _plan(board, pieces, samples)
         return move if move is not None else actions[0]
 
 
