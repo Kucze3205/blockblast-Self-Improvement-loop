@@ -94,6 +94,26 @@ class BitboardTest(unittest.TestCase):
         self.assertGreater(clears, 0)
 
 
+class RiskTest(unittest.TestCase):
+    def test_udzial_klasy_trudnej_to_jeden_do_27(self):
+        self.assertAlmostEqual(survival.HARD_SHARE, 1 / 27)
+
+    def test_losowanie_klas_rozdziela_trojki(self):
+        rng = random.Random(3)
+        for _ in range(200):
+            hard = survival._draw_tray(rng, survival.HARD_TYPES)
+            mixed = survival._draw_mixed_tray(rng)
+            self.assertTrue(all(p.type_index in survival.HARD_TYPES for p in hard))
+            self.assertTrue(any(p.type_index not in survival.HARD_TYPES for p in mixed))
+
+    def test_pelna_plansza_daje_pelne_ryzyko(self):
+        full = (1 << (survival.N * survival.N)) - 1
+        rng = random.Random(5)
+        hard = [survival._draw_tray(rng, survival.HARD_TYPES) for _ in range(4)]
+        mixed = [survival._draw_mixed_tray(rng) for _ in range(4)]
+        self.assertAlmostEqual(survival._risk(full, hard, mixed), 1.0)
+
+
 class GameSmokeTest(unittest.TestCase):
     def test_partia_ruchy_legalne(self):
         policy = policies.build(None)

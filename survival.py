@@ -11,7 +11,10 @@ RISK_W = 400.0
 COV_W = 4.0
 BEAM = 40
 FINAL = 16
-SAMPLES = 24
+HARD_TYPES = (4, 6, 7, 10, 12)  # 1x5, 2x3, 3x3, duże L, przekątna 3 (indeksy w CANONICAL_TYPES)
+HARD_SHARE = (len(HARD_TYPES) / len(PIECE_TYPES)) ** 3
+HARD_SAMPLES = 35
+MIXED_SAMPLES = 64
 
 ROW_MASKS = [0xFF << (N * r) for r in range(N)]
 COL_MASKS = [sum(1 << (N * r + c) for r in range(N)) for c in range(N)]
@@ -100,12 +103,19 @@ def _search(bits, slots, pieces):
     return terminals
 
 
-def _draw_tray(rng):
+def _draw_tray(rng, types=range(len(PIECE_TYPES))):
     tray = []
     for _ in range(3):
-        poses = rng.choice(PIECE_TYPES)
+        poses = PIECE_TYPES[rng.choice(types)]
         tray.append(PIECE_POOL[rng.choice(poses)])
     return tray
+
+
+def _draw_mixed_tray(rng):
+    while True:
+        tray = _draw_tray(rng)
+        if any(piece.type_index not in HARD_TYPES for piece in tray):
+            return tray
 
 
 def _completable(board, tray, rest):
@@ -119,6 +129,12 @@ def _completable(board, tray, rest):
             if _completable(_place(board, entry)[0], tray, left):
                 return True
     return False
+
+
+def _risk(board, hard, mixed):
+    fails_hard = sum(1 for tray in hard if not _completable(board, tray, (0, 1, 2)))
+    fails_mixed = sum(1 for tray in mixed if not _completable(board, tray, (0, 1, 2)))
+    return HARD_SHARE * fails_hard / len(hard) + (1 - HARD_SHARE) * fails_mixed / len(mixed)
 
 
 def _cover_probs(bits):
@@ -155,12 +171,12 @@ class SurvivalPolicy:
         terminals = _search(to_bits(game.board.grid), slots, game.pieces)
         if not terminals:
             return actions[0]
-        trays = [_draw_tray(self.rng) for _ in range(SAMPLES)]
+        hard = [_draw_tray(self.rng, HARD_TYPES) for _ in range(HARD_SAMPLES)]
+        mixed = [_draw_mixed_tray(self.rng) for _ in range(MIXED_SAMPLES)]
         terminals.sort(key=_cheap, reverse=True)
         best_first, best_value = None, None
         for state in terminals[:FINAL]:
-            fails = sum(1 for tray in trays if not _completable(state[0], tray, (0, 1, 2)))
-            value = _value(state, fails / SAMPLES)
+            value = _value(state, _risk(state[0], hard, mixed))
             if best_value is None or value > best_value:
                 best_first, best_value = state[2], value
         return best_first
