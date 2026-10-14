@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "e58ffc79d45901a9a9f7b709d5364fe59de0121d",
+ "stan": "ocena w toku",
+ "gist": "Ocena końca tacki: wiązka po całej tacce i pokrycie pustych pól",
+ "notatki": [
+  "Ocena końca tacki: wiązka po całej tacce i pokrycie pustych pól\n\nMechanizm:\n- Plansza to jedna liczba (bit y*8+x). Wiązka 40 układa klocki tacki w różnych kolejnościach,\n  przycinając każdy poziom do 40 stanów; liczą się tylko pełne tacki. Najlepsze 16 ocenia _value:\n  puste pola + 3·linie + 0,5·kontakty − 400·miss³ − 60·miss − 4·martwe.\n- miss = 1 − P(nowy klocek pasuje gdzieś), P z rozkładu generatora (typ 1/15, poza równomiernie\n  w typie). miss³ to P(żaden z trzech nowych klocków nie pasuje) przy niezależnych losowaniach.\n- martwe = puste pola z pokryciem cov < 0,2, gdzie cov(c) to suma P(poz), dla których c da się\n  zakryć pasującym ułożeniem.\n\nDowód z historii (wyniki zmierzone, nie z notatek):\n- 13/1.4: s_sym 0,9810, 46 przegranych. Diagnoza 13/1.3 (seedy 1-30): 18 z 30 przegranych gier\n  skończyło się na tacce stuck, 0 na pustej tacce.\n- 9/2.6: s_sym 0,9959, 16 przegranych (wynik do pobicia).\n- 17/1.5: s_sym 0,9833, 45 przegranych; na liście nie powtarzać: rollouty shape-only.\n- 5/5.1: s_sym 0,9878, 32 przegranych, ale za_wolna przy 10,9 min.\n- 4/2.1: kara -14 za martwe pola w liściu, s_sym 0,751 / 0,929.\n- 4/1.2: s_sym 0,767 / 0,945; na liście nie powtarzać: dead.\n\nDlaczego to nie powtórka, i gdzie jest bliska:\n- Nowa jest tylko kombinacja: wiązka po tacce (13/1.2) z dokładnym miss³ i mobilnością (13/1.3)\n  oraz kara za martwe pola.\n- Kara za martwe pola jest bliska 4/2.1 i 4/1.2. Różni się progiem prawdopodobieństwa\n  (cov < 0,2 z P poz) i wagą 4 zamiast 14. Traktuję to jako wariant, nie nowy mechanizm.\n- Bez rolloutów i bez próbkowanej domykalności (13/1.4, 17/1.5).\n\nRyzyko:\n- Wynik niezmierzony. Wagi 400/60/4 i TAU 0,2 są a priori, pożyczone z 13/1.3.\n- Diagnoza 13/1.4 mówi, że strat nie tłumaczy miss³ (0 z 18). Ta próba nie liczy stuck następnej\n  tacki wprost, więc może nie trafić w przyczynę.\n- Lokalnie 5,2 ms/ruch na 155 ruchach. Limit czasu oceny nieznany lokalnie.\n- Testy: zgodność bitboardu z Board na 12 planszach, legalne ruchy w 3 partiach. Nie mierzą\n  jakości gry.\n\nCo dalej:\n- Zrobione: ten commit (survival.py, policies.build, tests/test_policies.py).\n- Następny krok: po ocenie porównać z 9/2.6 (0,9959). Gorszy wynik: ablacja COV_W, potem miss³.\n  Za wolna: BEAM 40 -> 20.\n- Nie powtarzać: rolloutów shape-only (17/1.5).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 64,
+  "usd": 4.2506,
+  "minuty": 20.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T18:54:07Z",
+   "koniec": "2026-10-14T19:14:30Z",
+   "tury": 64,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
