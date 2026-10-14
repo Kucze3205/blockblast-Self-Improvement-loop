@@ -2,16 +2,26 @@
  "rodzic": "2.2",
  "rodzic_sha": "8ac2bed49aa70d20520846aca3e1a60028d347c6",
  "kolejnosc": 6,
- "sha": "8ac2bed49aa70d20520846aca3e1a60028d347c6",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "84a01e6ec4ce1437a01e9fc3029522c60918def3",
+ "stan": "ocena w toku",
+ "gist": "Kara za udział nieułożalnych następnych tacek w finalistach wiązki",
+ "notatki": [
+  "Kara za udział nieułożalnych następnych tacek w finalistach wiązki\n\nMechanizm: każdy finalista wiązki dostaje karę LAMBDA_DEATH * udział tacek z\npróby, których nie da się ułożyć na jego planszy (a jakiś klocek pasuje).\nPróba to CLOSE_SAMPLES = 256 tacek z modelu generatora (typ, potem poza),\nlosowanych na osobnym strumieniu closability:<seed>, żeby polityka nie widziała\nprzyszłych tacek. Ta sama próba służy całej decyzji (CRN), więc finaliści są\nporównywalni. Tacka bez pasującego klocka się nie liczy: jej karę niesie już\n_fit_penalty.\n\nDowód z historii: w 17/2.2 zginęło 19 z 24 partii, a 16 zgonów to tacki, które\nnie dawały się ułożyć już przy rozdaniu, czyli bez przeglądu następnej tacki.\nW 17/1.2 przegląd z próbami na innym kodzie dał 0.890 wobec 0.531 w 1.1.\n\nDlaczego to nie powtórka: 2.2 nie ma przeglądu następnej tacki. Ta próba łączy\nliść 8/1.1 z 2.2, przegląd z 1.2 i kolejność dowolną z 2.3. Drzewo 9 miało\nprzegląd (9/2.1) i ten sam liść (9/2.2, 0.987), ale 9/2.6 uśrednia wykonalne\npróbki, a tu jest kara za udział.\n\nRyzyko:\n- Wynik nieznany, ewaluator nieczytelny (.github to /dev/null). Nie wolno\n  twierdzić, że to lepsze od 2.2 (0.861) ani od 1.2 (0.890), zanim zmierzy to\n  ewaluator.\n- Koszt: około 40 ms na ruch wobec 2.6 ms w 2.3 (smoke, 3 partie, 1057 ruchów,\n  0 wrong_placement). W 17/1.2 podobny przegląd zajął 4.8 min wobec 0.4 min dla\n  2.2. Limit czasu jest nieczytelny, więc nie wiadomo, czy się mieści.\n- Podwójna kara: _fit_penalty zostaje obok przeglądu. 9/2.6 pokazało, że ta sama\n  śmierć liczona dwa razy szkodziła; tu nie sprawdzono, czy to się nakłada.\n\nCo dalej: zrobione: 2.3 (245f7da) i 2.4 (ten commit). Następny krok: pomiar\newaluatorem 2.3 i 2.4. Jeśli 2.4 jest za wolne, przyspieszyć _tray_playable\nbitowo jak _completes z 1.2. Jeśli wynik spada, sprawdzić podwójną karę (przegląd\nbez _fit_penalty). Nie wracać do stałej kolejności w sprawdzaniu tacki.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Układalność tacki sprawdzana w dowolnej kolejności klocków\n\nMechanizm: _tray_playable sprawdzał ułożenie tylko w kolejności tacki, a gra\npozwala kłaść klocki w dowolnej kolejności. Tacka, w której pierwszy klocek\nnie ma miejsca, a drugi domyka wiersz i zwalnia miejsce dla pierwszego, była\nodrzucana jako nieułożalna. _viable wymagał dodatkowo, żeby każdy klocek\npasował już teraz, czyli zakładał, że żaden klocek nie domyka linii przed\nswoim postawieniem. Ten warunek usunięto, a _viable zastąpiono przez\n_tray_playable.\n\nDowód z historii: diagnoza 2.2 na seedach 0-23. W próbce 223 stanów stała\nkolejność odrzuciła 86 ruchów, z czego 13 dawało się ułożyć przy dowolnej\nkolejności. Z 19 zgonów 3 były w tackach, które dało się ułożyć, a 42 z 5330\nruchów szły zachłannym fallbackiem.\n\nDlaczego to nie powtórka: 2.1 i 2.2 nie miały sprawdzania w dowolnej\nkolejności. Łańcuch 1 (węzeł 1.2) je miał, ale w innym kodzie (TrayPolicy,\ninny ranking finalistów). Tu zmienia się tylko ten błąd.\n\nRyzyko: wynik nieznany, ewaluator nieczytelny (.github to /dev/null), więc\nnie wiadomo, czy to podnosi s_sym. Koszt: 2,6 ms na ruch wobec 2,7 ms przy\nstałej kolejności (smoke, 3 partie, 0 wrong_placement). To nie jest pomiar\nwyniku.\n\nCo dalej: zrobione w tym commicie (2.3). Następny krok to 2.4: próbkowana\ndomykalność następnej tacki (CRN, z 1.patch) jako kryterium finalistów. Nie\npowtarzać stałej kolejności w sprawdzaniu tacki.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 71,
+  "usd": 4.2501,
+  "minuty": 19.5
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-14T11:12:22Z",
+   "koniec": "2026-10-14T11:31:54Z",
+   "tury": 71,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
