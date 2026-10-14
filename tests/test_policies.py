@@ -70,6 +70,10 @@ def _engine_completable(board, pieces):
     return False
 
 
+def _checkerboard():
+    return sum(1 << (W * y + x) for y in range(W) for x in range(W) if (x + y) % 2)
+
+
 class TrayPolicyLeafTest(unittest.TestCase):
     def test_bit_terms_match_cell_by_cell_on_random_boards(self):
         rng = random.Random(1)
@@ -103,6 +107,22 @@ class TrayPolicyLeafTest(unittest.TestCase):
                 outcomes.add(expected)
                 self.assertEqual(policies._completes(occ, ids), expected)
         self.assertEqual(outcomes, {True, False})
+
+    def test_next_value_is_penalty_when_no_tray_fits(self):
+        pair = policies._SHAPE_POSE[((1, 1),)]
+        trays = [tuple(enumerate((pair, pair, pair)))]
+        self.assertEqual(policies._next_value(_checkerboard(), trays, 40), -policies.LAMBDA_DEATH)
+
+    def test_next_value_skips_unplaceable_trays(self):
+        pair = policies._SHAPE_POSE[((1, 1),)]
+        one = policies._SHAPE_POSE[((1,),)]
+        occ = _checkerboard()
+        unplaceable = tuple(enumerate((pair, pair, pair)))
+        placeable = tuple(enumerate((one, one, one)))
+        self.assertEqual(
+            policies._next_value(occ, [unplaceable, placeable], 40),
+            policies._next_value(occ, [placeable], 40),
+        )
 
     def test_moves_are_legal(self):
         policy = policies.build(None)

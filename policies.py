@@ -108,6 +108,9 @@ FINALISTS = 8
 FINALISTS_TIGHT = 20
 TIGHT_FREE_CELLS = 22
 CLOSE_SAMPLES = 256
+LOOK_TOP = 3
+LOOK_TRAYS = 3
+LOOK_FINAL = 2
 
 
 def _shape_key(piece):
@@ -203,7 +206,7 @@ def _stuck_share(occ, samples):
     return stuck / len(samples)
 
 
-def _plan(occ, tray, width, samples):
+def _beam(occ, tray, width):
     frontier = [(occ, tuple(tray), None, 0)]
     for _ in range(len(tray)):
         children = []
@@ -224,14 +227,34 @@ def _plan(occ, tray, width, samples):
         if not children:
             return None
         frontier = heapq.nlargest(width, children, key=lambda c: _cheap(c[0], c[3]))
+    return frontier
+
+
+def _next_value(occ, trays, width):
+    values = []
+    for tray in trays:
+        frontier = _beam(occ, tray, width)
+        if frontier is None:
+            continue
+        best = heapq.nlargest(LOOK_FINAL, frontier, key=lambda c: _cheap(c[0], c[3]))
+        values.append(max(_cheap(c[0], c[3]) - _risk(c[0]) for c in best))
+    return sum(values) / len(values) if values else -LAMBDA_DEATH
+
+
+def _plan(occ, tray, width, samples, trays):
+    frontier = _beam(occ, tray, width)
+    if frontier is None:
+        return None
     tight = 64 - bin(occ).count("1") <= TIGHT_FREE_CELLS
     finalists = heapq.nlargest(
         FINALISTS_TIGHT if tight else FINALISTS, frontier, key=lambda c: _cheap(c[0], c[3])
     )
-    return max(
-        finalists,
-        key=lambda c: _cheap(c[0], c[3]) - _risk(c[0]) - LAMBDA_DEATH * _stuck_share(c[0], samples),
-    )[2]
+    scored = [
+        (_cheap(c[0], c[3]) - _risk(c[0]) - LAMBDA_DEATH * _stuck_share(c[0], samples), c)
+        for c in finalists
+    ]
+    top = heapq.nlargest(LOOK_TOP, scored, key=lambda s: s[0])
+    return max(top, key=lambda s: s[0] + _next_value(s[1][0], trays, width))[1][2]
 
 
 class TrayPolicy:
@@ -244,10 +267,12 @@ class TrayPolicy:
         # Inny strumień niż Generator gry, inaczej polityka widziałaby przyszłe tacki.
         rng = random.Random(f"closability:{game_seed}")
         self.samples = [_sample_tray(rng) for _ in range(CLOSE_SAMPLES)]
+        self.look_rng = random.Random(f"lookahead:{game_seed}")
 
     def act(self, game, actions):
         tray = [(i, _SHAPE_POSE[_shape_key(p)]) for i, p in enumerate(game.pieces) if p is not None]
-        move = _plan(_occupancy(game.board.grid), tray, self.width, self.samples)
+        trays = [tuple(enumerate(_sample_tray(self.look_rng))) for _ in range(LOOK_TRAYS)]
+        move = _plan(_occupancy(game.board.grid), tray, self.width, self.samples, trays)
         return move if move is not None else actions[0]
 
 
