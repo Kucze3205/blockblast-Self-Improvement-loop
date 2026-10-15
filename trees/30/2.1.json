@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "31777cc9d98387805d2428eee7214c2a71955b86",
+ "stan": "ocena w toku",
+ "gist": "Dwupolowe puste obszary w ocenie finałów: kara PAIR_W za pola w składowych z dwóch pól",
+ "notatki": [
+  "Dwupolowe puste obszary w ocenie finałów: kara PAIR_W za pola w składowych z dwóch pól\n\nMechanizm:\nBaza to 9/2.6 (przegląd następnej tacki bez ogona dla nieumieszczalnych próbek, policies.build). Dwie zmiany:\n- pairs(b) liczy pola pustych składowych dokładnie dwupolowych, czysto bitowo: pole z dokładnie jednym pustym sąsiadem, który ma tylko tego jednego sąsiada. Mieszczą się w nich tylko 1x1 i belka 2.\n- Wartość finalisty w act dostaje - PAIR_W * pairs(b), PAIR_W = 0.75 (jak waga iso w cheap).\nLiczenie dotyczy tylko K finalistów na ruch (kilka operacji bitowych na stan). Rozwinięcie wiązki i przegląd następnej tacki bez zmian.\n\nDowód z historii:\n9/2.4 (0,99525) i 9/2.6 (0,99589) to baza. Warianty na tej bazie z łatką mostu (27/1.1, 28/1.1, 29/1.1) dają 0,992–0,994, czyli szum rzędu ±0,003. Nic z tego nie dowodzi poprawy. Ten węzeł niczego nie zmierzył.\n\nDlaczego to nie powtórka:\nKieszenie (15/2.1, 20/1.1) i izolowane pola (iso w cheap) są w historii, ale nie składowe dwupolowe. Żaden gist z drzew 1–29 nie opisuje tego kształtu. Zmiana nie dotyka wag tacki ani ogona.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator. Waga 0,75 jest wzięta z analogii do iso, nie dopasowana.\n- Kara może przesunąć wybór finalistów w grach, które dziś przeżywają, więc przeżycie może spaść.\n- Mapowanie klocków po kształcie zamiast p.index (most daje index=None) jest warunkiem działania na moście, nie nowym mechanizmem. Węzły 27–29 zrobiły to samo.\n\nCo dalej:\nZrobione: baza 9/2.6 z build, mapowanie po kształcie (_pool_index), pairs z PAIR_W w finalistach, test pairs względem referencji. Testy beam 8/8, smoke: 3 partie symulatora i wywołanie w stylu mostu bez wyjątku.\nNastępny krok: ocena węzła 30/1.1. Jeśli nie przebije 9/2.6 w granicach szumu, nie stroić PAIR_W, tylko wrócić do bazy i wybrać inny mechanizm.\nCzego nie powtarzać: kieszeni w liściu i przeglądu tacki bez ogona (9/2.5, 9/2.6).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 54,
+  "usd": 3.0556,
+  "minuty": 13.2
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T21:20:48Z",
+   "koniec": "2026-10-15T21:34:01Z",
+   "tury": 54,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
