@@ -3,13 +3,14 @@ import os
 import random
 import sys
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import beam as B
 import policies
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, Piece
 
 N = 8
 
@@ -107,7 +108,7 @@ class TrayPlayableTest(unittest.TestCase):
             b = B._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
             poses = B._sample_tray(rng)
             triples = B._hard_triples(rng)
-            states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
+            states = B.plan(b, [(i, B.PLACEMENTS[pi]) for i, pi in enumerate(poses)], B.LOOK_BEAM, B.LOOK_BEAM)
             expected = None
             if states:
                 expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
@@ -126,6 +127,25 @@ class TrayPlayableTest(unittest.TestCase):
             game.step(move)
             if game.done:
                 break
+
+    def test_bridge_piece_gives_same_move_as_pool_piece(self):
+        for seed in (1, 2, 3):
+            game = Game(seed)
+            pool_policy = B.BeamPolicy()
+            pool_policy.reset(seed)
+            bridge_policy = B.BeamPolicy()
+            bridge_policy.reset(seed)
+            for _ in range(5):
+                actions = game.available_actions()
+                if not actions:
+                    break
+                pieces = [Piece(p.shape, "slot", -1) if p is not None else None for p in game.pieces]
+                bridge_game = SimpleNamespace(board=game.board, pieces=pieces, combo=0)
+                move = pool_policy.act(game, actions)
+                self.assertEqual(bridge_policy.act(bridge_game, actions), move)
+                game.step(move)
+                if game.done:
+                    break
 
 
 if __name__ == "__main__":
