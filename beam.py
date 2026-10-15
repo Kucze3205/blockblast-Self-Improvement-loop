@@ -20,6 +20,7 @@ BEAM_CAP = 160
 LOOK_BEAM = 40
 LOOK_TRAYS = 4
 LOOK_TOP = 3
+REVIEW_MIN_W = 0.5
 FINAL_K = 8
 FINAL_K_TIGHT = 20
 TIGHT_FREE = 22
@@ -131,6 +132,13 @@ def tail_penalty(b, trays):
     return TRAY_FAIL * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays)
 
 
+def _review(nxt):
+    if not nxt:
+        return -TRAY_FAIL
+    # Śmierć jest pochłaniająca, więc zła próbka następnej tacki waży więcej niż w samej średniej.
+    return (1 - REVIEW_MIN_W) * sum(nxt) / len(nxt) + REVIEW_MIN_W * min(nxt)
+
+
 def risk(b, triples):
     shares = []
     dead = 0
@@ -220,7 +228,7 @@ class BeamPolicy:
         for first, (value, b) in contenders:
             # śmierć na następnej tacce karze już risk i tail_penalty, więc tu liczymy tylko wykonalne
             nxt = [v for v in (self._next_value(b, triples, poses) for poses in trays) if v is not None]
-            total = value + (sum(nxt) / len(nxt) if nxt else -TRAY_FAIL)
+            total = value + _review(nxt)
             if best_total is None or total > best_total:
                 best_move, best_total = first, total
         return best_move

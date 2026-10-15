@@ -113,6 +113,11 @@ class TrayPlayableTest(unittest.TestCase):
                 expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
             self.assertEqual(policy._next_value(b, triples, poses), expected)
 
+    def test_review_mixes_mean_and_worst_sample(self):
+        self.assertEqual(B._review([]), -B.TRAY_FAIL)
+        self.assertEqual(B._review([5.0]), 5.0)
+        self.assertAlmostEqual(B._review([10.0, 2.0]), 0.5 * 6.0 + 0.5 * 2.0)
+
     def test_policy_plays_legal_moves(self):
         game = Game(1)
         policy = policies.build(None)
