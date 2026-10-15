@@ -57,6 +57,35 @@ def _to_bits(grid):
     return b
 
 
+REV8 = [int(format(i, "08b")[::-1], 2) for i in range(256)]
+
+
+def _flip_h(b):
+    return sum(REV8[(b >> (8 * r)) & 0xFF] << (8 * r) for r in range(8))
+
+
+def _flip_v(b):
+    return sum(((b >> (8 * r)) & 0xFF) << (8 * (7 - r)) for r in range(8))
+
+
+def _transpose(b):
+    out = 0
+    for r in range(8):
+        for c in range(8):
+            if (b >> (8 * r + c)) & 1:
+                out |= 1 << (8 * c + r)
+    return out
+
+
+def _sym_key(b):
+    # Klocki są domknięte względem symetrii planszy, więc odbicie ma tę samą wartość.
+    forms = []
+    for x in (b, _transpose(b)):
+        h = _flip_h(x)
+        forms += (x, h, _flip_v(x), _flip_v(h))
+    return min(forms)
+
+
 def _clear(b, y0, y1, x0, x1):
     kill = 0
     lines = 0
@@ -205,11 +234,16 @@ class BeamPolicy:
         mixed = _mixed_trays(self.rng)
         scored = sorted(((cheap(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
         k = FINAL_K_TIGHT if 64 - _pc(base) <= TIGHT_FREE else FINAL_K
-        cut = scored[min(k, len(scored)) - 1][0]
-        best_by_move = {}
-        for score, (b, _used, _lines, first) in scored:
-            if score < cut:
+        finalists, seen = [], set()
+        for item in scored:
+            if len(finalists) >= k and item[0] < finalists[-1][0]:
                 break
+            key = _sym_key(item[1][0])
+            if key not in seen:
+                seen.add(key)
+                finalists.append(item)
+        best_by_move = {}
+        for score, (b, _used, _lines, first) in finalists:
             value = score - risk(b, triples) - tail_penalty(b, mixed)
             if first not in best_by_move or value > best_by_move[first][0]:
                 best_by_move[first] = (value, b)

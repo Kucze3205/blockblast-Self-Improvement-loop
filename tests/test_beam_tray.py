@@ -127,6 +127,19 @@ class TrayPlayableTest(unittest.TestCase):
             if game.done:
                 break
 
+    def test_flips_and_transpose_move_single_cells(self):
+        self.assertEqual(B._flip_h(1 << 1), 1 << 6)
+        self.assertEqual(B._flip_v(1 << 8), 1 << 48)
+        self.assertEqual(B._transpose(1 << 3), 1 << 24)
+
+    def test_sym_key_shared_by_board_symmetries(self):
+        rng = random.Random(5)
+        for _ in range(60):
+            density = rng.uniform(0.1, 0.5)
+            b = B._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
+            for m in (B._flip_h(b), B._flip_v(b), B._transpose(b), B._flip_h(B._transpose(b))):
+                self.assertEqual(B._sym_key(m), B._sym_key(b))
+
 
 if __name__ == "__main__":
     unittest.main()
