@@ -3,13 +3,14 @@ import os
 import random
 import sys
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import beam as B
 import policies
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, Piece
 
 N = 8
 
@@ -107,7 +108,7 @@ class TrayPlayableTest(unittest.TestCase):
             b = B._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
             poses = B._sample_tray(rng)
             triples = B._hard_triples(rng)
-            states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
+            states = B.plan(b, [(k, B.PLACEMENTS[i]) for k, i in enumerate(poses)], B.LOOK_BEAM, B.LOOK_BEAM)
             expected = None
             if states:
                 expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
@@ -122,6 +123,39 @@ class TrayPlayableTest(unittest.TestCase):
             if not actions:
                 break
             move = policy.act(game, actions)
+            self.assertIn(move, actions)
+            game.step(move)
+            if game.done:
+                break
+
+    def test_bridge_pieces_choose_same_move(self):
+        rng = random.Random(5)
+        for _ in range(30):
+            grid = _settle([[int(rng.random() < 0.3) for _ in range(8)] for _ in range(8)])
+            pool = [PIECE_POOL[i] for i in B._sample_tray(rng)]
+            bridge = [Piece(p.shape, p.name, -1) for p in pool]
+            moves = []
+            for pieces in (pool, bridge):
+                game = SimpleNamespace(board=SimpleNamespace(grid=grid), pieces=pieces, combo=0)
+                policy = policies.build(None)
+                policy.reset(1)
+                moves.append(policy.act(game, None))
+            self.assertEqual(moves[0], moves[1])
+
+    def test_policy_plays_legal_moves_with_bridge_pieces(self):
+        game = Game(2)
+        policy = policies.build(None)
+        policy.reset(2)
+        for _ in range(40):
+            actions = game.available_actions()
+            if not actions:
+                break
+            view = SimpleNamespace(
+                board=game.board,
+                pieces=[None if p is None else Piece(p.shape, p.name, -1) for p in game.pieces],
+                combo=game.combo,
+            )
+            move = policy.act(view, actions)
             self.assertIn(move, actions)
             game.step(move)
             if game.done:
