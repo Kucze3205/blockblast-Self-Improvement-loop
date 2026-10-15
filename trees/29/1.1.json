@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "0e3f98a9c3870bac306bd92ae515ababf6df9119",
+ "stan": "ocena w toku",
+ "gist": "Wiązka: ruch dla klocków z mostu bez indeksu puli zamiast TypeError",
+ "notatki": [
+  "Wiązka: ruch dla klocków z mostu bez indeksu puli zamiast TypeError\n\nMechanizm: plan bierze placementy z PLACEMENTS[pi], a klocki z bridge.py\nmają index = None (Piece(shape, name, -1)), więc act rzucał TypeError już\nprzy pierwszym ruchu. Placementy takiego klocka liczone są z kształtu\n(_piece_placements); dla klocków z puli to ta sama tablica obiektów, więc\ndecyzje i wynik symulatora nie zmieniają się.\n\nDowód: test_bridge_piece_gives_same_move_as_pool_piece odtworzony przed\npoprawką (TypeError: PLACEMENTS[None] w plan), po poprawce 8/8 OK.\nbridge.py w main używa GreedyPolicy, więc nie wiem, czy emulator podaje\nte klocki do BeamPolicy; poprawka zabezpiecza ten przypadek.\n\nDlaczego to nie powtórka: 28/2.1 zrobiło to samo liczenie ruchów z kształtu,\nale na bazie 1.1 razem z innymi zmianami. Tu to osobny krok naprawy błędu\nna bazie 9/2.6, bez nowego mechanizmu. Nie jest to próba poprawy wyniku.\n\nDiagnoza (bez oceny wyniku): 8971 decyzji w 7 partiach (seed 1-7, 6 kończy\nsię porażką). Gałąź częściowa wystąpiła 11 razy; za każdym razem wybrany\nruch osiągał maksimum postawień z tacki liczone dokładnie, bez cięcia\nwiązki. Fałszywych częściowych (wiązka gubi pełny plan) nie było. Sześć\nruchów zabijających grę dotyczyło tacek już straconych (maksimum 1\npostawienie), więc żaden nie miał alternatywy. Wniosek: zmiana wyboru\nw gałęzi częściowej nie ma czego naprawiać. Porażki powstają przy wyborze\nostatniego postawienia w tacce, po którym losowa następna tacka nie daje\nsię w pełni ułożyć, czyli w ocenie ryzyka, nie w act na częściowej tacce.\n\nRyzyko: dla klocków z puli brak zmian. Dla mostu policzenie placementów\nraz na ruch (ok. 3 x 64 pozycji) jest pomijalne.\n\nCo dalej:\n- zrobione: 5a37d36 (baza 9/2.6), ten commit (naprawa mostu).\n- następny krok: estymator ryzyka następnej tacki (tail_penalty na 64\n  próbkach i _next_value), nie gałąź częściowa.\n- czego nie powtarzać: zmian w gałęzi częściowej act (odrzucone\n  diagnostyką), zwiększania liczby próbek ogona (9/2.7 już było).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wnieś bazę 9/2.6: beam.py, policies.build, testy wiązki tacki\n\nMechanizm: kod z najlepszy.patch bez zmian. BeamPolicy planuje całą tackę na bitboardach, liczy ryzyko trudnych tacek, ogon mieszanych tacek i przegląd następnej tacki. policies.build(weights) zwraca BeamPolicy, wagi są ignorowane.\n\nDowód z historii: 9/2.6 ma s_sym 0,99589, 16 przegranych, 6,9 min (.historia/9/2.6.json). tests/test_beam_tray.py: 7/7 OK.\n\nDlaczego to nie powtórka: to punkt wyjścia, nie próba końcowa. Klocki z mostu mają index None, więc ta wersja wywraca się na ścieżce emulatora.\n\nRyzyko: wynik niezmierzony w tym drzewie. Limit czasu z notatek: 8,9 min przechodzi, 11,1 min jest już za wolna (indeks 19, 20/2.1).\n\nCo dalej:\n- Zrobione: ten commit.\n- Następny krok: ruchy liczone z kształtu klocka (klocki z mostu), potem ruch awaryjny dla częściowej tacki.\n- Czego nie powtarzać: samego portu jako wyniku końcowego.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 55,
+  "usd": 4.1952,
+  "minuty": 29.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T19:38:14Z",
+   "koniec": "2026-10-15T20:07:49Z",
+   "tury": 55,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
