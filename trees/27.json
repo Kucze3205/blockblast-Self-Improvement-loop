@@ -6,5 +6,9 @@
    "2.1"
   ]
  ],
- "koniec": null
+ "koniec": {
+  "powod": "pusta paczka",
+  "T_h": 1.26,
+  "V": 0.981012
+ }
 }
