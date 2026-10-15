@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "010344adf97e3c14275dfea6e118469ec7923656",
+ "stan": "ocena w toku",
+ "gist": "Wnieś bazę 9/2.6 i dodaj build(weights), bez zmian w logice",
+ "notatki": [
+  "Wnieś bazę 9/2.6 i dodaj build(weights), bez zmian w logice\n\nMechanizm: beam.py z najlepszego patcha (węzeł 9/2.6) wchodzi do korzenia bez zmian. policies.build(weights) zwraca BeamPolicy(). Korzeń nie miał build, więc ocena dawała 0. Stare nazwy (RandomPolicy, GreedyPolicy, ModelPolicy) zostają, bo importują je bridge.py i benchmark.py.\n\nDowód z historii: 9/2.6 ma s_sym 0,99589 i 16 przegranych (.historia/9/2.6.json). Tę samą bazę wniosło 24/1.1 i ma 0,996 (.historia/INDEKS.md). Patch stosuje się czysto (git apply --check).\n\nDlaczego to nie powtórka: to celowe powtórzenie bazy, bez której korzeń daje 0. Nie zmieniam żadnej decyzji, więc ten commit nie wnosi nowego wyniku. Nowy mechanizm przyjdzie w osobnym commicie.\n\nRyzyko: wynik niezmierzony w tej gałęzi. Limit czasu oceny nie jest potwierdzony (wnioskowany z historii: 8,3 do 11,1 min). 9/2.6 ma 6,9 min w symulatorze. Testy: 7/7 (tests/test_beam_tray.py). Smoke: 3 partie po 300 ruchów, bez wyjątków i nielegalnych ruchów, około 55 ms na ruch na tej maszynie (czas, nie wynik).\n\nCo dalej:\n- zrobione: ten commit (baza 9/2.6 z build)\n- następny krok: wybrać mechanizm, który nie powtarza 7/5.3, 16/2.3 i 17/2.3 (fallback wiązki i dowolna kolejność tacki)\n- czego nie powtarzać: stałych i wag bez diagnozy; ruchu actions[0] jako fallbacku (7/2.2, 6/2.1)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 51,
+  "usd": 4.0902,
+  "minuty": 21.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T16:26:12Z",
+   "koniec": "2026-10-15T16:47:33Z",
+   "tury": 51,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
