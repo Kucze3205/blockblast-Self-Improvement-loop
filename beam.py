@@ -219,8 +219,10 @@ class BeamPolicy:
         trays = [_sample_tray(self.rng) for _ in range(LOOK_TRAYS)]
         for first, (value, b) in contenders:
             # śmierć na następnej tacce karze już risk i tail_penalty, więc tu liczymy tylko wykonalne
-            nxt = [v for v in (self._next_value(b, triples, poses) for poses in trays) if v is not None]
-            total = value + (sum(nxt) / len(nxt) if nxt else -TRAY_FAIL)
+            # cel to przeżycie: gorsze następne tacki liczą się mocniej niż średnia
+            nxt = sorted(v for v in (self._next_value(b, triples, poses) for poses in trays) if v is not None)
+            worst = nxt[:(len(nxt) + 1) // 2]
+            total = value + (sum(worst) / len(worst) if worst else -TRAY_FAIL)
             if best_total is None or total > best_total:
                 best_move, best_total = first, total
         return best_move
