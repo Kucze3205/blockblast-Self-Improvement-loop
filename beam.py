@@ -12,6 +12,9 @@ NOT_COL0 = FULL & ~COLS[0]
 NOT_COL7 = FULL & ~COLS[7]
 NOT_ROW7 = FULL & ~ROWS[7]
 BORDER = ROWS[0] | ROWS[7] | COLS[0] | COLS[7]
+M_COL_LE5 = FULL & ~(COLS[6] | COLS[7])
+SQ_W = 3.0
+SQ_CAP = 8
 
 HARD_TYPES = (3, 4, 6, 7, 10)
 N_TYPES = len(PIECE_TYPES)
@@ -71,13 +74,19 @@ def _clear(b, y0, y1, x0, x1):
     return (b & ~kill) if kill else b, lines
 
 
+def _sq3(e):
+    h = e & (e >> 1) & (e >> 2) & M_COL_LE5
+    return _pc(h & (h >> 8) & (h >> 16))
+
+
 def cheap(b, lines):
     e = FULL & ~b
     near = ((e >> 1) & NOT_COL7) | ((e << 1) & NOT_COL0) | (e >> 8) | ((e << 8) & FULL)
     iso = _pc(e & ~near)
     border = _pc(e & BORDER)
     inner = _pc((b ^ (b >> 1)) & NOT_COL7) + _pc((b ^ (b >> 8)) & NOT_ROW7)
-    return -1.4 * _pc(b) - 0.75 * iso - 1.5 * inner - 2.0 * border + 4.2 * lines
+    sq = min(_sq3(e), SQ_CAP)
+    return -1.4 * _pc(b) - 0.75 * iso - 1.5 * inner - 2.0 * border + 4.2 * lines + SQ_W * sq
 
 
 def _fits(b, i):

@@ -92,6 +92,20 @@ class TrayPlayableTest(unittest.TestCase):
         one_cell = next(p.index for p in PIECE_POOL if p.name == "1x1")
         self.assertFalse(B._tray_ok(B.FULL, [one_cell]))
 
+    def test_sq3_counts_empty_3x3_windows(self):
+        self.assertEqual(B._sq3(B.FULL), 36)
+        rng = random.Random(5)
+        for _ in range(150):
+            density = rng.uniform(0.0, 0.6)
+            grid = [[int(rng.random() < density) for _ in range(8)] for _ in range(8)]
+            naive = sum(
+                1
+                for y in range(6)
+                for x in range(6)
+                if not any(grid[y + dy][x + dx] for dy in range(3) for dx in range(3))
+            )
+            self.assertEqual(B._sq3(B.FULL & ~B._to_bits(grid)), naive)
+
     def test_mixed_trays_have_a_non_hard_piece(self):
         for tray in B._mixed_trays(random.Random(3)):
             self.assertTrue(any(PIECE_POOL[i].type_index not in B.HARD_TYPES for i in tray))
