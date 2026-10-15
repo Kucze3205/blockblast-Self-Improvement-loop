@@ -159,11 +159,11 @@ def plan(board, slots, width, cap, partial=False):
     for _ in slots:
         children = {}
         for b, used, lines, first in beam:
-            for k, (sid, pi) in enumerate(slots):
+            for k, (sid, placements) in enumerate(slots):
                 bit = 1 << k
                 if used & bit:
                     continue
-                for m, x, y, y1, x1 in PLACEMENTS[pi]:
+                for m, x, y, y1, x1 in placements:
                     if m & b:
                         continue
                     nb, cl = _clear(b | m, y, y1, x, x1)
@@ -195,7 +195,8 @@ class BeamPolicy:
         self.rng = random.Random(f"beam:{game_seed}")
 
     def act(self, game, actions):
-        slots = [(idx, p.index) for idx, p in enumerate(game.pieces) if p is not None]
+        # klocki z bridge.py nie mają indeksu poz (index=None), więc ruchy liczymy z kształtu
+        slots = [(idx, _placements(p)) for idx, p in enumerate(game.pieces) if p is not None]
         base = _to_bits(game.board.grid)
         finals = plan(base, slots, BEAM, BEAM_CAP, partial=True)
         if _pc(finals[0][1]) < len(slots):
@@ -226,7 +227,7 @@ class BeamPolicy:
         return best_move
 
     def _next_value(self, b, triples, poses):
-        states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)
+        states = plan(b, [(i, PLACEMENTS[pose]) for i, pose in enumerate(poses)], LOOK_BEAM, LOOK_BEAM)
         if not states:
             return None
         return max(cheap(s[0], s[2]) - risk(s[0], triples) for s in states[:2])
