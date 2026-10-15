@@ -24,9 +24,17 @@ FINAL_K = 8
 FINAL_K_TIGHT = 20
 TIGHT_FREE = 22
 TRAY_FAIL = 400.0
-MIX_TRAYS = 64
+MIX_TRAYS = 256
+TAIL_ALLOC = (8, 24, 24)
+HARD_SLOT = len(HARD_TYPES) / N_TYPES
 # P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
-P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
+P_HARD = HARD_SLOT ** 3
+POSE_P = [0.0] * len(PIECE_POOL)
+POSE_HARD = [False] * len(PIECE_POOL)
+for _t, _idxs in enumerate(PIECE_TYPES):
+    for _i in _idxs:
+        POSE_P[_i] = 1.0 / (N_TYPES * len(_idxs))
+        POSE_HARD[_i] = _t in HARD_TYPES
 
 
 def _placements(piece):
@@ -125,10 +133,32 @@ def _mixed_trays(rng):
     return [t for t in trays if any(PIECE_POOL[i].type_index not in HARD_TYPES for i in t)]
 
 
+def _strata_weights(dead):
+    q = sum(POSE_P[i] for i, d in enumerate(dead) if d)
+    a = sum(POSE_P[i] for i, d in enumerate(dead) if d and POSE_HARD[i])
+    weights = []
+    for k in range(4):
+        slot = math.comb(3, k) * q ** k * (1 - q) ** (3 - k)
+        hard = math.comb(3, k) * a ** k * (HARD_SLOT - a) ** (3 - k)
+        weights.append((slot - hard) / (1 - P_HARD))
+    return weights
+
+
 def tail_penalty(b, trays):
     if not trays:
         return 0.0
-    return TRAY_FAIL * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays)
+    dead = [not _fits(b, i) for i in range(len(PIECE_POOL))]
+    weights = _strata_weights(dead)
+    strata = [[], [], [], []]
+    for t in trays:
+        strata[sum(dead[i] for i in t)].append(t)
+    # Tacka z trzema martwymi klockami przegrywa bez sprawdzania: żaden nie stoi jako pierwszy.
+    est = weights[3]
+    for k in range(3):
+        sample = strata[k][:TAIL_ALLOC[k]]
+        if sample:
+            est += weights[k] * sum(1 for t in sample if not _tray_ok(b, t)) / len(sample)
+    return TRAY_FAIL * est
 
 
 def risk(b, triples):

@@ -1,4 +1,5 @@
 """Testy tacki w beam.py: wersja bitowa względem referencji na listach, ogon mieszanych tacek."""
+import itertools
 import os
 import random
 import sys
@@ -98,6 +99,22 @@ class TrayPlayableTest(unittest.TestCase):
 
     def test_tail_penalty_is_zero_on_empty_board(self):
         self.assertEqual(B.tail_penalty(0, B._mixed_trays(random.Random(4))), 0.0)
+
+    def test_tail_penalty_is_full_on_full_board(self):
+        self.assertAlmostEqual(B.tail_penalty(B.FULL, B._mixed_trays(random.Random(8))), B.TRAY_FAIL, places=6)
+
+    def test_strata_weights_match_exact_enumeration(self):
+        rng = random.Random(5)
+        b = B._to_bits(_settle([[int(rng.random() < 0.45) for _ in range(8)] for _ in range(8)]))
+        dead = [not B._fits(b, i) for i in range(len(PIECE_POOL))]
+        exact = [0.0] * 4
+        for i, j, k in itertools.product(range(len(PIECE_POOL)), repeat=3):
+            if B.POSE_HARD[i] and B.POSE_HARD[j] and B.POSE_HARD[k]:
+                continue
+            exact[dead[i] + dead[j] + dead[k]] += B.POSE_P[i] * B.POSE_P[j] * B.POSE_P[k]
+        total = sum(exact)
+        for got, want in zip(B._strata_weights(dead), exact):
+            self.assertAlmostEqual(got, want / total, places=10)
 
     def test_next_value_equals_unpruned_max(self):
         rng = random.Random(11)
