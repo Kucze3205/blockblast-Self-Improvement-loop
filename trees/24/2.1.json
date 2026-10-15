@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "26beb05a205530b54ce3a6a6fdfb4ad9dcf67d7f",
+ "stan": "ocena w toku",
+ "gist": "Przegląd następnej tacki: wybór ruchu z połową wagi na najgorszą próbkę",
+ "notatki": [
+  "Przegląd następnej tacki: wybór ruchu z połową wagi na najgorszą próbkę\n\nMechanizm:\n- _review(nxt) zastępuje średnią po próbkach następnej tacki mieszanką (1 - 0,5) * średnia + 0,5 * minimum. Nieumieszczalne próbki są nadal pomijane, a gdy żadna nie jest wykonalna, zostaje -TRAY_FAIL.\n- Koszt bez zmian: te same wywołania plan i ta sama liczba próbek (LOOK_TRAYS = 4).\n\nDowód z historii:\n- Baza 9/2.6 (b071de4) uśrednia przegląd. Średnia w przeglądzie była w 9/2.4 i 9/2.6. 23/2.1 ważyło próbki frakcją przeżycia, ale to inna waga, nie agregacja.\n- Szukanie w .historia (najgorsz, pesymist, ostrożn, kwantyl, minimum, odchylen, wariancj, mediana, percentyl) nie znalazło próby z agregacją przeglądu po minimum ani kwantylu. Wzmianki o wariancji dotyczą szacunku śmierci (8/1.8, 6/1.3), nie wyboru ruchu.\n\nDlaczego to nie powtórka:\n- Wagi próbek zostają równe. Zmienia się tylko agregacja przy wyborze spośród kandydatów, a śmierć nadal karzą risk i tail_penalty.\n- Ogon w przeglądzie (9/1.5, 9/2.5) nie wraca.\n- Test kontroluje, że przy jednej próbce wynik to ta próbka, a przy pustej liście to -TRAY_FAIL.\n\nRyzyko:\n- Współczynnik 0,5 nie jest strojony. Przy czterech próbkach minimum jest niestabilne.\n- Wybory mogą się zmienić tam, gdzie próbki mocno się rozjeżdżają. Wynik niezmierzony, ocenia ewaluator.\n- Sprawdzenie (nie ocena): 8/8 testów beam; smoke 450 ruchów w 3 partiach, 0 nielegalnych, 0 None, ok. 46 ms na ruch.\n\nCo dalej:\n- Zrobione: caf8e72 (korzeń), b071de4 (baza 9/2.6). Ten commit to nowy węzeł.\n- Następny krok: ocena tego węzła względem 9/2.6 na tym samym zbiorze. Jeśli wynik spadnie, sprawdzić REVIEW_MIN_W = 0,25 przed zmianą czegokolwiek innego.\n- Czego nie powtarzać: ważenia przeglądu frakcją przeżycia (23/2.1), ogona w przeglądzie (9/2.5, 9/1.5).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wnieś bazę 9/2.6 jako punkt wyjścia drzewa 24\n\nMechanizm: beam.py (wiązka po tacce na bitboardach, liść cheap, ryzyko trudnych tacek i nieułożalnej następnej, ogon z 64 mieszanych tacek, przegląd następnej tacki z 4 próbkami) oraz policies.build(weights) zwracające BeamPolicy. Wagi nie są używane.\n\nDowód z historii: korzeń caf8e72 nie ma build, więc ewaluator dostaje 0. Patch to najlepszy znany kod, 9/2.6 (d9e3f27): s_sym 0,99589 na zestawie f95629a69506e60c, 16 przegranych, 6,9 min. git apply --check czysty, tests/test_beam_tray.py 7/7 OK. Smoke: 3 partie po 200 ruchów, 0 nielegalnych, 45 ms na ruch na tej maszynie.\n\nDlaczego to nie powtórka: to baza, nie próba. Bez niej HEAD dostaje 0; nowy mechanizm dojdzie osobnym commitem.\n\nRyzyko: wynik niezmierzony, ocenia ewaluator. Drzewo 23 mierzyło na zestawie d025ff213c9b391c, a drzewo 22 na e7099a82ef5d0171, więc ich wyniki nie są bezpośrednio porównywalne z 0,996.\n\nCo dalej:\n- zrobione: caf8e72 (korzeń), ten commit (baza 9/2.6 z d9e3f27)\n- następny krok: jeden nowy mechanizm na bazie, osobny commit\n- czego nie powtarzać: większej wiązki (2/3.1, 15/2.5), ogona na 128 próbkach (9/2.7), ogona w przeglądzie następnej tacki (9/1.5, 9/2.5), premii za wolne 3x3 (2/2.2, 22/1.1, 8/1.7), refitu V (10/2.5)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 51,
+  "usd": 3.7347,
+  "minuty": 19.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T06:50:18Z",
+   "koniec": "2026-10-15T07:09:43Z",
+   "tury": 51,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
