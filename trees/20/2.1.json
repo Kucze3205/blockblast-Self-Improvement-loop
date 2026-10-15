@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "eeb3c77f6b9422a2818ca924900a089302136e15",
+ "stan": "ocena w toku",
+ "gist": "Przegląd następnej tacki: dolna połowa próbek zamiast średniej",
+ "notatki": [
+  "Przegląd następnej tacki: dolna połowa próbek zamiast średniej\n\nMechanizm: w BeamPolicy.act wartość finalisty to value plus średnia z dolnej połowy wykonalnych próbek następnej tacki (ceil(n/2) najgorszych), zamiast średniej ze wszystkich. Koszt bez zmian: te same wywołania _next_value, dochodzi tylko sortowanie kilku liczb.\n\nDowód z historii:\n- Baza 4e1030f (kod 9/2.6): s_sym 0,99589. To jedyna różnica między bazą a tym commitem.\n- Przeszukanie notatek drzew 1–19 po słowach najgorsz, kwantyl, CVaR, min, agregac nie znalazło tej agregacji.\n- Smoke: 900 ruchów, 0 nielegalnych, 0 wyjątków, 35 ms na ruch (baza 34 ms na tej samej maszynie). Testy beam 7/7.\n\nDlaczego to nie powtórka: 9/2.5 i 9/1.5 zmieniały karę za śmierć po następnej tacce, a 9/2.6 usuwa podwójne liczenie tej kary. Tutaj nie zmienia się żadna kara ani liczba próbek, tylko funkcja agregująca przegląd. Cel to przeżycie, więc finalista ma być odporny na to, która tacka przyjdzie, a nie tylko dobry w średniej.\n\nRyzyko: przy LOOK_TRAYS = 4 dolna połowa to dwie próbki, więc estymat jest bardziej zaszumiony niż średnia, a ranking trzech finalistów może zmienić się przypadkowo. Wynik niezmierzony.\n\nCo dalej:\n- zrobione: ten commit.\n- następny krok: ocena względem 4e1030f (0,99589). Jeśli spadnie, przywrócić średnią (dwie linie z najlepszy.patch). Jeśli się utrzyma, sprawdzić LOOK_TRAYS = 8 z dolną połową.\n- czego nie powtarzać: samej zmiany kary za śmierć po następnej tacce (9/2.5, 9/1.5).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Baza: kod 9/2.6 jako punkt startowy drzewa 20\n\nMechanizm: bez zmiany. Nakładam najlepszy.patch na korzeń: beam.py (planer tacki na bitboardach, ryzyko trudnych tacek, ogon mieszanych tacek, przegląd następnej tacki), policies.build zwracające BeamPolicy, tests/test_beam_tray.py.\n\nDowód z historii:\n- 9/2.6 (d9e3f27): s_sym 0,99589, 16 przegranych, 6,9 min, najlepszy wynik indeksu (.historia/9/2.6.json).\n- Testy beam 7/7. Smoke: 3 partie po 300 ruchów, 900 ruchów, 0 nielegalnych, 0 wyjątków, 34 ms na ruch na tej maszynie.\n\nDlaczego to nie powtórka: to punkt startowy, nie próba. Nowa próba będzie w następnym commicie.\n\nRyzyko: wynik niezmierzony w tym drzewie. Katalog .github jest niedostępny w checkoucie, więc limit czasu znam tylko z notatek indeksu (8,9 min przechodzi, 12,1 min za wolna).\n\nCo dalej:\n- zrobione: ten commit.\n- następny krok: agregacja przeglądu następnej tacki po dolnej połowie próbek zamiast średniej (osobny commit).\n- czego nie powtarzać: samego zwiększania próbek ogona (9/2.7, 0,991).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 37,
+  "usd": 1.9402,
+  "minuty": 9.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T00:20:44Z",
+   "koniec": "2026-10-15T00:29:46Z",
+   "tury": 37,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
