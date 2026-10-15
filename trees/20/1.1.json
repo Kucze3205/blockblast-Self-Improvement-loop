@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "62a1af9107da820580739feb085c9dfbbbf7bf37",
+ "stan": "ocena w toku",
+ "gist": "Dodaj składnik kieszeni do klucza liścia w finałach i przeglądzie",
+ "notatki": [
+  "Dodaj składnik kieszeni do klucza liścia w finałach i przeglądzie\n\nMechanizm: _pockets liczy spójne puste obszary (4-sąsiedztwo) o rozmiarze 2-4 pól,\na leaf = cheap - 1,5 * kieszenie. Klucz liścia służy do rankingu finałów (cut i\nwartość), do częściowej tacki i do przeglądu następnej tacki (top-2). Wiązka po\ntacce nadal przycina po cheap, bez zmian.\n\nDowód z historii: 11/1.2 (drzewo 11): w trzech wczesnych przegranych grach (ziarna\n11, 15, 37) plansza miała 29-43 puste pola rozdrobnione na kieszenie, a izolowane\npola wynosiły 0 we wszystkich trzech. Kara za izolowane tego nie widzi. 11/1.3 zapisał\nten składnik jako następny krok, ale gałąź 1.x urwała się na 1.3 (0,525). W bazie\n9/2.6 nie ma żadnego składnika spójnych obszarów, jest tylko iso dla pól rozmiaru 1.\n\nDlaczego to nie powtórka: nie zmienia wag istniejących składników ani agregacji\nprzeglądu (kar za śmierć w przeglądzie nie ruszam, patrz 9/1.5, 9/2.5). Dotyczy\ngeometrii pustych pól, której drzewa 9 i 11 nie mierzyły.\n\nRyzyko:\n- Waga 1,5 i zakres 2-4 pól nie są strojone ani mierzone; dobrane rzędem wielkości\n  cheap (pole brzegowe 2,0, izolowane 0,75).\n- Kieszenie 5 pól bez kary; część tacek z klockami 4-5 pól może być martwa mimo to.\n- Częściowe podwójne liczenie z inner (przejścia).\n- Testy beam 10/10, w tym porównanie _pockets z listową referencją na 200 planszach.\n  Smoke seedy 1-4, 200 ruchów, 0 nielegalnych ruchów, 30,9 ms na ruch (baza 29,3).\n- Wynik niezmierzony, ocenia ewaluator.\n\nCo dalej:\nZrobione: ten commit (kieszenie w liściu), na bazie 91340ff (baza 9/2.6).\nNastępny krok: ocena tego węzła względem 9/2.6 (0,99589). Jeśli spadnie, sprawdzić,\nktóre przegrane gry się zmieniły, zanim ruszę POCKET_W albo POCKET_MAX.\nCzego nie powtarzać: kar za śmierć w przeglądzie następnej tacki (9/1.5, 9/2.5, 0,9918).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wnieś bazę 9/2.6 jako punkt wyjścia węzła 20/1\n\nMechanizm: beam.py (wiązka po tacce na bitboardach, liść cheap, ryzyko tacki\ntwardej, ogon z 64 mieszanych tacek, przegląd następnej tacki z 4 próbkami)\noraz policies.build(weights) zwracające BeamPolicy. Wagi nie są używane.\n\nDowód z historii: 9/2.6 (d9e3f27), s_sym 0,99589, 16 przegranych, za_wolna=false.\nTo ten sam kod, z którego wyrosło drzewo 9, bez zmian w mechanizmie.\n\nDlaczego to nie powtórka: to punkt wyjścia, nie nowa próba. Kolejny węzeł\ndodaje nowy składnik.\n\nRyzyko: wynik niezmierzony, ocenia ewaluator. Testy beam 7/7. Smoke seedy 1-4,\n200 ruchów, 0 nielegalnych ruchów, ok. 29 ms na ruch. tests/test_engine.py\ni test_agent.py nie zbierają się z powodu braku tkinter (błąd środowiska).\n\nCo dalej:\nZrobione: ten commit (baza 9/2.6 na gałęzi trees/20/1).\nNastępny krok: składnik kieszeni (spójne puste obszary 2-4 pól) w kluczu liścia\nfinałów i w przeglądzie następnej tacki.\nCzego nie powtarzać: ogona w przeglądzie następnej tacki (9/1.5, 9/2.5, 0,9918).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 63,
+  "usd": 3.0408,
+  "minuty": 13.7
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T00:20:42Z",
+   "koniec": "2026-10-15T00:34:23Z",
+   "tury": 63,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
