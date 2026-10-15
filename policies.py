@@ -7,6 +7,7 @@ co polityka umie, a nie jak wypada w trakcie nauki (#8).
 import random
 
 from board import Board
+from beam import BeamPolicy
 from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 
@@ -74,3 +75,8 @@ def _immediate_gain(game, action):
         if not any(any(row) for row in board.grid):
             gain += FULL_CLEAR_BONUS
     return gain
+
+
+def build(weights):
+    # Polityka heurystyczna nie czyta wag; parametr zostaje, bo tak woła ocena.
+    return BeamPolicy()
