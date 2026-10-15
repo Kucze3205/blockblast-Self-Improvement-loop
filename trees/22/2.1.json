@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "3e625a093489180a1ecda0e4ac0e7a94e7b13f33",
+ "stan": "ocena w toku",
+ "gist": "Ogon tacki warstwowo po martwych slotach z dokładnymi wagami",
+ "notatki": [
+  "Ogon tacki warstwowo po martwych slotach z dokładnymi wagami\n\nMechanizm: tail_penalty dzieli 256 mieszanych tacek (MIX_TRAYS) na warstwy po liczbie martwych slotów na planszy (slot martwy: żadna poza klocka nie mieści się na planszy). Wagi warstw są dokładne dla rozkładu z _sample_tray (typ jednostajnie, potem poza jednostajnie w typie) i pomijają tacki wszystko-trudne, bo te liczy risk. Z warstw 0, 1 i 2 bierze się 8, 24 i 24 tacki i ocenia _tray_ok. Warstwa 3 ma wagę bez próbkowania: tacka z trzema martwymi klockami zawsze przegrywa, bo żaden nie stoi jako pierwszy.\n\nDowód z historii: w drzewie 9 ogon na 128 jednostajnych tackach (9/2.7) dał 0.991 wobec 0.996 bazy 9/2.6, więc sama liczba próbek nie pomaga. Ważenie próbek ku dużym klockom (19/1.1) dało 0.989, a stratyfikacja po trudnych klockach (8/1.8) 0.990. Przy małym odsetku porażek na tackę (szacunek z analizy, nie pomiar) jednostajne 64 próbki zwykle dają zero i nie niosą sygnału.\n\nNie powtórka: zmienia się alokacja i wagi, a nie liczba próbek. Najbliższy pomysł to stratyfikacja dead_prob z 18/2.2, zapisana w drzewie 18 jako następny krok bez wykonanego węzła. Tam celem jest śmierć natychmiastowa w risk, tu ogon pełnej tacki w tail_penalty.\n\nRyzyko: wagi są dokładne względem modelu generatora z _sample_tray; test porównuje je z wyliczeniem wszystkich trójek poz. Pusta warstwa z kilkoma próbkami daje wkład zero, czyli niedoszacowanie; przy puli 256 jest to rzadkie. Czas act na tych samych stanach (3 partie po 60 ruchów) wynosi 1,008 razy wersję poprzednią, czyli koszt w granicy 10 %. To pomiar kosztu, nie wyniku; wynik mierzy ewaluator.\n\nCo dalej:\n- Zrobione: cba07bb (baza 9/2.6 przywrócona, daje wynik zamiast 0); ten commit (warstwowy ogon).\n- Następny krok: po ocenie tego commita, jeśli wynik jest poniżej bazy, sprawdzić, ile tacek trafia do każdej warstwy na zmierzonych stanach, zanim zmieni się alokację.\n- Czego nie powtarzać: zwiększania MIX_TRAYS bez warstw (9/2.7), ważenia ogona po rozmiarze klocka (19/1.1), stratyfikacji po liczbie trudnych klocków (8/1.8).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wnieś bazę 9/2.6 jako punkt wyjścia drzewa 22\n\nMechanizm: beam.py (wiązka po tacce na bitboardach, liść cheap, ryzyko tacki\ntwardej i nieułożalnej następnej, ogon z 64 mieszanych tacek, przegląd następnej\ntacki z 4 próbkami) oraz policies.build(weights) zwracające BeamPolicy. Wagi nie\nsą używane. Korzeń caf8e72 nie ma build, więc ewaluator bez tego commita dostaje 0.\n\nDowód z historii: 9/2.6 (d9e3f27), s_sym 0,99589, 16 przegranych, za_wolna=false,\nczas 6,9 min. To ten sam kod co .historia/najlepszy.patch (git apply czysty);\ndrzewo 21 wniosło tę samą bazę jako 8bb217f.\n\nDlaczego to nie powtórka: to baza, nie próba. Bez niej HEAD dostaje 0, a mechanizm\ndojdzie osobnym commitem.\n\nRyzyko: wynik niezmierzony, ocenia ewaluator. tests/test_beam_tray.py 7/7 zielone,\nsmoke 3 partie po 60 ruchów bez wyjątku i nielegalnego ruchu.\n\nCo dalej:\nZrobione: ten commit (baza 9/2.6 na trees/22/2).\nNastępny krok: jeden nowy mechanizm na bazie, koszt obliczeń nie większy niż ~10%\n(9/2.7 przy 8,3 min przeszło, 10,8 min już za wolna).\nCzego nie powtarzać: ogona w przeglądzie następnej tacki (9/1.5, 9/2.5, 0,9918),\nskładnika kieszeni w liściu (20/1.1, 0,9903), licznika śmierci na świeżej tacce\n(21/1.1, 0,9898).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 77,
+  "usd": 5.5764,
+  "minuty": 24.1
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T03:36:23Z",
+   "koniec": "2026-10-15T04:00:27Z",
+   "tury": 77,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
