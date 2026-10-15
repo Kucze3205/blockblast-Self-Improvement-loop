@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "b4310f282a0d18999cfae1eac774f56ecabc7cb1",
+ "stan": "ocena w toku",
+ "gist": "Wnieś bazę 9/2.6 jako punkt wyjścia drzewa 24",
+ "notatki": [
+  "Wnieś bazę 9/2.6 jako punkt wyjścia drzewa 24\n\nMechanizm: beam.py (wiązka po tacce na bitboardach, liść cheap, ryzyko tacki trudnej i nieułożalnej następnej, ogon z 64 mieszanych tacek, przegląd następnej tacki z 4 próbkami) oraz policies.build(weights) zwracające BeamPolicy. Wagi nie są używane.\n\nDowód z historii: korzeń caf8e72 nie ma policies.build, więc ewaluator dostaje 0. Najlepszy patch (9/2.6, s_sym 0,99589 na zestawie f95629a69506e60c, 16 przegranych, 6,9 min) nakłada się czysto. tests/test_beam_tray.py: 7/7 zielone. Smoke: 3 partie po 200 ruchów, 600 ruchów, 0 nielegalnych, około 53 ms na ruch.\n\nDlaczego to nie powtórka: to baza, nie próba. Bez niej HEAD dostaje 0. Ten sam wzorzec co w drzewie 23: commit bazowy, a potem osobna zmiana.\n\nRyzyko: wynik niezmierzony, ocenia ewaluator. Porównanie z 9/2.6 będzie czyste dopiero na tym samym zestawie ziaren.\n\nCo dalej:\n- zrobione: ten commit (baza 9/2.6)\n- następny krok: jeden nowy mechanizm na bazie, osobny commit\n- czego nie powtarzać: większej wiązki (2/3.1, 15/2.5), ogona na 128 próbkach (9/2.7), refitu V (10/2.5), ogona w przeglądzie następnej tacki (9/1.5, 9/2.5)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 49,
+  "usd": 3.3633,
+  "minuty": 16.9
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T06:50:20Z",
+   "koniec": "2026-10-15T07:07:11Z",
+   "tury": 49,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
