@@ -27,6 +27,11 @@ TRAY_FAIL = 400.0
 MIX_TRAYS = 64
 # P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
 P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
+# Puste proste odcinki długości 4 i 5 (poziome i pionowe) dla belek, czyli typów trudnych
+BAR_LEN = (4, 5)
+BAR_W = 0.25
+BAR_COLS = {k: sum(1 << (c + 8 * r) for r in range(8) for c in range(9 - k)) for k in BAR_LEN}
+BAR_ROWS = {k: (1 << (8 * (9 - k))) - 1 for k in BAR_LEN}
 
 
 def _placements(piece):
@@ -78,6 +83,19 @@ def cheap(b, lines):
     border = _pc(e & BORDER)
     inner = _pc((b ^ (b >> 1)) & NOT_COL7) + _pc((b ^ (b >> 8)) & NOT_ROW7)
     return -1.4 * _pc(b) - 0.75 * iso - 1.5 * inner - 2.0 * border + 4.2 * lines
+
+
+def corridors(b):
+    e = FULL & ~b
+    total = 0
+    for k in BAR_LEN:
+        h = e & BAR_COLS[k]
+        v = e & BAR_ROWS[k]
+        for j in range(1, k):
+            h &= e >> j
+            v &= e >> (8 * j)
+        total += _pc(h) + _pc(v)
+    return total
 
 
 def _fits(b, i):
@@ -210,7 +228,7 @@ class BeamPolicy:
         for score, (b, _used, _lines, first) in scored:
             if score < cut:
                 break
-            value = score - risk(b, triples) - tail_penalty(b, mixed)
+            value = score - risk(b, triples) - tail_penalty(b, mixed) + BAR_W * corridors(b)
             if first not in best_by_move or value > best_by_move[first][0]:
                 best_by_move[first] = (value, b)
 
@@ -229,4 +247,4 @@ class BeamPolicy:
         states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)
         if not states:
             return None
-        return max(cheap(s[0], s[2]) - risk(s[0], triples) for s in states[:2])
+        return max(cheap(s[0], s[2]) - risk(s[0], triples) + BAR_W * corridors(s[0]) for s in states[:2])

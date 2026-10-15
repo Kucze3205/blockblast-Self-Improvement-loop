@@ -75,6 +75,16 @@ def _reference_ok(grid, tray):
     return dfs(grid, (1 << len(tray)) - 1)
 
 
+def _corridors_ref(grid):
+    total = 0
+    for k in (4, 5):
+        for y in range(N):
+            total += sum(all(not grid[y][x + d] for d in range(k)) for x in range(N - k + 1))
+        for x in range(N):
+            total += sum(all(not grid[y + d][x] for d in range(k)) for y in range(N - k + 1))
+    return total
+
+
 class TrayPlayableTest(unittest.TestCase):
     def test_matches_list_reference_on_random_boards(self):
         rng = random.Random(7)
@@ -110,8 +120,22 @@ class TrayPlayableTest(unittest.TestCase):
             states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
             expected = None
             if states:
-                expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
+                expected = max(
+                    B.cheap(s[0], s[2]) - B.risk(s[0], triples) + B.BAR_W * B.corridors(s[0])
+                    for s in states[:2]
+                )
             self.assertEqual(policy._next_value(b, triples, poses), expected)
+
+    def test_corridors_match_list_reference_on_random_boards(self):
+        rng = random.Random(5)
+        for _ in range(150):
+            density = rng.uniform(0.0, 0.7)
+            grid = _settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)])
+            self.assertEqual(B.corridors(B._to_bits(grid)), _corridors_ref(grid))
+
+    def test_corridor_counts_on_empty_and_full_board(self):
+        self.assertEqual(B.corridors(0), 144)
+        self.assertEqual(B.corridors(B.FULL), 0)
 
     def test_policy_plays_legal_moves(self):
         game = Game(1)
