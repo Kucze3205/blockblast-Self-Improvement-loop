@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "15496b134f022d7eeca4beab7fa705a6cff15153",
+ "stan": "ocena w toku",
+ "gist": "Licz ruchy z kształtu klocka, nie z indeksu poz: most podaje klocki bez indeksu",
+ "notatki": [
+  "Licz ruchy z kształtu klocka, nie z indeksu poz: most podaje klocki bez indeksu\n\nact czytał p.index z klocków gry, a bridge.py tworzy klocki Piece(shape, ..., -1)\nz index=None. Ścieżka emulatora z tą polityką padłaby na PLACEMENTS[None].\nRuchy aktualnej tacki liczone są teraz z kształtu (_placements); PLACEMENTS\nzostaje dla próbkowanych tacek z generatora, które mają indeksy poz.\n\nMechanizm bez zmian: ta sama wiązka i te same ruchy dla klocków gry. Test\n_placements(p) == PLACEMENTS[p.index] pilnuje tego dla całej puli.\n\nDowód z historii: brak, to poprawka błędu znalezionego przy czytaniu\nbridge.py, nie próba poprawy wyniku. Nie jest powtórką, bo 9/2.6 jej nie miał.\n\nRyzyko: kształt spoza 41 poz działa (liczony z kształtu), ale to, czy odczyt\nekranu czyta klocki poprawnie, ocenia dopiero etap emulatora. Nic tu nie\nmierzono. Testy beam 9/9 OK.\n\nCo dalej: zrobione: 23a3924 (baza), ten commit (most). Następny: jeden nowy\nmechanizm, sprawdzony pod kątem historii przed implementacją.\nCzego nie powtarzać: zmiany mapowania bez testu zgodności z PIECE_POOL.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Przenieś węzeł 9/2.6 jako bazę: wiązka po tacce z ryzykiem i ogonem\n\nMechanizm (beam.py bez zmian względem najlepszy.patch): wiązka po kolejnościach\nułożenia tacki (BEAM=120, cap 160) na bitboardach; liść oceniany przez cheap()\nminus risk() (trudne tacki z wagami) minus tail_penalty() (mieszane tacki);\ndla 3 kandydatów przegląd następnej tacki na tej samej próbce tacek.\n\nDowód z historii: węzeł 9/2.6, s_sym 0.99589, 16 przegranych; ten sam kod\nzreprodukowany w 24/1.1 (0.996). Liczby z zapisów tych drzew, nie z tego.\n\nDlaczego to nie nowa próba: to baza bez zmian mechanizmu. Bez niej root\ndaje wynik 0, bo policies.py nie ma build(). Nowy mechanizm pójdzie osobnym\ncommitem.\n\nRyzyko: act czyta p.index, a bridge.py podaje klocki z index=None, więc most\nby padł. Naprawa w następnym commicie. Nic tu nie mierzono. Testy beam 7/7 OK;\ntest_engine 16/17, jedyny błąd (brak tkinter, import turtle w model.py) jest\nsprzed zmiany.\n\nCo dalej: zrobione: ten commit. Następny: mapowanie klocków z mostu po\nkształcie zamiast po index. Potem jeden nowy mechanizm.\nCzego nie powtarzać: portu bez zmian jako końcowego wyniku.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 98,
+  "usd": 7.0014,
+  "minuty": 38.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T10:30:40Z",
+   "koniec": "2026-10-15T11:09:05Z",
+   "tury": 98,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
