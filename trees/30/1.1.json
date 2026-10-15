@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "0e8ffc21a4fdd7f5cba7c73aa7eebdafc9d40df8",
+ "stan": "ocena w toku",
+ "gist": "Deduplikuj finały wiązki po symetrii planszy",
+ "notatki": [
+  "Deduplikuj finały wiązki po symetrii planszy\n\nMechanizm: finały (FINAL_K) wybierane są po cheap z wiązki. Cheap, ryzyko i ogon są niezmiennicze na osiem symetrii planszy (obroty i odbicia), a każdy typ klocka jest domknięty względem tych symetrii (sprawdzone), więc odbicie planszy ma tę samą wartość w oczekiwaniu. Finały dostają teraz jednego przedstawiciela klasy symetrii (_sym_key) zamiast lustrzanych kopii zajmujących miejsca. Przekształcenia _flip_h, _flip_v, _transpose mają testy.\n\nDowód z historii: w INDEKS deduplikacja jest tylko po dokładnej planszy (6/4.3, 6/2.4, 18/2.5). Symetrii nie próbowano. Pomiar diagnostyczny, nie wynik: w top-8 po cheap średnio 0,07 duplikatu na ruch; w pełnej wiązce 1,0% stanów (264 z 25479, 300 ruchów z 2 partii). Czas ruchu bez zmian: 57,29 vs 57,58 ms (3 partie, ta sama maszyna).\n\nDlaczego to nie powtórka: nowa klasa deduplikacji (symetria), a nie równość dokładnej planszy.\n\nRyzyko: efekt prawdopodobnie znikomy, bo duplikatów jest mało. Próbki tacek losowane są na ruch, więc lustrzane kopie dostają nieidentyczne oszacowania ryzyka. Wynik niezmierzony; testy tests/test_beam_tray.py przechodzą (9/9).\n\nCo dalej:\nZrobione: symetryczna deduplikacja finałów i testy w tym commicie, baza ef10ebc.\nNastępny krok: nie dokładać drobnych zmian w deduplikacji. Większy mechanizm (np. głębsze przeszukanie tylko przy ciasnej planszy) wymaga decyzji i osobnego węzła.\nCzego nie powtarzać: deduplikacji tylko po dokładnej planszy (6/4.3, 18/2.5), bo symetria ją obejmuje.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wnieś bazę 9/2.6 jako punkt wyjścia drzewa 30\n\nMechanizm: bez zmian w logice. Dodaje beam.py (planer tacki na bitboardach, ryzyko trudnych tacek, ogon mieszanych tacek, przegląd następnej tacki), policies.build(weights) zwracające BeamPolicy oraz tests/test_beam_tray.py. Kod to najlepszy patch z .historia/najlepszy.patch (węzeł 9/2.6, s_sym 0,99589, 16 przegranych).\n\nDowód z historii: 9/2.6 to najlepszy węzeł wszystkich drzew. Korzeń tego drzewa nie ma build(), więc bez tej bazy ocenia się na 0. Drzewo 24 zaczęło tak samo (24/1.1).\n\nDlaczego to nie powtórka: to baza, nie próba. Próba to osobny commit tego drzewa z nowym mechanizmem.\n\nRyzyko: brak nowej logiki, więc wynik spodziewany jak 9/2.6 w granicach szumu. Wyniku nie mierzono; testy tests/test_beam_tray.py przechodzą (7/7).\n\nCo dalej:\nZrobione: nałożenie najlepszego patcha na korzeń caf8e72 (ten commit), testy 7/7.\nNastępny krok: zmierzyć czas ruchu na kilku partiach (kontrola limitu czasu, nie wynik), potem wybrać mechanizm i zrobić osobny commit.\nCzego nie powtarzać: przeglądu następnej tacki z ogonem (9/1.5, 9/2.5, 0,9918) i pominięcia nieumieszczalnych próbek, które już jest w 9/2.6.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 57,
+  "usd": 3.8913,
+  "minuty": 18.6
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T21:20:45Z",
+   "koniec": "2026-10-15T21:39:22Z",
+   "tury": 57,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
