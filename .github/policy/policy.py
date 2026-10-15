@@ -40,7 +40,10 @@ def solve(question):
     global_best = max(o["s_v"] for o in obs)
     if global_best >= CEILING:
         return []
-    remaining = max(0, question.max_rounds - question.round - 1)
+    remaining = question.max_rounds - question.round - 1
+    # w ostatniej rundzie koszt czasu jest pewny, a poprawa rekordu rzadko go zwraca
+    if remaining <= 0:
+        return []
     gap = GAP + GAP_PER_ROUND * remaining
     packet = []
     for nodes in chains.values():
@@ -48,9 +51,6 @@ def solve(question):
         if tip not in legal:
             continue
         record = max(o["s_v"] for o in nodes)
-        # ostatnia runda: liczy się tylko czubek będący rekordem łańcucha
-        if remaining == 0 and nodes[-1]["s_v"] < record:
-            continue
         if len(nodes) >= SHALLOW:
             # łańcuch blisko najlepszego wyniku daje darmowe losowania przy szczycie
             # (paczka kosztuje tyle co najdłuższy węzeł), więc zatrzymany nie jest zamykany
@@ -60,6 +60,6 @@ def solve(question):
                 continue
         packet.append(tip)
     # pusta paczka nie kończy drzewa, dopóki zostają nieotwarte korzenie i rekord jest niski
-    if not packet and can_open and remaining > 0 and global_best < OPEN_BELOW:
+    if not packet and can_open and global_best < OPEN_BELOW:
         return [None] * OPEN_ROOTS
     return packet
