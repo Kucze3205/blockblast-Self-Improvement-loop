@@ -3,13 +3,15 @@ import os
 import random
 import sys
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import beam as B
 import policies
+from board import Board
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, Piece
 
 N = 8
 
@@ -126,6 +128,16 @@ class TrayPlayableTest(unittest.TestCase):
             game.step(move)
             if game.done:
                 break
+
+    def test_policy_accepts_pieces_built_outside_the_pool(self):
+        board = Board()
+        pieces = [Piece([[1, 1, 1]], "slot0", -1), None, Piece([[1]], "slot2", -1)]
+        moves = [(i, x, y) for i, p in enumerate(pieces) if p is not None
+                 for y in range(N) for x in range(N) if board.can_place_piece(p, x, y)]
+        game = SimpleNamespace(board=board, pieces=pieces, combo=0)
+        policy = policies.build(None)
+        policy.reset(0)
+        self.assertIn(policy.act(game, moves), moves)
 
 
 if __name__ == "__main__":
