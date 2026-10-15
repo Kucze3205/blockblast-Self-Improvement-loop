@@ -208,18 +208,18 @@ class BeamPolicy:
         scored = sorted(((cheap(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
         k = FINAL_K_TIGHT if 64 - _pc(base) <= TIGHT_FREE else FINAL_K
         cut = scored[min(k, len(scored)) - 1][0]
-        best_by_move = {}
+        best_by_board = {}
         for score, (b, _used, _lines, first) in scored:
             if score < cut:
                 break
             value = score - risk(b, triples) - tail_penalty(b, mixed)
-            if first not in best_by_move or value > best_by_move[first][0]:
-                best_by_move[first] = (value, b)
+            if b not in best_by_board or value > best_by_board[b][0]:
+                best_by_board[b] = (value, first)
 
-        contenders = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
+        contenders = sorted(best_by_board.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
         best_move, best_total = None, None
         trays = [_sample_tray(self.rng) for _ in range(LOOK_TRAYS)]
-        for first, (value, b) in contenders:
+        for b, (value, first) in contenders:
             # śmierć na następnej tacce karze już risk i tail_penalty, więc tu liczymy tylko wykonalne
             nxt = [v for v in (self._next_value(b, triples, poses) for poses in trays) if v is not None]
             total = value + (sum(nxt) / len(nxt) if nxt else -TRAY_FAIL)
