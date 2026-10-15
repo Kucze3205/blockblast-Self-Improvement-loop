@@ -52,6 +52,34 @@ def _settle(grid):
     return _place(grid, [[0]], 0, 0)[0]
 
 
+def _board_with_empties(empties):
+    grid = [[1] * N for _ in range(N)]
+    for r, c in empties:
+        grid[r][c] = 0
+    return B._to_bits(grid)
+
+
+def _reference_pockets(grid):
+    seen = set()
+    count = 0
+    for r0 in range(N):
+        for c0 in range(N):
+            if grid[r0][c0] or (r0, c0) in seen:
+                continue
+            seen.add((r0, c0))
+            stack, size = [(r0, c0)], 0
+            while stack:
+                r, c = stack.pop()
+                size += 1
+                for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+                    if 0 <= nr < N and 0 <= nc < N and not grid[nr][nc] and (nr, nc) not in seen:
+                        seen.add((nr, nc))
+                        stack.append((nr, nc))
+            if 2 <= size <= B.POCKET_MAX:
+                count += 1
+    return count
+
+
 def _reference_ok(grid, tray):
     seen = set()
 
@@ -110,7 +138,7 @@ class TrayPlayableTest(unittest.TestCase):
             states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
             expected = None
             if states:
-                expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
+                expected = max(B.leaf(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
             self.assertEqual(policy._next_value(b, triples, poses), expected)
 
     def test_policy_plays_legal_moves(self):
@@ -126,6 +154,26 @@ class TrayPlayableTest(unittest.TestCase):
             game.step(move)
             if game.done:
                 break
+
+
+class PocketTest(unittest.TestCase):
+    def test_counts_only_pockets_of_two_to_four_cells(self):
+        self.assertEqual(B._pockets(0), 0)
+        self.assertEqual(B._pockets(_board_with_empties([(3, 3)])), 0)
+        self.assertEqual(B._pockets(_board_with_empties([(3, 2), (3, 3)])), 1)
+        self.assertEqual(B._pockets(_board_with_empties([(2, c) for c in range(2, 7)])), 0)
+        self.assertEqual(B._pockets(_board_with_empties([(0, 0), (0, 1), (5, 5), (5, 6), (6, 5), (6, 6)])), 2)
+
+    def test_matches_list_flood_fill_on_random_boards(self):
+        rng = random.Random(5)
+        for _ in range(200):
+            density = rng.uniform(0.2, 0.8)
+            grid = [[int(rng.random() < density) for _ in range(N)] for _ in range(N)]
+            self.assertEqual(B._pockets(B._to_bits(grid)), _reference_pockets(grid))
+
+    def test_diagonal_and_wrapped_cells_are_not_connected(self):
+        self.assertEqual(B._pockets(_board_with_empties([(0, 0), (1, 1)])), 0)
+        self.assertEqual(B._pockets(_board_with_empties([(0, 7), (1, 0)])), 0)
 
 
 if __name__ == "__main__":

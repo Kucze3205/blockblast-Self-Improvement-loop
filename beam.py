@@ -27,6 +27,9 @@ TRAY_FAIL = 400.0
 MIX_TRAYS = 64
 # P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
 P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
+# iso obejmuje tylko kieszenie rozmiaru 1; większe kieszenie liczy _pockets
+POCKET_MAX = 4
+POCKET_W = 1.5
 
 
 def _placements(piece):
@@ -78,6 +81,26 @@ def cheap(b, lines):
     border = _pc(e & BORDER)
     inner = _pc((b ^ (b >> 1)) & NOT_COL7) + _pc((b ^ (b >> 8)) & NOT_ROW7)
     return -1.4 * _pc(b) - 0.75 * iso - 1.5 * inner - 2.0 * border + 4.2 * lines
+
+
+def _pockets(b):
+    e = FULL & ~b
+    small = 0
+    while e:
+        comp = e & -e
+        while True:
+            grow = (comp | (comp << 8) | (comp >> 8) | ((comp << 1) & NOT_COL0) | ((comp >> 1) & NOT_COL7)) & e
+            if grow == comp:
+                break
+            comp = grow
+        if 2 <= _pc(comp) <= POCKET_MAX:
+            small += 1
+        e &= ~comp
+    return small
+
+
+def leaf(b, lines):
+    return cheap(b, lines) - POCKET_W * _pockets(b)
 
 
 def _fits(b, i):
@@ -199,11 +222,11 @@ class BeamPolicy:
         base = _to_bits(game.board.grid)
         finals = plan(base, slots, BEAM, BEAM_CAP, partial=True)
         if _pc(finals[0][1]) < len(slots):
-            return max(finals, key=lambda s: cheap(s[0], s[2]))[3]
+            return max(finals, key=lambda s: leaf(s[0], s[2]))[3]
 
         triples = _hard_triples(self.rng)
         mixed = _mixed_trays(self.rng)
-        scored = sorted(((cheap(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
+        scored = sorted(((leaf(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
         k = FINAL_K_TIGHT if 64 - _pc(base) <= TIGHT_FREE else FINAL_K
         cut = scored[min(k, len(scored)) - 1][0]
         best_by_move = {}
@@ -229,4 +252,4 @@ class BeamPolicy:
         states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)
         if not states:
             return None
-        return max(cheap(s[0], s[2]) - risk(s[0], triples) for s in states[:2])
+        return max(leaf(s[0], s[2]) - risk(s[0], triples) for s in states[:2])
