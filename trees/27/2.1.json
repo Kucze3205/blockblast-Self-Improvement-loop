@@ -2,16 +2,28 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "73bbde93c0afcf1976b36f9eaaa51f19ad0fd3b4",
+ "stan": "zaparkowany",
+ "gist": "Napraw most: ruchy liczone z kształtu klocka, nie z p.index",
+ "notatki": [
+  "Napraw most: ruchy liczone z kształtu klocka, nie z p.index\n\nact() i plan() brały ruchy z PLACEMENTS[p.index]. Klocki z mostu\n(bridge.py: Piece(..., -1)) mają index=None, więc ruch na ścieżce\nemulatora kończył się TypeError. Teraz act() liczy _placements(p) z kształtu,\na _next_value() podaje PLACEMENTS dla losowanych tacek.\n\nDowód: test z klockami mostu padał na beam.py:166 (PLACEMENTS[None]) przed\nzmianą. Węzeł 26/1.1 (.historia/26/1.1.json) opisał ten sam błąd i zaplanował\ntę samą naprawę. Nie mierzono w ocenie.\n\nDlaczego to nie powtórka: nie zmienia wyboru ruchów. Partie z seedami 101-103\ndają identyczne sekwencje ruchów przed i po zmianie. Test sprawdza, że\n_placements z kształtu daje te same ruchy co PLACEMENTS z indeksu.\n\nRyzyko: nie wiadomo, czy ocena emulatora woła tę ścieżkę; bridge.main() używa\nGreedyPolicy. Koszt: _placements na każdy act() dla najwyżej 3 klocków.\n\nCo dalej: zrobione: naprawa mostu (ten commit, po 3c2f136). Następnie:\nnowy mechanizm, nie kieszenie spójne 2-4 pól (węzeł 20/1.1, 0.990).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Przywróć węzeł 9/2.6: beam search z build() dla oceny\n\nMechanizm: BeamPolicy z beam.py. Wiązka 120 stanów (cap 160) na tacce.\nOcena liścia cheap(): zajęte pola, izolowane puste pola, przejścia\npełne/puste, puste pola przy brzegu, czyszczone linie. risk(): udziały\ntypów, martwe typy, twarde trójki. tail_penalty(): dokładne _tray_ok()\nna losowych mieszanych tackach (64 próbki). Przegląd 4 losowanych\nnastępnych tacek dla 3 najlepszych ruchów.\n\nDowód z historii: węzeł 9/2.6 ma s_sym 0.995887 na kluczu seedów\nf95629a69506e60c, 16 przegranych, czas symulacji 6,9 min. Węzeł 24/1.1\nwniósł tę bazę i dał 0.995503 na kluczu 15824ebbf74c69a8. Różnica\n~0,005 przy tym samym kodzie wygląda na szum zestawu seedów.\n\nDlaczego to nie powtórka: przywraca zmierzony węzeł, nowego mechanizmu\nnie dodaje. W HEAD (caf8e72) policies.py nie ma build(), więc ocena\nnie ma czego uruchomić.\n\nRyzyko: act() czyta p.index, a klocki z mostu mają index=None\n(bridge.py: Piece(..., -1)). Na ścieżce emulatora to TypeError.\nNaprawa w następnym commicie. Wynik może być dopasowany do stałych seedów.\n\nCo dalej: zrobione: przywrócenie 9/2.6 na bazie caf8e72 (ten commit).\nNastępnie: naprawa mostu, ruchy liczone z kształtu klocka, nie z p.index.\nNie powtarzać: kieszeni spójnych obszarów 2-4 pól (węzeł 20/1.1, 0.990).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
   "tury": 0,
   "usd": 0.0,
-  "minuty": 0.0
+  "minuty": 22.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T12:44:43Z",
+   "koniec": "2026-10-15T13:06:40Z",
+   "tury": 0,
+   "przyczyna": "terminal_reason=rate_limit exit=143"
+  }
+ ],
+ "zaparkowano": "2026-10-15T13:06:40Z",
+ "wznow_po": "2026-10-15T14:30:00Z"
 }
