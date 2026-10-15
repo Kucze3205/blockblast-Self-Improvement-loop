@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "00f46a05829480532358be086832e2e59c29f843",
+ "stan": "ocena w toku",
+ "gist": "Ruchy liczone z kształtu klocka, nie z index (poprawka mostu)",
+ "notatki": [
+  "Ruchy liczone z kształtu klocka, nie z index (poprawka mostu)\n\nMechanizm: BeamPolicy.act i _next_value nie czytają p.index. Ruch liczy _placements(p)\nz kształtu, a plan dostaje listę ruchów zamiast indeksu puli. Klocki z mostu\n(bridge.py: Piece(shape, name, -1)) mają index None, więc w df7b86a act() wywołuje\nPLACEMENTS[None] i partia się wywraca.\n\nDowód lokalny, bez oceny:\n- 200 losowych stanów z klockami z puli: wybór ruchu identyczny jak w df7b86a (0 różnic,\n  sprawdzone skryptem, nie testem w repo).\n- test_bridge_pieces_choose_same_move: klocki z mostu dają ten sam ruch co z puli.\n- test_policy_plays_legal_moves_with_bridge_pieces oraz 3 partie: 900 ruchów, 0 nielegalnych,\n  ok. 44 ms na ruch.\n- tests/test_beam_tray.py 9/9 OK.\n\nDlaczego to nie powtórka: ta sama poprawka jest w 21/2.1, 26/1.1 i 27/1.1. Ich wyniki\nto tylko s_sym, a w indeksach nie ma żadnego s_emu, więc poprawki nie sprawdzono\nna ścieżce, na której jest potrzebna. Nowe jest porównanie decyzji i test ścieżki mostu.\n\nRyzyko: emulatora nie uruchomiłem (jest poza repo). Decyzje dla klocków z puli się nie\nzmieniają, ale to, czy ocena przepuści węzeł do emulatora, zależy od limitu czasu i progu,\nktórych nie mogę odczytać.\n\nCo dalej:\n- Zrobione: df7b86a (baza 9/2.6), ten commit (ruchy z kształtu).\n- Następny krok: wynik oceny. Nowy mechanizm dopiero po nim.\n- Czego nie powtarzać: poprawki mostu bez testu decyzji dla klocków z puli.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Przywraca bazę 9/2.6 (wiązka tacki) i policies.build\n\nMechanizm: beam.py z najlepszego węzła 9/2.6 (najlepszy.patch): wiązka po tacce na\nbitboardach, liść cheap, risk z dokładnymi trudnymi trójkami, ogon z 64 próbkami\nmieszanych tacek, przegląd następnej tacki z 4 próbkami. policies.build(weights)\nzwraca BeamPolicy; wagi są ignorowane.\n\nDowód z historii: 9/2.6 s_sym 0.9959 (16 strat, klucz f95629a69506e60c, 6,9 min,\nza_wolna=false). W tym drzewie nic nie mierzone, ocenę zostawiam ewaluatorowi.\n\nDlaczego to nie powtórka: HEAD (caf8e72) nie ma build(), więc ocena daje 0. To baza,\nnie nowy pomysł. Ta sama baza stoi w 24/1.1 i 25/2.1.\n\nRyzyko: klocki z mostu mają index None, więc act() wywoła PLACEMENTS[None] (ten sam\nbłąd co w 26/1.1 i 27/1.1). Poprawka w następnym commicie. tests/test_beam_tray.py 7/7 OK.\n\nCo dalej:\n- Zrobione: ten commit.\n- Następny krok: ruchy liczone z kształtu klocka, nie z index.\n- Czego nie powtarzać: samego portu bez zmian jako wyniku końcowego.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 57,
+  "usd": 3.2535,
+  "minuty": 15.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T16:26:13Z",
+   "koniec": "2026-10-15T16:41:32Z",
+   "tury": 57,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
