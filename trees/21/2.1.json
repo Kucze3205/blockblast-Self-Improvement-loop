@@ -2,16 +2,28 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "e355129f18327caec1782a40866298bf4cc065e6",
+ "stan": "ocena w toku",
+ "gist": "Przegląd tacki na trzech najlepszych planszach, nie na trzech etykietach ruchu",
+ "notatki": [
+  "Przegląd tacki na trzech najlepszych planszach, nie na trzech etykietach ruchu\n\nMechanizm:\nKandydaci do przeglądu następnej tacki są wybierani po planszy, nie po pierwszym ruchu. Dla każdej planszy z top-K finałów zostaje stan o najwyższej wartości (cheap - risk - tail_penalty) razem z etykietą jego pierwszego ruchu, a do przeglądu idą trzy najlepsze plansze. Wcześniej stany o tej samej etykiecie zwijały się w jednego kandydata. Wiązka, wycena i LOOK_TOP=3 bez zmian.\n\nDowód z historii (diagnostyka na 150 stanach z losowych gier, nie wynik punktowy):\n- Średnio 2,39 kandydatów przed zmianą wobec 2,94 po niej (maks. 3): top-8 stanów zwijało się do kilku etykiet, więc przegląd widział mniej niż trzy różne plansze.\n- Zmienia 9 z 150 decyzji (6 %).\n- Czas act 65 do 73 ms na ruch (+12 %), z większej liczby przeglądów.\n- Smoke: 3 partie, 851 ruchów, 0 nielegalnych.\n\nDlaczego to nie powtórka:\nDeduplikacja po planszy była w wiązce (6/4.3, 6/2.4), a przeglądy 12/2.2 i 18/2.4 brały trzy najlepsze ruchy, czyli etykiety. Tutaj jednostką przeglądu jest plansza, a wiązka i wycena zostają. Odrzucona przed commitem w tej sesji: zbiory pierwszych ruchów przy deduplikacji wiązki (idea 18/2.5) na bazie 9/2.6. Zmieniała 63 % decyzji, bo trzy najlepsze ruchy często prowadziły do tej samej planszy, więc przegląd nie widział różnych plansz.\n\nRyzyko:\n- Wynik niezmierzony; ocenia ewaluator.\n- Zmiana mała (9 z 150 decyzji), więc różnica w s_sym może leżeć w szumie (0,003-0,006 wobec 0,996).\n- Czas +12 % na ruch: projekcja z 6,9 min ok. 7,7 min. Próg z 18/2.5 (drzewo 7): 8,9 min przechodzi, 12,1 min za wolna.\n\nCo dalej:\n- zrobione: 2f2959d (baza 9/2.6), 13d9052 (import tkinter), ca5f7ae (indeks pozy z kształtu), ten commit (kandydaci-plansze)\n- następny krok: ocena ewaluatorem względem ca5f7ae. Jeśli s_sym nie wzrośnie albo czas przekroczy próg, sprawdzić przegrane gry, które się zmieniły (9 decyzji).\n- czego nie powtarzać: zbiorów pierwszych ruchów przy deduplikacji wiązki bez przeglądu po planszach.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Polityka beam: indeks pozy z kształtu, żeby działała na obiektach mostu\n\nMechanizm: BeamPolicy bierze indeks pozy z kształtu klocka (POSE_OF_SHAPE, 41 unikalnych\nkluczy z puli) zamiast z p.index. Klocki z generatora są obiektami puli, więc indeksy\nsą identyczne i decyzje na ścieżce gry się nie zmieniają.\n\nDowód: wywołanie jak w bridge.py:204-217 (Piece(..., -1), index=None) przed zmianą\nkończyło się TypeError w plan (PLACEMENTS[None]). Po zmianie test\ntest_policy_accepts_pieces_built_outside_the_pool przechodzi, a wszystkie testy 25/25.\nW rekordzie 9/2.6 nie ma pomiaru s_emu, a w indeksach 19 i 20 kolumna jest pusta (—),\nwięc błąd dotąd nie wyszedł na jaw.\n\nDlaczego to nie powtórka: to poprawka błędu, nie zmiana decyzji polityki.\n\nRyzyko: kształt spoza puli (błędny odczyt z mostu) da KeyError, czyli wyjątek w partii\ni wynik 0 dla tej partii. Nie łapię go, bo poprawny odczyt daje kształty z puli.\n\nCo dalej:\n- Zrobione: 2f2959d baza 9/2.6, 13d9052 import turtle, ten commit (zgodność z mostem).\n- Następny krok: smoke 3 partie bez oceny, potem wybór nowego mechanizmu.\n- Czego nie powtarzać: polegania na p.index dla obiektów spoza generatora.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Usuń nieużywany import turtle z model.py, który ciągnął tkinter\n\nMechanizm: usunięcie nieużywanej linii `from turtle import done` z model.py.\n\nDowód z historii: przed zmianą unittest discover kończył się 1 błędem\n(test_agent_accepts_epsilon_zero, ModuleNotFoundError: tkinter). Po zmianie 24/24\n(17 testów silnika i 7 testów beam). Ta sama poprawka jest w drzewie 16 (węzeł 2.1).\n\nDlaczego to nie powtórka: nie zmienia zachowania polityki, bo beam nie importuje model.py.\nTo poprawka błędu importu w środowisku bez tkinter.\n\nRyzyko: brak wpływu na wynik oceny, ocena nie importuje model.py w ścieżce polityki.\n\nCo dalej:\n- Zrobione: 2f2959d baza 9/2.6, ten commit (import turtle).\n- Następny krok: zgodność BeamPolicy z obiektami z mostu (Piece.index = None).\n- Czego nie powtarzać: importów GUI w modułach agenta.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Baza: kod 9/2.6 jako punkt startowy drzewa 21\n\nMechanizm: przywrócenie najlepszego węzła ze wszystkich drzew (9/2.6, s_sym 0.99589)\nz .historia/najlepszy.patch bez zmian: beam.py, policies.build, tests/test_beam_tray.py.\n\nDowód z historii: HEAD gałęzi nie ma policies.build, więc ocena nie uruchomi polityki\ni wynik wychodzi 0. Łatka nakłada się na HEAD bez konfliktu, testy beam 7/7 przechodzą.\n\nDlaczego to nie powtórka: to nie jest próba, tylko punkt wyjścia. Ta sama konwencja\nco w drzewach 19 i 20 (commit \"Baza\" przed próbą).\n\nRyzyko: wynik tego commitu jest niezmierzony, decyduje ocena ewaluatora. Łatka zawiera\nBeamPolicy czytające p.index, a obiekty mostu mają index=None (osobna poprawka w kolejnym commicie).\n\nCo dalej:\n- Zrobione: baza 9/2.6 na trees/21/2 (ten commit), testy beam 7/7.\n- Następny krok: usunąć nieużywany import turtle z model.py (psuje import agent bez tkinter),\n  potem zgodność BeamPolicy z obiektami z mostu.\n- Czego nie powtarzać: samego przywracania bazy jako wyniku.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 105,
+  "usd": 6.5779,
+  "minuty": 29.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T01:46:24Z",
+   "koniec": "2026-10-15T02:15:22Z",
+   "tury": 105,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
