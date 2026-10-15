@@ -6,10 +6,13 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from types import SimpleNamespace
+
 import beam as B
 import policies
+from board import Board
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, Piece
 
 N = 8
 
@@ -107,7 +110,7 @@ class TrayPlayableTest(unittest.TestCase):
             b = B._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
             poses = B._sample_tray(rng)
             triples = B._hard_triples(rng)
-            states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
+            states = B.plan(b, [(k, B.PLACEMENTS[i]) for k, i in enumerate(poses)], B.LOOK_BEAM, B.LOOK_BEAM)
             expected = None
             if states:
                 expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
@@ -126,6 +129,31 @@ class TrayPlayableTest(unittest.TestCase):
             game.step(move)
             if game.done:
                 break
+
+    def test_bridge_pieces_without_index_give_same_move(self):
+        rng = random.Random(5)
+        for _ in range(20):
+            density = rng.uniform(0.1, 0.4)
+            board = Board()
+            board.grid = _settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)])
+            pool = [PIECE_POOL[i] for i in B._sample_tray(rng)]
+            bridge = [Piece(p.shape, f"slot{k}", -1) for k, p in enumerate(pool)]
+            actions = [
+                (k, x, y)
+                for k, p in enumerate(pool)
+                for y in range(N)
+                for x in range(N)
+                if board.can_place_piece(p, x, y)
+            ]
+            if not actions:
+                continue
+            pool_policy, bridge_policy = B.BeamPolicy(), B.BeamPolicy()
+            pool_policy.reset(9)
+            bridge_policy.reset(9)
+            self.assertEqual(
+                bridge_policy.act(SimpleNamespace(board=board, pieces=bridge, combo=0), actions),
+                pool_policy.act(SimpleNamespace(board=board, pieces=pool, combo=0), actions),
+            )
 
 
 if __name__ == "__main__":
