@@ -3,13 +3,15 @@ import os
 import random
 import sys
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import beam as B
 import policies
+from board import Board
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, Piece
 
 N = 8
 
@@ -107,11 +109,33 @@ class TrayPlayableTest(unittest.TestCase):
             b = B._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
             poses = B._sample_tray(rng)
             triples = B._hard_triples(rng)
-            states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
+            slots = [(k, B.PLACEMENTS[i]) for k, i in enumerate(poses)]
+            states = B.plan(b, slots, B.LOOK_BEAM, B.LOOK_BEAM)
             expected = None
             if states:
                 expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
             self.assertEqual(policy._next_value(b, triples, poses), expected)
+
+    def test_placements_from_shape_match_pool_table(self):
+        for p in PIECE_POOL:
+            self.assertEqual(B._placements(p), B.PLACEMENTS[p.index])
+
+    def test_act_takes_bridge_pieces_without_pose_index(self):
+        board = Board()
+        board.grid[0][0] = 1
+        pieces = [Piece([[1, 1]], "slot0", -1), None, Piece([[1], [1]], "slot2", -1)]
+        actions = [
+            (i, x, y)
+            for i, p in enumerate(pieces)
+            if p is not None
+            for y in range(8)
+            for x in range(8)
+            if board.can_place_piece(p, x, y)
+        ]
+        game = SimpleNamespace(board=board, pieces=pieces, combo=0)
+        policy = B.BeamPolicy()
+        policy.reset(5)
+        self.assertIn(policy.act(game, actions), actions)
 
     def test_policy_plays_legal_moves(self):
         game = Game(1)
