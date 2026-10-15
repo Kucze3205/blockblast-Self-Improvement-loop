@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "7cfe1458742c4b448c21a6589174424352c82608",
+ "stan": "ocena w toku",
+ "gist": "Diagnostyka 26/2: model planszy i częściowa tacka bez błędów (bez zmiany kodu)",
+ "notatki": [
+  "Diagnostyka 26/2: model planszy i częściowa tacka bez błędów (bez zmiany kodu)\n\nMechanizm: bez zmian w kodzie agenta. Sprawdzono trzy hipotezy błędu w beam.py na liczbach, bez oceny wyniku:\n- model planszy: _placements i _clear zgodne z Board.place_piece, check_full_lines i clear_lines na 8946 legalnych ruchach z 20 partii losowych ruchów; 0 rozbieżności planszy i liczby linii;\n- częściowa tacka: na 5000 losowych zagęszczonych planszach (gęstość 0.3-0.7) było 1699 przypadków częściowych; wyczerpujące przeszukanie nie znalazło głębszego ułożenia ani dokończenia, więc wiązka nie gubi głębokości;\n- próg ciasnej planszy: w 6 partiach (2268 ruchów) tylko 1 ruch miał <=22 wolnych pól; na otwartej planszy średnio 16.4 różnych pierwszych ruchów w zbiorze finałów wiązki, 0.045 s na ruch.\n\nDowód z historii: 9/2.6 (0.996) to najlepszy węzeł drzewa 9, na którym stoi ta baza. Rollouty dwóch tacek (19/2.1, 0.989) są za wolne (11.1 min). Rodzina ogona i przeglądu następnej tacki jest wyczerpana (9/1.5, 9/2.5, 9/2.7).\n\nDlaczego nie powtórka: negatywna diagnoza bez zmiany kodu; nie powtarza żadnej próby.\n\nRyzyko: liczby z kilku partii i losowych plansz, nie wynik oceny. Nie oceniam; kod bez zmian względem 2101ae7.\n\nCo dalej: zrobione: baza 2101ae7 (9/2.6), testy 7/7, ta diagnoza. Następny krok: jeden mechanizm spoza rodziny ogona i przeglądu, np. cecha prawie pełnych linii w cheap (brak w INDEKS). Czego nie powtarzać: poprawek gałęzi częściowej (zweryfikowana), zmiany progu FINAL_K_TIGHT bez nowego wyzwalacza (prawie nieaktywny), ogona i przeglądu z 9/1.5, 9/2.5 i 9/2.7.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Przywraca zmierzony węzeł 9/2.6 jako bazę; root nie ma build\n\nMechanizm: wiązka po tacce na bitboardach (beam.py). Plan ułożenia trzech\nklocków, ocena liścia cheap, kara za tacki twarde (risk) i ogon mieszanych\ntacek, przegląd następnej tacki na 4 próbkach. policies.build zwraca BeamPolicy.\n\nDowód z historii: .historia/9/2.6.json, s_sym 0.99589, przegrane 16,\nczas 6.9 min. Root (policies.py bez build) nie da się ocenić, bo ocena\nnie uruchomi agenta, więc to jedyny zmierzony punkt startowy na tej gałęzi.\n\nDlaczego to nie powtórka: nie dokłada mechanizmu, tylko przywraca węzeł\nz wynikiem jako punkt wyjścia pod kolejne poprawki.\n\nRyzyko: wynik na tej gałęzi niezmierzony, ocenę rozstrzyga evaluator.\nCzas 6.9 min przy nieznanym limicie (25/1.1 dostał za wolna przy 12.0 min).\n\nCo dalej: zrobione: caf8e72 (stan początkowy, root bez build) oraz ten\ncommit. Następny krok: diagnoza ścieżki częściowej w BeamPolicy.act\n(plan z przycinaniem może zgubić dokończenie tacki). Czego nie powtarzać:\nstrojenia wag cheap/risk bez diagnozy, bo ta rodzina stoi na 0.98-0.996.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 65,
+  "usd": 5.8254,
+  "minuty": 33.9
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T10:30:42Z",
+   "koniec": "2026-10-15T11:04:35Z",
+   "tury": 65,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
