@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "bd7a0cec793364c4dc617bebb8083e5f98579089",
+ "stan": "ocena w toku",
+ "gist": "Licz śmierć na świeżej tacce raz: risk daje P(D0), tail i hard ją pomijają",
+ "notatki": [
+  "Licz śmierć na świeżej tacce raz: risk daje P(D0), tail i hard ją pomijają\n\nMechanizm: świeża tacka nie ma żadnego pasującego klocka z prawdopodobieństwem\nmiss_all^3, gdzie miss_all = 1 - P(pojedynczy klocek z generatora pasuje).\nrisk liczył to jako miss_live^3, które pomija martwe typy i zaniża P(D0).\nTę samą śmierć łapały jeszcze tail_penalty i trudne tacki, bo `not _tray_ok`\nobejmuje tacki bez pasującego klocka. Teraz tail i trudne tacki biorą tylko\ntacki, w których coś pasuje, a nie dają się dokończyć. _fit_array liczy 41 poz\nraz na planszę i przekazuje je do risk i tail_penalty, więc koszt się nie zmienia.\n\nDowód z historii: 9/1.3 dodało ogon (tail_penalty), a 9/2.6 usunęło podwójną\nkarę w przeglądzie następnej tacki (0.996 w INDEKS). Nie jest to powtórka 9/2.6:\ntamto usunęło podwójną karę w lookaheadzie, to usuwa podwójną karę za śmierć\nw wartości bieżącego ruchu.\n\nRyzyko: kara za śmierć spada, bo odpada podwójne liczenie. Na planszach z martwymi\ntypami część risk rośnie (miss_all > miss_live), więc bilans zależy od planszy.\nWagi strojono przy dawnym liczeniu, więc skala TRAY_FAIL może wymagać ponownego\ndostrojenia. Efekt na wynik nieznany.\n\nSprawdzone: testy 8/8 OK; smoke 4 partie, do 120 ruchów na partię, bez wyjątków\ni nielegalnych ruchów; czas na ruch 58,8 ms wobec 59,3 ms dla bazy na tej samej\nmaszynie. Wyniku nie mierzono; mierzy go ewaluator na HEAD.\n\nCo dalej: baza to 8bb217f (wiązka 9/2.6). Ten commit jest kandydatem do pomiaru.\nNastępny krok: zmierzyć HEAD, decyzję o TRAY_FAIL podjąć dopiero po wyniku.\nNie powtarzać: ogon w drugim poziomie lookahead i w przeglądzie następnej tacki\n(9/1.5 i 9/2.5, obie 0.992); składnik kieszeni w kluczu liścia (20/1.1, 0.990).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wnieś bazę 9/2.6 jako punkt wyjścia drzewa 21\n\nMechanizm: beam.py (wiązka po tacce na bitboardach, liść cheap, ryzyko tacki\ntwardej i nieułożalnej następnej, ogon z 64 mieszanych tacek, przegląd następnej\ntacki z 4 próbkami) oraz policies.build(weights) zwracające BeamPolicy. Wagi\nnie są używane. Korzeń caf8e72 nie ma build, więc ewaluator bez tego commita\ndostaje 0.\n\nDowód z historii: 9/2.6 (d9e3f27), s_sym 0,99589, 16 przegranych, za_wolna=false,\nczas 6,9 min. To ten sam kod co najlepszy.patch (git apply --check czysty).\nDrzewo 20 wniosło tę samą bazę i dodało składnik kieszeni: 20/1.1 wypadł\ngorzej (0,99026, 24 przegrane), więc kieszeni nie wnoszę.\n\nDlaczego to nie powtórka: to baza, nie próba. Kolejny commit dodaje mechanizm.\n\nRyzyko: wynik niezmierzony, ocenia ewaluator. Testy beam 7/7 zielone.\nTests/test_engine.py i test_agent.py nie zbierają się przez brak tkinter\n(środowisko).\n\nCo dalej:\nZrobione: ten commit (baza 9/2.6 na trees/21/1).\nNastępny krok: jeden nowy mechanizm na bazie, koszt obliczeń nie większy niż\n~10% (9/2.7 przy 8,3 min przeszło, 10,8 min już za wolna).\nCzego nie powtarzać: ogona w przeglądzie następnej tacki (9/1.5, 9/2.5, 0,9918)\ni składnika kieszeni w liściu (20/1.1, 0,9903).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 50,
+  "usd": 3.2162,
+  "minuty": 15.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T01:46:22Z",
+   "koniec": "2026-10-15T02:01:21Z",
+   "tury": 50,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
