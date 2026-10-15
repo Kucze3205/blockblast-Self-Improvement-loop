@@ -99,6 +99,11 @@ class TrayPlayableTest(unittest.TestCase):
     def test_tail_penalty_is_zero_on_empty_board(self):
         self.assertEqual(B.tail_penalty(0, B._mixed_trays(random.Random(4))), 0.0)
 
+    def test_line_potential_counts_lines_with_one_or_two_free_cells(self):
+        self.assertEqual(B.line_potential(0), 0.0)
+        self.assertEqual(B.line_potential(sum(1 << c for c in range(7))), 1.0)
+        self.assertEqual(B.line_potential(sum(1 << c for c in range(6))), 0.5)
+
     def test_next_value_equals_unpruned_max(self):
         rng = random.Random(11)
         policy = B.BeamPolicy()

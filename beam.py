@@ -12,6 +12,7 @@ NOT_COL0 = FULL & ~COLS[0]
 NOT_COL7 = FULL & ~COLS[7]
 NOT_ROW7 = FULL & ~ROWS[7]
 BORDER = ROWS[0] | ROWS[7] | COLS[0] | COLS[7]
+LINES = ROWS + COLS
 
 HARD_TYPES = (3, 4, 6, 7, 10)
 N_TYPES = len(PIECE_TYPES)
@@ -78,6 +79,18 @@ def cheap(b, lines):
     border = _pc(e & BORDER)
     inner = _pc((b ^ (b >> 1)) & NOT_COL7) + _pc((b ^ (b >> 8)) & NOT_ROW7)
     return -1.4 * _pc(b) - 0.75 * iso - 1.5 * inner - 2.0 * border + 4.2 * lines
+
+
+def line_potential(b):
+    e = FULL & ~b
+    pot = 0.0
+    for m in LINES:
+        free = _pc(e & m)
+        if free == 1:
+            pot += 1.0
+        elif free == 2:
+            pot += 0.5
+    return pot
 
 
 def _fits(b, i):
@@ -210,7 +223,7 @@ class BeamPolicy:
         for score, (b, _used, _lines, first) in scored:
             if score < cut:
                 break
-            value = score - risk(b, triples) - tail_penalty(b, mixed)
+            value = score + line_potential(b) - risk(b, triples) - tail_penalty(b, mixed)
             if first not in best_by_move or value > best_by_move[first][0]:
                 best_by_move[first] = (value, b)
 
