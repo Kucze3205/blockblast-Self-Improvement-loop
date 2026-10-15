@@ -155,11 +155,11 @@ def risk(b, triples):
 
 
 def plan(board, slots, width, cap, partial=False):
-    beam = [(board, 0, 0, None)]
+    beam = [(board, 0, 0, 0)]
     for _ in slots:
         children = {}
-        for b, used, lines, first in beam:
-            for k, (sid, pi) in enumerate(slots):
+        for b, used, lines, moves in beam:
+            for k, (_, pi) in enumerate(slots):
                 bit = 1 << k
                 if used & bit:
                     continue
@@ -170,8 +170,10 @@ def plan(board, slots, width, cap, partial=False):
                     nl = lines + cl
                     # linie w kluczu: ta sama plansza z inną liczbą linii ma inną wartość w cheap
                     key = (nb, used | bit, nl)
-                    if key not in children:
-                        children[key] = (nb, used | bit, nl, first or (sid, x, y))
+                    own = moves or (1 << (k * 64 + y * 8 + x))
+                    if key in children:
+                        own |= children[key][3]
+                    children[key] = (nb, used | bit, nl, own)
         if not children:
             return beam if partial else []
         scored = sorted(((cheap(s[0], s[2]), s) for s in children.values()), key=lambda t: -t[0])
@@ -183,6 +185,12 @@ def plan(board, slots, width, cap, partial=False):
             scored = scored[:keep]
         beam = [s for _, s in scored]
     return beam
+
+
+def _move(low, slots):
+    k, rem = divmod(low.bit_length() - 1, 64)
+    y, x = divmod(rem, 8)
+    return (slots[k][0], x, y)
 
 
 class BeamPolicy:
@@ -199,31 +207,36 @@ class BeamPolicy:
         base = _to_bits(game.board.grid)
         finals = plan(base, slots, BEAM, BEAM_CAP, partial=True)
         if _pc(finals[0][1]) < len(slots):
-            return max(finals, key=lambda s: cheap(s[0], s[2]))[3]
+            best = max(finals, key=lambda s: cheap(s[0], s[2]))
+            return _move(best[3] & -best[3], slots)
 
         triples = _hard_triples(self.rng)
         mixed = _mixed_trays(self.rng)
         scored = sorted(((cheap(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
         k = FINAL_K_TIGHT if 64 - _pc(base) <= TIGHT_FREE else FINAL_K
-        cut = scored[min(k, len(scored)) - 1][0]
-        best_by_move = {}
-        for score, (b, _used, _lines, first) in scored:
-            if score < cut:
-                break
-            value = score - risk(b, triples) - tail_penalty(b, mixed)
-            if first not in best_by_move or value > best_by_move[first][0]:
-                best_by_move[first] = (value, b)
+        best_plan = {}
+        for score, (b, _used, lines, moves) in scored:
+            while moves:
+                low = moves & -moves
+                best_plan.setdefault(low, (score, b, lines))
+                moves ^= low
+        values = {}
+        by_move = {}
+        for low, (score, b, lines) in list(best_plan.items())[:k]:
+            if (b, lines) not in values:
+                values[(b, lines)] = score - risk(b, triples) - tail_penalty(b, mixed)
+            by_move[low] = (values[(b, lines)], b)
 
-        contenders = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
+        contenders = sorted(by_move.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
         best_move, best_total = None, None
         trays = [_sample_tray(self.rng) for _ in range(LOOK_TRAYS)]
-        for first, (value, b) in contenders:
+        for low, (value, b) in contenders:
             # śmierć na następnej tacce karze już risk i tail_penalty, więc tu liczymy tylko wykonalne
             nxt = [v for v in (self._next_value(b, triples, poses) for poses in trays) if v is not None]
             total = value + (sum(nxt) / len(nxt) if nxt else -TRAY_FAIL)
             if best_total is None or total > best_total:
-                best_move, best_total = first, total
-        return best_move
+                best_move, best_total = low, total
+        return _move(best_move, slots)
 
     def _next_value(self, b, triples, poses):
         states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)

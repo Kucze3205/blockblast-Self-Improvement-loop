@@ -113,6 +113,29 @@ class TrayPlayableTest(unittest.TestCase):
                 expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
             self.assertEqual(policy._next_value(b, triples, poses), expected)
 
+    def test_dedupe_keeps_every_complete_first_move(self):
+        rng = random.Random(5)
+        for _ in range(8):
+            density = rng.uniform(0.1, 0.4)
+            b = B._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
+            slots = list(enumerate(B._sample_tray(rng)))
+            expected = 0
+            for k, pi in slots:
+                rest = [p for j, p in slots if j != k]
+                for m, x, y, y1, x1 in B.PLACEMENTS[pi]:
+                    if m & b:
+                        continue
+                    nb, _ = B._clear(b | m, y, y1, x, x1)
+                    if B._tray_ok(nb, rest):
+                        expected |= 1 << (k * 64 + y * 8 + x)
+            got = 0
+            for s in B.plan(b, slots, 10 ** 6, 10 ** 6):
+                got |= s[3]
+            self.assertEqual(got, expected)
+
+    def test_move_code_decodes_to_action(self):
+        self.assertEqual(B._move(1 << (1 * 64 + 3 * 8 + 5), [(7, 0), (9, 0), (11, 0)]), (9, 5, 3))
+
     def test_policy_plays_legal_moves(self):
         game = Game(1)
         policy = policies.build(None)
