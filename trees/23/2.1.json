@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "82b824dbbfb738ccc5e5d33e288b9b05340ef0cd",
+ "stan": "ocena w toku",
+ "gist": "Przegląd następnej tacki waży kontynuację szansą przeżycia tacki",
+ "notatki": [
+  "Przegląd następnej tacki waży kontynuację szansą przeżycia tacki\n\nMechanizm:\n- Baza: najlepszy patch 9/2.6 (d9e3f27): wiązka po tacce, risk, ogon z 64 wspólnych tacek mieszanych, przegląd następnej tacki na 4 próbkach.\n- Błąd: przegląd dodawał średnią kontynuacji z wykonalnych próbek w pełnej wysokości. Stan, w którym następna tacka zawodzi, dostawał i karę za śmierć (TRAY_FAIL * frac w value), i kontynuację, której już nie będzie.\n- Poprawka: total = value + (1 - frac) * średnia kontynuacji, gdzie frac to ułamek 64 tacek mieszanych, których stan nie układa. Gdy żadna próbka przeglądu nie jest wykonalna, zostaje -TRAY_FAIL jak w 9/2.6.\n- fail_fraction zastępuje tail_penalty (ta sama wartość bez mnożenia przez TRAY_FAIL), _review_total liczy przegląd.\n\nDowód z historii:\n- Przegląd następnej tacki to miejsce, w którym zmiany agregacji dały ruch: 9/1.5 (0,990), 9/2.5 (0,992), 9/2.6 (0,996, wobec 9/2.4 na 0,995).\n- 9/2.6 zostawiło dwukrotne liczenie przy pustym przeglądzie i kontynuację bez wagi. Ta zmiana dotyczy drugiego z tych dwóch, pierwszego nie rusza.\n\nDlaczego to nie powtórka:\n- 9/2.5 i 9/1.5 dodawały karę za śmierć po następnej tacce (ogon w przeglądzie). Tu nie dodaję kary, tylko zmieniam wagę kontynuacji w stanach, które mogą zginąć.\n- Przy frac = 0 wynik jest taki sam jak w 9/2.6, więc zmiana działa tylko na stanach z ryzykiem.\n\nRyzyko:\n- Wynik niezmierzony; ocenia ewaluator.\n- Kierunek: stany z frac > 0 dostają mniej ujemną kontynuację, o frac razy |kontynuacja|. Agent może być odrobinę mniej ostrożny niż w 9/2.6.\n- Waga (1 - frac) nie uwzględnia śmierci z tacek samo-trudnych (liczonej w risk). Takie tacki są 1/27 losowań, więc błąd jest mały.\n- Koszt bez zmian: frac liczony na tych samych 64 tackach co dotąd.\n\nSprawdzenie (bez oceny wyniku):\n- tests/test_beam_tray.py: 8 testów OK, w tym _review_total i fail_fraction.\n- Smoke: 3 partie po 200 ruchów, 600 ruchów, 0 nielegalnych, 0 wyjątków, około 33 ms na ruch.\n\nCo dalej:\n- Zrobione: ten commit (baza 9/2.6 d9e3f27 plus ważenie kontynuacji).\n- Następny krok: ocena tego węzła względem 9/2.6 (0,99589). Jeśli wynik spadnie, cofnąć _review_total do średniej bez wagi, zanim ruszy się ogon.\n- Czego nie powtarzać: ogona w przeglądzie (9/1.5, 9/2.5), 128 tacek mieszanych (9/2.7).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 70,
+  "usd": 5.0908,
+  "minuty": 25.2
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T05:10:09Z",
+   "koniec": "2026-10-15T05:35:21Z",
+   "tury": 70,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
