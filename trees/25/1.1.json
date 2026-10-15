@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "fee99d5e53ad909863c808888a3826737a8df9f8",
+ "stan": "ocena w toku",
+ "gist": "Wiązka: dedupe zachowuje pierwsze ruchy, finalista na pierwszy ruch",
+ "notatki": [
+  "Wiązka: dedupe zachowuje pierwsze ruchy, finalista na pierwszy ruch\n\nMechanizm:\n- plan(): każdy stan niesie zbiór pierwszych ruchów (bit k*64+y*8+x), które do niego prowadzą; przy scalaniu duplikatów zbiory się sumują. Klucz stanu i kolejność wiązki bez zmian.\n- act(): finalista = najlepszy wg cheap stan dla danego pierwszego ruchu; bierzemy pierwsze FINAL_K (8; 20 gdy zostaje <=22 wolnych pól) ruchów w kolejności cheap tego stanu. Wartość = cheap - risk - tail_penalty. Dalej bez zmian: LOOK_TOP=3 i lookahead.\n- Ruch zwracany przez _move() jako (indeks klocka, x, y); test dekodowania.\n\nDowód z historii (pomiary lokalne, nie ocena):\n- Baza 9/2.6, diagnoza 960 ruchów: w wiązce mediana 15 pierwszych ruchów, w finalistach mediana 4; w 24% ruchów finaliści widzieli <=2.\n- 60 losowych plansz, szerokość bez limitu: 703 z 2859 kompletnych pierwszych ruchów (24,6%) ginie w dedupe.\n- Czas: 35,0 vs 30,1 ms/ruch (4 partie po 150 ruchów), +16%.\n\nDlaczego to nie powtórka:\n- 17/2.4 miał finalistów per pierwszy ruch, ale na słabszej bazie: wynik 0,950, 123 przegrane.\n- 18/2.5 miał zbiory pierwszych ruchów w dedupe, na innej bazie: 0,975, 65 przegranych.\n- Na 9/2.6 (0,99589, 16 przegranych, 6,9 min) żadnej z tych zmian nie mierzono. Tu łączę naprawę dedupe z finalistami na pierwszy ruch, bez zmiany klucza i wiązki.\n\nRyzyko:\n- Wartość ruchu liczona tylko z jego najlepszego wg cheap stanu. Wcześniej brano maksimum po stanach top-k z tym samym pierwszym ruchem, więc hedging wewnątrz ruchu przepada.\n- Czas: szacunek ~8,0 min na partię oceny (6,9 * 35,0/30,1). W historii 8,3 min przeszło, 10,8 min za wolno. Margines wąski, limitu nie sprawdzono lokalnie (config nieczytelny).\n- Wynik nie zmierzony.\n\nCo dalej:\n- Zrobione: 1029364 (baza 9/2.6 z policies.build). Ta próba: ten commit (SHA: git log -1).\n- Następny krok: wynik oceny tej wersji i czas względem 9/2.6 (0,99589, 6,9 min). Jeśli gorszy, sprawdzić, które z 16 przegranych się zmieniły.\n- Czego nie powtarzać: strojenia FINAL_K/LOOK_TOP przed wynikiem tej wersji.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Fundament: przywraca bazę 9/2.6 (wiązka po tacce) z policies.build\n\nMechanizm:\nNakłada .historia/najlepszy.patch (węzeł 9/2.6, d9e3f27): beam.py z wiązką po tacce\nna bitboardach, ocena liścia cheap, ryzyko trudnych tacek, ogon mieszanych tacek\ni przegląd następnej tacki. policies.build(weights) zwraca BeamPolicy.\n\nDowód z historii:\n- 9/2.6: s_sym 0,99589, 16 przegranych, 6,9 min. Węzły 10,8-12 min dostały \"za wolna\".\n- Korzeń bez policies.build dostaje 0, więc sam fundament zmienia wynik z zera.\n- 24/1.1 zmierzyło tę samą bazę: 0,996, bez zysku względem najlepszego.\n\nDlaczego to nie powtórka:\nTo nie jest próba ulepszenia. Bez tego commitu gałąź nie ma poprawnego build,\na każda kolejna próba ma wynik 0.\n\nRyzyko:\nWynik niezmierzony. Kod identyczny z patchem 9/2.6. tests/test_beam_tray.py: 7/7.\n\nCo dalej:\nZrobione: fundament (ten commit). Następny krok: nowy mechanizm na wierzchu bazy.\nCzego nie powtarzać: samej bazy 9/2.6 (24/1.1).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 69,
+  "usd": 5.1003,
+  "minuty": 24.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T08:19:04Z",
+   "koniec": "2026-10-15T08:43:23Z",
+   "tury": 69,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
