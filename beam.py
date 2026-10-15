@@ -125,33 +125,32 @@ def _mixed_trays(rng):
     return [t for t in trays if any(PIECE_POOL[i].type_index not in HARD_TYPES for i in t)]
 
 
-def tail_penalty(b, trays):
+def _fit_array(b):
+    return [_fits(b, i) for i in range(len(PIECE_POOL))]
+
+
+def tail_penalty(b, trays, fits):
     if not trays:
         return 0.0
-    return TRAY_FAIL * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays)
+    stuck = sum(1 for t in trays if any(fits[i] for i in t) and not _tray_ok(b, t))
+    return TRAY_FAIL * stuck / len(trays)
 
 
-def risk(b, triples):
-    shares = []
+def risk(b, triples, fits):
+    total = 0.0
     dead = 0
     for idxs in PIECE_TYPES:
-        alive = 0
-        for i in idxs:
-            if _fits(b, i):
-                alive += 1
-        shares.append(alive / len(idxs))
+        alive = sum(1 for i in idxs if fits[i])
+        total += alive / len(idxs)
         if alive == 0:
             dead += 1
-    live = [s for s in shares if s > 0]
-    mean_live = sum(live) / len(live) if live else 0.0
-    mean_all = sum(shares) / N_TYPES
+    miss_all = 1.0 - total / N_TYPES
     hard = 0.0
     for w, poses in triples:
-        if not _tray_ok(b, poses):
+        if any(fits[i] for i in poses) and not _tray_ok(b, poses):
             hard += w
-    miss_live = 1.0 - mean_live
-    miss_all = 1.0 - mean_all
-    return TRAY_FAIL * miss_live ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * P_HARD * hard
+    # D0 (żaden klocek świeżej tacki nie pasuje) liczone tylko tu; tail i hard pomijają ją
+    return TRAY_FAIL * miss_all ** 3 + 80.0 * miss_all + 12.3 * dead + TRAY_FAIL * P_HARD * hard
 
 
 def plan(board, slots, width, cap, partial=False):
@@ -210,7 +209,8 @@ class BeamPolicy:
         for score, (b, _used, _lines, first) in scored:
             if score < cut:
                 break
-            value = score - risk(b, triples) - tail_penalty(b, mixed)
+            fits = _fit_array(b)
+            value = score - risk(b, triples, fits) - tail_penalty(b, mixed, fits)
             if first not in best_by_move or value > best_by_move[first][0]:
                 best_by_move[first] = (value, b)
 
@@ -229,4 +229,4 @@ class BeamPolicy:
         states = plan(b, list(enumerate(poses)), LOOK_BEAM, LOOK_BEAM)
         if not states:
             return None
-        return max(cheap(s[0], s[2]) - risk(s[0], triples) for s in states[:2])
+        return max(cheap(s[0], s[2]) - risk(s[0], triples, _fit_array(s[0])) for s in states[:2])

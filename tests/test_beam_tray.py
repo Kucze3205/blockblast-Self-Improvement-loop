@@ -92,12 +92,18 @@ class TrayPlayableTest(unittest.TestCase):
         one_cell = next(p.index for p in PIECE_POOL if p.name == "1x1")
         self.assertFalse(B._tray_ok(B.FULL, [one_cell]))
 
+    def test_full_board_counts_death_once(self):
+        fits = B._fit_array(B.FULL)
+        triples = B._hard_triples(random.Random(5))
+        self.assertAlmostEqual(B.risk(B.FULL, triples, fits), B.TRAY_FAIL + 80.0 + 12.3 * B.N_TYPES)
+        self.assertEqual(B.tail_penalty(B.FULL, B._mixed_trays(random.Random(6)), fits), 0.0)
+
     def test_mixed_trays_have_a_non_hard_piece(self):
         for tray in B._mixed_trays(random.Random(3)):
             self.assertTrue(any(PIECE_POOL[i].type_index not in B.HARD_TYPES for i in tray))
 
     def test_tail_penalty_is_zero_on_empty_board(self):
-        self.assertEqual(B.tail_penalty(0, B._mixed_trays(random.Random(4))), 0.0)
+        self.assertEqual(B.tail_penalty(0, B._mixed_trays(random.Random(4)), B._fit_array(0)), 0.0)
 
     def test_next_value_equals_unpruned_max(self):
         rng = random.Random(11)
@@ -110,7 +116,7 @@ class TrayPlayableTest(unittest.TestCase):
             states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
             expected = None
             if states:
-                expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
+                expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples, B._fit_array(s[0])) for s in states[:2])
             self.assertEqual(policy._next_value(b, triples, poses), expected)
 
     def test_policy_plays_legal_moves(self):
