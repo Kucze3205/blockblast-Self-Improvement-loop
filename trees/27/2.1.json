@@ -3,7 +3,7 @@
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
  "sha": "73bbde93c0afcf1976b36f9eaaa51f19ad0fd3b4",
- "stan": "zaparkowany",
+ "stan": "sesja",
  "gist": "Napraw most: ruchy liczone z kształtu klocka, nie z p.index",
  "notatki": [
   "Napraw most: ruchy liczone z kształtu klocka, nie z p.index\n\nact() i plan() brały ruchy z PLACEMENTS[p.index]. Klocki z mostu\n(bridge.py: Piece(..., -1)) mają index=None, więc ruch na ścieżce\nemulatora kończył się TypeError. Teraz act() liczy _placements(p) z kształtu,\na _next_value() podaje PLACEMENTS dla losowanych tacek.\n\nDowód: test z klockami mostu padał na beam.py:166 (PLACEMENTS[None]) przed\nzmianą. Węzeł 26/1.1 (.historia/26/1.1.json) opisał ten sam błąd i zaplanował\ntę samą naprawę. Nie mierzono w ocenie.\n\nDlaczego to nie powtórka: nie zmienia wyboru ruchów. Partie z seedami 101-103\ndają identyczne sekwencje ruchów przed i po zmianie. Test sprawdza, że\n_placements z kształtu daje te same ruchy co PLACEMENTS z indeksu.\n\nRyzyko: nie wiadomo, czy ocena emulatora woła tę ścieżkę; bridge.main() używa\nGreedyPolicy. Koszt: _placements na każdy act() dla najwyżej 3 klocków.\n\nCo dalej: zrobione: naprawa mostu (ten commit, po 3c2f136). Następnie:\nnowy mechanizm, nie kieszenie spójne 2-4 pól (węzeł 20/1.1, 0.990).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
@@ -14,7 +14,7 @@
   "usd": 0.0,
   "minuty": 22.0
  },
- "oczekiwanie_min": 0.0,
+ "oczekiwanie_min": 84.2,
  "kontynuacje_tur": 0,
  "sesje": [
   {
@@ -23,7 +23,5 @@
    "tury": 0,
    "przyczyna": "terminal_reason=rate_limit exit=143"
   }
- ],
- "zaparkowano": "2026-10-15T13:06:40Z",
- "wznow_po": "2026-10-15T14:30:00Z"
+ ]
 }
