@@ -2,16 +2,26 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 1,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "089bc3f5045ec7d4b4fc17e608fe5b7bf26982b8",
+ "stan": "ocena w toku",
+ "gist": "Dodaj do cheap premię za wolne okna 3x3 na bazie 9/2.6",
+ "notatki": [
+  "Dodaj do cheap premię za wolne okna 3x3 na bazie 9/2.6\n\nMechanizm: cheap dostaje +3 za każde wolne okno 3x3, liczone bitowo\ni obcięte do 8. Reszta bez zmian: risk, ogon, przegląd tacki, wiązka.\n\nDowód z historii: 2/2.2 miał ten sam człon (sq=3, cap=8) i lokalnie na\n48 partiach z limitem 500 zszedł z 29 do 22 przegranych (cap=4: 26,\ncap=16: 21). Notatka 2/2.2 opisuje przegrane plansze: ostatni klocek\nto zwykle kwadrat 3x3 na prawie pustej planszy bez miejsca na kwadrat.\nTego członu nie było w drzewie 9, więc 9/2.6 nigdy go nie miał.\n\nDlaczego to nie powtórka: 2/2.2 mierzono na innej bazie (bez ryzyka\nP_HARD i ogona mieszanego). Tu ten człon ląduje na 9/2.6. Testy:\nokna w bitach zgodne z liczeniem naiwnym na 150 planszach losowych.\nWyniku nie mierzono; sprawdzono testy i 3 partie po 200 ruchów bez\nwyjątku, wszystkie ruchy legalne.\n\nRyzyko: czas na ruch wzrósł z ok. 58 do ok. 65 ms (+12%). Sym 9/2.6\ntrwał 6,9 min, więc tu spodziewane ok. 7,7 min przy limicie ok. 10 min.\nWskaźnik lokalny 2/2.2 to 48 partii, różnica 7 przegranych to szum.\nWaga 3 i cap 8 pochodzą z tamtej próbki, nie są strojone pod 9/2.6.\n\nCo dalej:\n- zrobione: caf8e72 (korzeń), 47f29d1 (baza 9/2.6 z build)\n- następny krok: po ocenie tego commitu. Zysk: okna 1x5 i L 3x3 jako\n  kolejny człon. Spadek lub za wolno: cofnąć ten commit.\n- czego nie powtarzać: deadrem (2/2.2, 2/3.2), większej wiązki (2/3.1),\n  ogona na 128 próbkach (9/2.7)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Przywróć policies.build: wiązka tacki z węzła 9/2.6\n\nKorzeń nie ma policies.build, więc ocena zwraca 0 dla każdej partii.\nKod najlepszego zmierzonego węzła (9/2.6, s_v 0.996, drzewo 9) wraca\nbez zmian logiki: beam.py, tests/test_beam_tray.py i build() w policies.py.\n\nDowód: najlepszy.patch nakłada się na caf8e72 (git apply --check),\n7 testów tests/test_beam_tray.py przechodzi, 3 partie po 200 ruchów\nbez wyjątku, każdy ruch legalny, około 58 ms na ruch. Wyniku nie mierzono.\n\nDlaczego to nie powtórka: to odtworzenie bazy, nie nowy mechanizm.\nNastępne węzły zmieniają coś na tej bazie.\n\nRyzyko: 0.996 pochodzi z drzewa 9 (inny zbiór ziaren niż w tej gałęzi),\nwięc porównanie z nim będzie czyste dopiero po ocenie tego commitu.\n\nCo dalej:\n- zrobione: caf8e72 (korzeń), ten commit (baza)\n- następny krok: jeden nowy mechanizm na bazie, osobny commit\n- czego nie powtarzać: większej wiązki (2/3.1, 15/2.5), ogona 128 próbek (9/2.7), refitu V (10/2.5)\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 68,
+  "usd": 3.6753,
+  "minuty": 17.0
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-15T03:36:21Z",
+   "koniec": "2026-10-15T03:53:21Z",
+   "tury": 68,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
