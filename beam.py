@@ -22,6 +22,7 @@ LOOK_TRAYS = 4
 LOOK_TOP = 3
 FINAL_K = 8
 FINAL_K_TIGHT = 20
+COVER_EXTRA = 1
 TIGHT_FREE = 22
 TRAY_FAIL = 400.0
 MIX_TRAYS = 64
@@ -185,6 +186,20 @@ def plan(board, slots, width, cap, partial=False):
     return beam
 
 
+def _candidates(scored, k):
+    cut = scored[min(k, len(scored)) - 1][0]
+    n = next((i for i, e in enumerate(scored) if e[0] < cut), len(scored))
+    covered = {e[1][3] for e in scored[:n]}
+    extra = []
+    for e in scored[n:]:
+        if len(extra) == COVER_EXTRA:
+            break
+        if e[1][3] not in covered:
+            covered.add(e[1][3])
+            extra.append(e)
+    return scored[:n] + extra
+
+
 class BeamPolicy:
     name = "beam"
 
@@ -205,11 +220,8 @@ class BeamPolicy:
         mixed = _mixed_trays(self.rng)
         scored = sorted(((cheap(s[0], s[2]), s) for s in finals), key=lambda t: -t[0])
         k = FINAL_K_TIGHT if 64 - _pc(base) <= TIGHT_FREE else FINAL_K
-        cut = scored[min(k, len(scored)) - 1][0]
         best_by_move = {}
-        for score, (b, _used, _lines, first) in scored:
-            if score < cut:
-                break
+        for score, (b, _used, _lines, first) in _candidates(scored, k):
             value = score - risk(b, triples) - tail_penalty(b, mixed)
             if first not in best_by_move or value > best_by_move[first][0]:
                 best_by_move[first] = (value, b)

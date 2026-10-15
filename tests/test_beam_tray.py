@@ -101,6 +101,15 @@ class TrayPlayableTest(unittest.TestCase):
     def test_tail_penalty_is_zero_on_empty_board(self):
         self.assertEqual(B.tail_penalty(0, B._mixed_trays(random.Random(4))), 0.0)
 
+    def test_candidates_add_best_final_of_uncovered_first_moves(self):
+        def entry(score, first):
+            return (score, (0, 0, 0, first))
+
+        scored = [entry(9, "a"), entry(8, "a"), entry(7, "a"), entry(6, "b"),
+                  entry(5, "c"), entry(4, "d"), entry(3, "e"), entry(2, "f")]
+        firsts = [e[1][3] for e in B._candidates(scored, 3)]
+        self.assertEqual(firsts, ["a", "a", "a"] + ["b", "c", "d"][:B.COVER_EXTRA])
+
     def test_next_value_equals_unpruned_max(self):
         rng = random.Random(11)
         policy = B.BeamPolicy()
