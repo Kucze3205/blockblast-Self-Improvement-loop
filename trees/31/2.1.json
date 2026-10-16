@@ -2,16 +2,27 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "18c0adf7825e68069573626b4cb52510d45d4ff3",
+ "stan": "ocena w toku",
+ "gist": "Ogon ryzyka dosampluj tylko przy remisie kandydatów finału",
+ "notatki": [
+  "Ogon ryzyka dosampluj tylko przy remisie kandydatów finału\n\nMechanizm: gdy co najmniej dwa ruchy mieszczą się w jednej rozdzielczości próby\nogona (TRAY_FAIL / MIX_TRAYS, czyli jedna tacka z 64), dokładamy 64 nowe mieszane\ntacki i liczymy ogon na połączonej próbie tylko dla tych ruchów. Pozostałe ruchy\ni ryzyko bez zmian.\n\nDowód z historii: 9/2.7 zwiększyło ogon do 128 tacek globalnie i dało 0.991 przy\n8.3 min wobec 0.996 i 6.9 min w 9/2.6 (.historia/9/INDEKS.md). Globalny koszt\nnie pomógł. Tu koszt płacony jest tylko przy remisie. 29/1.1 wskazało, że porażki\npowstają przy wyborze ostatniego postawienia w tacce; szum jednej tacki w ogonie\nmoże tam zmienić kolejność kandydatów (wniosek z kodu, nie z pomiaru).\n\nDlaczego to nie powtórka: próbka dodawana adaptacyjnie do remisu, a nie globalnie\n(9/2.7) i nie przez zmianę wag ryzyka. Nie ma tego w tabeli prób.\n\nRyzyko: efekt może mieścić się w szumie seedów, jak większość zmian w tej rodzinie.\nKoszt czasu rośnie tylko przy remisie. Wynik nie zmierzony; testy 8/8 i trzy\npartie po 60 ruchów bez wyjątku, każdy ruch legalny.\n\nCo dalej:\n- zrobione: edc2479 (baza 9/2.6), 170b6a6 (naprawa mostu), ten commit\n  (dosampling ogona przy remisie).\n- następny krok: wynik mierzy osobny program oceny; tu nie mierzymy.\n- czego nie powtarzać: globalnego zwiększania liczby próbek ogona (9/2.7 już było).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wiązka: ruch dla klocków z mostu bez indeksu puli zamiast TypeError\n\nMechanizm: plan dostaje placementy klocka, a nie indeks puli. Dla klocka z puli\nto ta sama tablica PLACEMENTS[i]; dla klocka z mostu (index None) placementy\nliczone są z kształtu. Decyzje dla klocków z puli się nie zmieniają.\n\nDowód z historii: w 9/2.6 act czyta p.index, a bridge.py tworzy klocki jako\nPiece(shape, name, -1), więc PLACEMENTS[None] rzuca TypeError już przy pierwszym\nruchu. Ten sam błąd naprawiały 26/1.1, 27/1.1, 28/2.1 i 29/1.1. Nowy test\ntest_bridge_piece_gives_same_move_as_pool_piece porównuje ruch dla obu wersji\nklocka.\n\nDlaczego to nie powtórka: to poprawka błędu, bez nowego mechanizmu, na bazie\n9/2.6. Różni się od 28/2.1 tym, że placementy są liczone bezpośrednio z kształtu,\nwięc kształt spoza puli (błąd odczytu z ekranu) nie daje KeyError.\n\nRyzyko: mały koszt na ruch dla klocków z mostu (3 x 64 pozycje). Dla klocków\nz puli zero zmian. Nie mierzono wyniku.\n\nCo dalej:\n- zrobione: edc2479 (baza 9/2.6), ten commit (naprawa mostu i test).\n- następny krok: jeden nowy mechanizm w ocenie ryzyka następnej tacki.\n- czego nie powtarzać: zmian w gałęzi częściowej act, zwiększania liczby próbek\n  ogona (9/2.7 już było).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wnieś bazę 9/2.6 (wiązka po tacce i build) na gałąź 31/2\n\nMechanizm: najlepszy patch bez zmian w logice: wiązka po tacce na bitboardach,\nryzyko trudnych tacek ważone multizbiorem, ogon 64 mieszanych tacek, przegląd\nnastępnej tacki z pominięciem nieumieszczalnych próbek. policies.build(weights)\nzwraca BeamPolicy.\n\nDowód z historii: 9/2.6 ma s_sym 0.99588, 16 przegranych, 6.9 min\n(.historia/9/2.6.json). Ta sama baza dała 0.993 w 28/1.1 i 0.994 w 29/1.1;\nróżnica mieści się w szumie seedów.\n\nDlaczego to nie powtórka: to punkt wyjścia, nie próba poprawy. Zmiana idzie\nw osobnych commitach.\n\nRyzyko: klocki z mostu mają index None, więc act rzuca TypeError. Naprawa\nw następnym commicie.\n\nCo dalej:\n- zrobione: baza 9/2.6 na gałęzi (ten commit).\n- następny krok: naprawa mostu, placementy liczone z kształtu klocka.\n- czego nie powtarzać: samego wniesienia bazy bez zmian (24/1.1, 28/1.1 już były).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 66,
+  "usd": 3.4559,
+  "minuty": 14.8
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-16T00:30:26Z",
+   "koniec": "2026-10-16T00:45:14Z",
+   "tury": 66,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
