@@ -2,14 +2,16 @@
  "rodzic": "korzen",
  "rodzic_sha": "730a3317e3b5819f0cc16a8381cdaeea904bd842",
  "kolejnosc": 1,
- "sha": "730a3317e3b5819f0cc16a8381cdaeea904bd842",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "7f507629e86201c3a8cbabfe6b3a7d541015b2e4",
+ "stan": "ocena w toku",
+ "gist": "Wiązka: najlepszy finał z nieobsadzonego ruchu i dosampling ogona przy remisie",
+ "notatki": [
+  "Wiązka: najlepszy finał z nieobsadzonego ruchu i dosampling ogona przy remisie\n\nMechanizm: act dokłada do kandydatów jeden ruch, którego żaden z finałów top-K\nnie ma (najlepszy wg cheap spośród takich ruchów), i liczy mu ryzyko oraz ogon\ntak jak pozostałym. Gdy co najmniej dwa z LOOK_TOP najlepszych ruchów mieszczą\nsię w jednej rozdzielczości ogona (TRAY_FAIL / MIX_TRAYS), dokładane jest 64\nmieszanych tacek i ogon tych ruchów liczony jest na połączonej próbie. Pozostałe\nruchy i ryzyko bez zmian.\n\nDowód z historii: 27/2.1 (najlepszy finał z nieobsadzonego ruchu) dało 0,99358,\na 31/2.1 (ogon dosamplowany przy remisie) dało 0,99548. Obie na tej samej bazie\nco ta gałąź (9/2.6 z naprawą mostu). Ich połączenie nie było mierzone.\n\nDlaczego to nie powtórka: nowe jest połączenie obu zmian. Jedyna różnica względem\n31/2.1: dosampling ogona ogranicza się do LOOK_TOP ruchów z remisu, bo pełne\nprzeliczenie wszystkich remisów podnosiło koszt czasu.\n\nRyzyko:\n- Wynik niezmierzony, ocenia ewaluator. Efekt może mieścić się w szumie seedów.\n- Czas lokalnie: 59,6 -> 67,0 ms na ruch (+12%, 5 partii po 60 ruchów). Przy 6,9\n  min z 9/2.6 szacunek to około 7,7 min. Zmierzone węzły: 27/2.1 na 8,4 min, 31/2.1\n  na 7,5 min. Limit czasu nie jest czytelny w tym checkoutcie (.github to /dev/null),\n  8,4 min przechodziło, 10,8 nie.\n- Testy 25/25. Trzy partie po 300 ruchach bez wyjątku, każdy ruch legalny.\n\nCo dalej:\n- zrobione: 0e08fef (baza 9/2.6), d333223 (most), 730a331 (turtle), ten commit\n  (27/2.1 + 31/2.1)\n- następny krok: wynik i czas mierzy osobny program oceny; tu nie mierzymy\n- czego nie powtarzać: samego 27/2.1 ani 31/2.1 jako osobnych prób na tej bazie\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 10.1
+  "tury": 36,
+  "usd": 1.9619,
+  "minuty": 21.3
  },
  "oczekiwanie_min": 15.5,
  "kontynuacje_tur": 0,
@@ -19,6 +21,12 @@
    "koniec": "2026-10-16T10:15:26Z",
    "tury": 0,
    "przyczyna": "terminal_reason=rate_limit exit=143"
+  },
+  {
+   "start": "2026-10-16T10:30:06Z",
+   "koniec": "2026-10-16T10:41:15Z",
+   "tury": 36,
+   "przyczyna": "terminal_reason=completed"
   }
  ]
 }
