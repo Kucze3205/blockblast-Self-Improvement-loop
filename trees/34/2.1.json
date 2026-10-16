@@ -2,16 +2,25 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "bfcebdb5914b6d41bcbda4803cafe41c756d1551",
+ "stan": "ocena w toku",
+ "gist": "Wnieś bazę 9/2.6 z pozą wyznaczaną z kształtu klocka",
+ "notatki": [
+  "Wnieś bazę 9/2.6 z pozą wyznaczaną z kształtu klocka\n\nKorzeń nie ma policies.build, więc ewaluator dostaje wyjątek i wynik 0.\nMost (bridge.py) podaje klocki z index=None, a beam.py czytał p.index,\nwięc na emulatorze następowała wywrotka. Pozę wyznaczam z kształtu\n(POSE_BY_SHAPE); klocek o nieznanym kształcie daje pierwszy legalny ruch.\n\nMechanizm: bez zmiany logiki 9/2.6 (wiązka po tacce na bitboardach,\nryzyko trudnych tacek, ogon mieszanych tacek, przegląd następnej tacki).\n\nDowód z historii: 9/2.6 s_sym 0.99589 (16 przegranych, hash mostu\n73d3de950b7f5be8). Ta sama baza z poprawką mostu w 33/1.1 (0.99378,\n16 przegranych, ten sam hash mostu).\n\nDlaczego to nie powtórka: nie dodaje mechanizmu ani strojenia, tylko\nprzywraca punkt wyjścia, którego korzeń wymaga.\n\nRyzyko: decyzje na symulatorze takie same jak w 9/2.6 (indeks puli to\npozycja kształtu, kształty są unikalne). Sprawdzone: 7 testów beam\nprzechodzi; dym 3 partie po 150 ruchów bez wyjątków i z legalnymi\nruchami na klockach z index=None. tests/test_engine.py pada na braku\ntkinter (model.py importuje turtle), niezależnie od tej zmiany.\n\nCo dalej:\n- zrobione: baza 9/2.6 z pozą z kształtu (ten commit).\n- następny krok: węzeł 2.1 z jednym nowym mechanizmem na tej bazie.\n- czego nie powtarzać: poprawek mostu (już w sześciu węzłach), premii\n  za okna 3x3 (22/1.1, 8/1.7), ogona w przeglądzie następnej tacki\n  (9/1.5, 9/2.5), globalnego dosamplowania ogona (9/2.7).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 85,
+  "usd": 5.8194,
+  "minuty": 26.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-16T06:17:42Z",
+   "koniec": "2026-10-16T06:44:03Z",
+   "tury": 85,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
