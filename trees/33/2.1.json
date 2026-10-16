@@ -2,16 +2,27 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "730a3317e3b5819f0cc16a8381cdaeea904bd842",
+ "stan": "ocena w toku",
+ "gist": "model: usuń nieużywany import turtle, który wymaga tkinter",
+ "notatki": [
+  "model: usuń nieużywany import turtle, który wymaga tkinter\n\nMechanizm: pierwsza linia model.py to \"from turtle import done\". Nic z tego nie\njest używane, a import turtle wymaga tkinter. Na tej maszynie import agent\nkończy się ModuleNotFoundError: tkinter, więc nie działają test_engine i pozostałe\ntesty zależne od agent. Usunięcie linii nie zmienia żadnego zachowania.\n\nDowód: python -c \"import agent\" przed zmianą: ModuleNotFoundError: tkinter.\nPo zmianie: import agent OK, pytest tests: 25/25 OK.\n\nDlaczego to nie powtórka: poprawka środowiska, bez wpływu na grę ani wynik.\nTę samą linię usunęło drzewo 16/2.1.\n\nRyzyko: brak. Nic w projekcie nie używa nazwy done z turtle.\n\nCo dalej:\n- zrobione: 0e08fef (baza), d333223 (most), ten commit (turtle)\n- następny krok: jeden nowy mechanizm na bazie d333223, osobny commit\n- czego nie powtarzać: importów z tkinter w modułach, które ocena ładuje\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wiązka: ruch dla klocków z mostu bez indeksu puli zamiast TypeError\n\nMechanizm: act wyznacza indeks pozy z kształtu klocka, gdy p.index is None.\nMost tworzy Piece(shape, name, -1), więc PLACEMENTS[None] rzucał TypeError\njuż przy pierwszym ruchu. Dla klocków z puli _pool_index zwraca ten sam indeks\nco wcześniej, więc decyzje się nie zmieniają.\n\nDowód z kodu: plan czyta PLACEMENTS[pi], a dla pi=None to TypeError. Ten sam\nbłąd naprawiały 26/1.1, 27/1.1, 29/1.1 i 31/1.1. Test\ntest_bridge_piece_gives_same_move_as_pool_piece sprawdza, że ten sam stan daje\nten sam ruch dla klocka z puli i z mostu. tests/test_beam_tray.py: 8/8 OK.\nSmoke: 3 partie po 400 ruchów, każdy ruch z klockami bez indeksu, bez wyjątku,\nwszystkie ruchy legalne (bez oceny wyniku).\n\nDlaczego to nie powtórka: poprawka konkretnego błędu, nie zmiana mechanizmu.\nWynik dla klocków z puli nie zmienia się z konstrukcji.\n\nRyzyko: kształt spoza 41 poz rzuca KeyError w _pool_index. To celowe, żeby\nnieznany klocek nie został po cichu źle zagrany.\n\nCo dalej:\n- zrobione: 0e08fef (baza 9/2.6), ten commit (most)\n- następny krok: usunąć zbędny import turtle w model.py (blokuje import agent\n  i testy na tej maszynie), potem nowy mechanizm w osobnym commicie\n- czego nie powtarzać: poprawki mostu w samym policies.py bez zmiany beam.py\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wnieś bazę 9/2.6: beam.py, policies.build, testy wiązki tacki\n\nMechanizm: kod z najlepszy.patch bez zmian w logice. BeamPolicy planuje całą tackę\nna bitboardach, ocenia liść cheap, odejmuje ryzyko trudnych tacek i ogon mieszanych\ntacek, a przegląd następnej tacki używa 4 losowanych tacek. policies.build(weights)\nzwraca BeamPolicy, wagi są ignorowane.\n\nDowód z historii: 9/2.6 ma s_sym 0,99589, 16 przegranych, 6,9 min\n(.historia/9/2.6.json). Korzeń caf8e72 nie ma build, więc ocena dostaje 0.\ntests/test_beam_tray.py: 7/7 OK.\n\nDlaczego to nie powtórka: to punkt wyjścia tej gałęzi, nie nowy mechanizm.\nWynik niezmierzony w tym drzewie.\n\nRyzyko: klocki z mostu mają index None, więc ta wersja wywraca się na ścieżce\nemulatora. Naprawiam to osobnym commitem.\n\nCo dalej:\n- zrobione: ten commit (baza 9/2.6)\n- następny krok: ruchy z kształtu klocka (klocki z mostu), potem test i smoke\n- czego nie powtarzać: samego portu jako wyniku końcowego\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 63,
+  "usd": 4.0661,
+  "minuty": 18.3
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-16T04:09:52Z",
+   "koniec": "2026-10-16T04:28:08Z",
+   "tury": 63,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
