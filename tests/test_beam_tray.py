@@ -134,6 +134,19 @@ class TrayPlayableTest(unittest.TestCase):
         bridge_move = B.BeamPolicy().act(game, game.available_actions())
         self.assertEqual(pool_move, bridge_move)
 
+    def test_unknown_shape_gets_legal_move(self):
+        plus = [[0, 1, 0], [1, 1, 1], [0, 1, 0]]
+        game = Game(5)
+        game.pieces[0] = Piece(plus, "plus", -1)
+        actions = game.available_actions()
+        self.assertIn(B.BeamPolicy().act(game, actions), actions)
+
+    def test_same_unknown_shape_reuses_index(self):
+        plus = [[0, 1, 0], [1, 1, 1], [0, 1, 0]]
+        first = B._pool_index(Piece(plus, "plus", -1))
+        self.assertEqual(B._pool_index(Piece([row[:] for row in plus], "plus", -1)), first)
+        self.assertGreaterEqual(first, len(PIECE_POOL))
+
 
 if __name__ == "__main__":
     unittest.main()

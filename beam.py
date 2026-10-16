@@ -42,7 +42,12 @@ _POOL_BY_SHAPE = {tuple(map(tuple, p.shape)): p.index for p in PIECE_POOL}
 def _pool_index(piece):
     if piece.index is not None:
         return piece.index
-    return _POOL_BY_SHAPE[tuple(map(tuple, piece.shape))]
+    # kształt spoza rekonstrukcji puli (Z-5) dostaje własne ułożenia, zamiast KeyError w środku partii
+    key = tuple(map(tuple, piece.shape))
+    if key not in _POOL_BY_SHAPE:
+        _POOL_BY_SHAPE[key] = len(PLACEMENTS)
+        PLACEMENTS.append(_placements(piece))
+    return _POOL_BY_SHAPE[key]
 
 HARD_TRIPLES = []
 for _combo in itertools.combinations_with_replacement(HARD_TYPES, 3):
