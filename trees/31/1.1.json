@@ -1,0 +1,17 @@
+{
+ "rodzic": "korzen",
+ "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
+ "kolejnosc": 1,
+ "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
+ "stan": "sesja",
+ "gist": "",
+ "notatki": [],
+ "koszt": {
+  "tury": 0,
+  "usd": 0.0,
+  "minuty": 0.0
+ },
+ "oczekiwanie_min": 0.0,
+ "kontynuacje_tur": 0,
+ "sesje": []
+}
