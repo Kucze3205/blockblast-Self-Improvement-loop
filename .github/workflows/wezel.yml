@@ -98,7 +98,9 @@ jobs:
           set -eu
           url="https://github.com/$GITHUB_REPOSITORY"
           GALAZ="trees/$DRZEWO/${WEZEL%%.*}"
-          KORZEN=$(git ls-remote "$url" refs/tags/korzen | cut -f1)
+          # korzeń drzewa: gałąź korzen-baza (baza 9/2.6 z poprawkami mostu i importu), nie tag korzen
+          KORZEN=$(git ls-remote "$url" refs/heads/korzen-baza | cut -f1)
+          [ -n "$KORZEN" ]
           cd loop
           python3 .github/loop/loop.py start "$DRZEWO" "$WEZEL" "$KOLEJNOSC" "$KORZEN" > "$RUNNER_TEMP/start.env"
           . "$RUNNER_TEMP/start.env"
@@ -109,7 +111,7 @@ jobs:
           # jeden ref, bez remote'a i bez poświadczeń: gałąź łańcucha albo korzeń dla nowego łańcucha
           git init -q "$WORK"
           git -C "$WORK" fetch -q --no-tags "$url" "+refs/heads/$GALAZ:refs/heads/$GALAZ" \
-            || git -C "$WORK" fetch -q --no-tags "$url" "+refs/tags/korzen:refs/heads/$GALAZ"
+            || git -C "$WORK" fetch -q --no-tags "$url" "+refs/heads/korzen-baza:refs/heads/$GALAZ"
           git -C "$WORK" checkout -q -f "$GALAZ"
           rm -f "$WORK/.git/FETCH_HEAD"
           echo ".historia/" >> "$WORK/.git/info/exclude"
