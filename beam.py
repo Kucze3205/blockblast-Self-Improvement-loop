@@ -25,6 +25,7 @@ FINAL_K_TIGHT = 20
 TIGHT_FREE = 22
 TRAY_FAIL = 400.0
 MIX_TRAYS = 64
+TAIL_RES = TRAY_FAIL / MIX_TRAYS
 # P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
 P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
 
@@ -217,14 +218,27 @@ class BeamPolicy:
         for score, (b, _used, _lines, first) in scored:
             if score < cut:
                 break
-            value = score - risk(b, triples) - tail_penalty(b, mixed)
+            base_v = score - risk(b, triples)
+            value = base_v - tail_penalty(b, mixed)
             if first not in best_by_move or value > best_by_move[first][0]:
-                best_by_move[first] = (value, b)
+                best_by_move[first] = (value, b, base_v)
+        for score, (b, _used, _lines, first) in scored:
+            if first not in best_by_move:
+                base_v = score - risk(b, triples)
+                best_by_move[first] = (base_v - tail_penalty(b, mixed), b, base_v)
+                break
+        ranked = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])
+        tied = [m for m, (v, _b, _base) in ranked[:LOOK_TOP] if v >= ranked[0][1][0] - TAIL_RES]
+        if len(tied) >= 2:
+            mixed = mixed + _mixed_trays(self.rng)
+            for m in tied:
+                _v, b, base_v = best_by_move[m]
+                best_by_move[m] = (base_v - tail_penalty(b, mixed), b, base_v)
 
         contenders = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
         best_move, best_total = None, None
         trays = [_sample_tray(self.rng) for _ in range(LOOK_TRAYS)]
-        for first, (value, b) in contenders:
+        for first, (value, b, _base) in contenders:
             # śmierć na następnej tacce karze już risk i tail_penalty, więc tu liczymy tylko wykonalne
             nxt = [v for v in (self._next_value(b, triples, poses) for poses in trays) if v is not None]
             total = value + (sum(nxt) / len(nxt) if nxt else -TRAY_FAIL)
