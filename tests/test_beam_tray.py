@@ -3,13 +3,15 @@ import os
 import random
 import sys
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import beam as B
 import policies
+from board import Board
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, Piece
 
 N = 8
 
@@ -107,11 +109,23 @@ class TrayPlayableTest(unittest.TestCase):
             b = B._to_bits(_settle([[int(rng.random() < density) for _ in range(8)] for _ in range(8)]))
             poses = B._sample_tray(rng)
             triples = B._hard_triples(rng)
-            states = B.plan(b, list(enumerate(poses)), B.LOOK_BEAM, B.LOOK_BEAM)
+            states = B.plan(b, [(k, B.PLACEMENTS[i]) for k, i in enumerate(poses)], B.LOOK_BEAM, B.LOOK_BEAM)
             expected = None
             if states:
                 expected = max(B.cheap(s[0], s[2]) - B.risk(s[0], triples) for s in states[:2])
             self.assertEqual(policy._next_value(b, triples, poses), expected)
+
+    def test_bridge_piece_gives_same_move_as_pool_piece(self):
+        pool = [PIECE_POOL[i] for i in (0, 5, 12)]
+        bridge = [Piece(p.shape, f"slot{k}", -1) for k, p in enumerate(pool)]
+        moves = []
+        for pieces in (pool, bridge):
+            policy = B.BeamPolicy()
+            policy.reset(5)
+            game = SimpleNamespace(board=Board(), pieces=pieces, combo=0)
+            moves.append(policy.act(game, []))
+        self.assertIsNotNone(moves[0])
+        self.assertEqual(moves[0], moves[1])
 
     def test_policy_plays_legal_moves(self):
         game = Game(1)
