@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import beam as B
 import policies
 from game import Game
-from pieces import PIECE_POOL
+from pieces import PIECE_POOL, Piece
 
 N = 8
 
@@ -126,6 +126,13 @@ class TrayPlayableTest(unittest.TestCase):
             game.step(move)
             if game.done:
                 break
+
+    def test_bridge_piece_gives_same_move_as_pool_piece(self):
+        game = Game(5)
+        pool_move = B.BeamPolicy().act(game, game.available_actions())
+        game.pieces = [None if p is None else Piece(p.shape, p.name, -1) for p in game.pieces]
+        bridge_move = B.BeamPolicy().act(game, game.available_actions())
+        self.assertEqual(pool_move, bridge_move)
 
 
 if __name__ == "__main__":

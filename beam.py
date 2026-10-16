@@ -36,6 +36,13 @@ def _placements(piece):
 
 
 PLACEMENTS = [_placements(p) for p in PIECE_POOL]
+_POOL_BY_SHAPE = {tuple(map(tuple, p.shape)): p.index for p in PIECE_POOL}
+
+
+def _pool_index(piece):
+    if piece.index is not None:
+        return piece.index
+    return _POOL_BY_SHAPE[tuple(map(tuple, piece.shape))]
 
 HARD_TRIPLES = []
 for _combo in itertools.combinations_with_replacement(HARD_TYPES, 3):
@@ -195,7 +202,7 @@ class BeamPolicy:
         self.rng = random.Random(f"beam:{game_seed}")
 
     def act(self, game, actions):
-        slots = [(idx, p.index) for idx, p in enumerate(game.pieces) if p is not None]
+        slots = [(idx, _pool_index(p)) for idx, p in enumerate(game.pieces) if p is not None]
         base = _to_bits(game.board.grid)
         finals = plan(base, slots, BEAM, BEAM_CAP, partial=True)
         if _pc(finals[0][1]) < len(slots):
