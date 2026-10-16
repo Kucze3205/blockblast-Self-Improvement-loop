@@ -25,6 +25,7 @@ FINAL_K_TIGHT = 20
 TIGHT_FREE = 22
 TRAY_FAIL = 400.0
 MIX_TRAYS = 64
+TAIL_STEP = TRAY_FAIL / MIX_TRAYS
 # P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
 P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
 
@@ -214,14 +215,32 @@ class BeamPolicy:
         for score, (b, _used, _lines, first) in scored:
             if score < cut:
                 break
-            value = score - risk(b, triples) - tail_penalty(b, mixed)
+            tail = tail_penalty(b, mixed)
+            value = score - risk(b, triples) - tail
             if first not in best_by_move or value > best_by_move[first][0]:
-                best_by_move[first] = (value, b)
+                best_by_move[first] = (value, b, tail)
+        for score, (b, _used, _lines, first) in scored:
+            if first not in best_by_move:
+                tail = tail_penalty(b, mixed)
+                best_by_move[first] = (score - risk(b, triples) - tail, b, tail)
+                break
 
-        contenders = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
+        ranked = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])
+        top = ranked[0][1][0]
+        band = [first for first, (value, _b, _t) in ranked[:LOOK_TOP] if top - value < TAIL_STEP]
+        if len(band) >= 2:
+            extra = _mixed_trays(self.rng)
+            n = len(mixed) + len(extra)
+            for first in band:
+                value, b, tail = best_by_move[first]
+                pooled = (tail * len(mixed) + tail_penalty(b, extra) * len(extra)) / n
+                best_by_move[first] = (value + tail - pooled, b, pooled)
+            ranked = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])
+
+        contenders = ranked[:LOOK_TOP]
         best_move, best_total = None, None
         trays = [_sample_tray(self.rng) for _ in range(LOOK_TRAYS)]
-        for first, (value, b) in contenders:
+        for first, (value, b, _tail) in contenders:
             # śmierć na następnej tacce karze już risk i tail_penalty, więc tu liczymy tylko wykonalne
             nxt = [v for v in (self._next_value(b, triples, poses) for poses in trays) if v is not None]
             total = value + (sum(nxt) / len(nxt) if nxt else -TRAY_FAIL)
