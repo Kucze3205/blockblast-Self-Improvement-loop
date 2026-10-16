@@ -3,15 +3,24 @@
  "rodzic_sha": "730a3317e3b5819f0cc16a8381cdaeea904bd842",
  "kolejnosc": 2,
  "sha": "730a3317e3b5819f0cc16a8381cdaeea904bd842",
- "stan": "sesja",
+ "stan": "zaparkowany",
  "gist": "",
  "notatki": [],
  "koszt": {
   "tury": 0,
   "usd": 0.0,
-  "minuty": 0.0
+  "minuty": 10.9
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-16T10:05:21Z",
+   "koniec": "2026-10-16T10:16:14Z",
+   "tury": 0,
+   "przyczyna": "terminal_reason=rate_limit exit=143"
+  }
+ ],
+ "zaparkowano": "2026-10-16T10:16:14Z",
+ "wznow_po": "2026-10-16T10:30:00Z"
 }
