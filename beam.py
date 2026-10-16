@@ -4,6 +4,7 @@ import math
 import random
 
 from pieces import PIECE_POOL, PIECE_TYPES
+from scoring import FULL_CLEAR_BONUS, clear_points, placement_points
 
 FULL = (1 << 64) - 1
 ROWS = [0xFF << (8 * r) for r in range(8)]
@@ -25,6 +26,8 @@ FINAL_K_TIGHT = 20
 TIGHT_FREE = 22
 TRAY_FAIL = 400.0
 MIX_TRAYS = 64
+# jedna próbka ogona: różnicy mniejszej niż ta estymator nie rozróżnia, więc punkty decydują
+TIE_BAND = TRAY_FAIL / MIX_TRAYS
 # P(trzy klocki z HARD_TYPES); wagi _hard_triples są warunkowe na taką tackę
 P_HARD = (len(HARD_TYPES) / N_TYPES) ** 3
 
@@ -190,6 +193,19 @@ def plan(board, slots, width, cap, partial=False):
     return beam
 
 
+def _first_gain(game, base, first):
+    sid, x, y = first
+    piece = game.pieces[sid]
+    m, _, _, y1, x1 = next(p for p in _placements_of(piece) if p[1] == x and p[2] == y)
+    nb, lines = _clear(base | m, y, y1, x, x1)
+    gain = placement_points(piece)
+    if lines:
+        gain += clear_points(game.combo + 1, lines)
+    if nb == 0:
+        gain += FULL_CLEAR_BONUS
+    return gain
+
+
 class BeamPolicy:
     name = "beam"
 
@@ -220,15 +236,15 @@ class BeamPolicy:
                 best_by_move[first] = (value, b)
 
         contenders = sorted(best_by_move.items(), key=lambda kv: -kv[1][0])[:LOOK_TOP]
-        best_move, best_total = None, None
         trays = [_sample_tray(self.rng) for _ in range(LOOK_TRAYS)]
+        totals = {}
         for first, (value, b) in contenders:
             # śmierć na następnej tacce karze już risk i tail_penalty, więc tu liczymy tylko wykonalne
             nxt = [v for v in (self._next_value(b, triples, poses) for poses in trays) if v is not None]
-            total = value + (sum(nxt) / len(nxt) if nxt else -TRAY_FAIL)
-            if best_total is None or total > best_total:
-                best_move, best_total = first, total
-        return best_move
+            totals[first] = value + (sum(nxt) / len(nxt) if nxt else -TRAY_FAIL)
+        top = max(totals.values())
+        tied = [first for first, total in totals.items() if total >= top - TIE_BAND]
+        return max(tied, key=lambda first: (_first_gain(game, base, first), totals[first]))
 
     def _next_value(self, b, triples, poses):
         states = plan(b, [(i, PLACEMENTS[p]) for i, p in enumerate(poses)], LOOK_BEAM, LOOK_BEAM)

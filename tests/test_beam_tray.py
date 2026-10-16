@@ -135,9 +135,10 @@ class TrayPlayableTest(unittest.TestCase):
             actions = game.available_actions()
             if not actions or game.done:
                 break
-            pool = SimpleNamespace(board=game.board, pieces=list(game.pieces))
+            pool = SimpleNamespace(board=game.board, pieces=list(game.pieces), combo=game.combo)
             bridge = SimpleNamespace(
                 board=game.board,
+                combo=game.combo,
                 pieces=[Piece(p.shape, p.name, -1) if p is not None else None for p in game.pieces],
             )
             policy.reset(5)
@@ -146,6 +147,18 @@ class TrayPlayableTest(unittest.TestCase):
             from_bridge = policy.act(bridge, actions)
             self.assertEqual(from_pool, from_bridge)
             game.step(from_pool)
+
+    def test_first_gain_matches_engine_points(self):
+        rng = random.Random(9)
+        game = Game(9)
+        for _ in range(12):
+            actions = game.available_actions()
+            if not actions or game.done:
+                break
+            base = B._to_bits(game.board.grid)
+            for action in actions[:20]:
+                self.assertEqual(B._first_gain(game, base, action), policies._immediate_gain(game, action))
+            game.step(rng.choice(actions))
 
 
 if __name__ == "__main__":
