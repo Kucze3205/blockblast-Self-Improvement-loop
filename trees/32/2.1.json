@@ -2,16 +2,27 @@
  "rodzic": "korzen",
  "rodzic_sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
  "kolejnosc": 2,
- "sha": "caf8e7251570b57ad4a6ebb26f3b0b13e8326fcc",
- "stan": "sesja",
- "gist": "",
- "notatki": [],
+ "sha": "85bb97aff28c09567221fd46426dde7e8eff003b",
+ "stan": "ocena w toku",
+ "gist": "Wybór ruchu: punkty rozstrzygają remis w paśmie jednej próbki ogona",
+ "notatki": [
+  "Wybór ruchu: punkty rozstrzygają remis w paśmie jednej próbki ogona\n\nMechanizm: spośród trzech kandydatów finału, których wynik przeżycia (wartość minus ryzyko, ogon i następna tacka) mieści się w TIE_BAND = TRAY_FAIL / MIX_TRAYS (6,25, jedna próbka ogona) od najlepszego, wybieram ruch z największym natychmiastowym zyskiem punktów: placement_points, clear_points z combo po inkrementacji i FULL_CLEAR_BONUS. Poza pasmem punkty nie wpływają na wybór. Zgodne z CONTEXT.md: punkty rozstrzygają remis, nie koszt przeżycia.\n\nDowód z historii: w tytułach prób drzew 1-31 nie ma punktów jako rozstrzygnięcia remisu. Remis pojawia się przy cięciu wiązki (8/1.2), ogonie (31/2.1) i rankingu kształtu (7/2.2). Punkty wchodzą do wyboru tylko przez cheap (4,2 * linie).\n\nDlaczego to nie powtórka: nowy wymiar celu (punkty), nie waga ryzyka ani ogona. Nie zwiększa próbek (9/2.7) i nie rusza szerokości wiązki.\n\nRyzyko: pasmo 6,25 to rząd wielkości szumu ogona, więc efekt może mieścić się w szumie. Punkty mogą wybrać ruch z trochę wyższym ryzykiem w paśmie. Koszt czasu pomijalny: _first_gain tylko dla trzech kandydatów. Wynik nie zmierzony. Testy 9/9 przechodzą, test _first_gain zgadza się z policies._immediate_gain, dym na trzech partiach bez wyjątku.\n\nCo dalej:\n- zrobione: cf0323c (naprawa mostu), ten commit (punkty w paśmie remisu).\n- następny krok: wynik mierzy ocena. Jeśli spadnie poniżej 9/2.6 (0,99588), sprawdzić, które przegrane gry zmieniły wynik, zanim ruszę pasmo.\n- czego nie powtarzać: więcej próbek ogona (9/2.7 już było); zmian w cheap bez zmiany wyboru.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wiązka: ruch dla klocków z mostu liczony z kształtu zamiast indeksu puli\n\nMechanizm: plan dostaje placementy klocka, nie indeks puli. Dla klocka z puli to PLACEMENTS[index] (jak dotąd), dla klocka z mostu (index None) placementy liczone z kształtu przez _placements.\n\nDowód z historii: w bazie fc4ac72 act czyta p.index, a bridge.py tworzy klocki przez Piece(shape, name, -1) z index None, więc PLACEMENTS[None] rzuca TypeError przy pierwszym ruchu mostu. Ten sam błąd łatano w 26/1.1, 27/1.1, 28/2.1, 29/1.1 i 31/1.1. Nowy test test_bridge_piece_gives_same_move_as_pool_piece porównuje ruch dla obu wersji klocka.\n\nDlaczego to nie powtórka: poprawka błędu na bazie 9/2.6, bez zmiany logiki decyzji. Placementy z kształtu są potrzebne, bo pula to rekonstrukcja (pieces.py), a kształt z ekranu może jej nie pokrywać.\n\nRyzyko: mały koszt na ruch dla klocków z mostu (3 x 64 pozycje). Dla klocków z puli decyzje bez zmian. Wynik nie zmierzony; testy beam 8/8 przechodzą.\n\nCo dalej:\n- zrobione: fc4ac72 (baza 9/2.6), ten commit (naprawa mostu i test).\n- następny krok: jeden nowy mechanizm w wyborze ruchu, osobny commit.\n- czego nie powtarzać: samego wniesienia bazy; globalnego zwiększania ogona (9/2.7 już było).\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>",
+  "Wnieś bazę 9/2.6 (wiązka po tacce i build) na gałąź 32/2\n\nMechanizm: najlepszy patch z .historia bez zmian w logice: beam.py (wiązka po tacce na bitboardach, ryzyko trudnych tacek, ogon mieszanych tacek, przegląd następnej tacki) i policies.build(weights) zwracające BeamPolicy.\n\nDowód z historii: 9/2.6 ma s_sym 0.99588, 16 przegranych, 6.9 min (.historia/9/2.6.json). Korzeń caf8e72 nie ma build, więc ocena dostaje wynik 0.\n\nDlaczego to nie powtórka: to punkt wyjścia; samo wniesienie bazy już było (24/1.1, 28/1.1), a zmiany idą w osobnych commitach.\n\nRyzyko: klocki z mostu mają index None, więc act rzuca TypeError. Naprawa w następnym commicie.\n\nCo dalej:\n- zrobione: najlepszy.patch nałożony na korzeń (caf8e72), testy beam 7/7 przechodzą.\n- następny krok: naprawa mostu, placementy liczone z kształtu klocka.\n- czego nie powtarzać: samego wniesienia bazy bez zmian.\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>"
+ ],
  "koszt": {
-  "tury": 0,
-  "usd": 0.0,
-  "minuty": 0.0
+  "tury": 51,
+  "usd": 2.0392,
+  "minuty": 8.4
  },
  "oczekiwanie_min": 0.0,
  "kontynuacje_tur": 0,
- "sesje": []
+ "sesje": [
+  {
+   "start": "2026-10-16T01:58:12Z",
+   "koniec": "2026-10-16T02:06:35Z",
+   "tury": 51,
+   "przyczyna": "terminal_reason=completed"
+  }
+ ]
 }
