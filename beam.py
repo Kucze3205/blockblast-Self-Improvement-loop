@@ -135,7 +135,8 @@ def _mixed_trays(rng):
 def tail_penalty(b, trays):
     if not trays:
         return 0.0
-    return TRAY_FAIL * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays)
+    # próbki są warunkowe na tackę nie złożoną z samych HARD_TYPES: waga to P(mieszana)
+    return TRAY_FAIL * (1.0 - P_HARD) * sum(1 for t in trays if not _tray_ok(b, t)) / len(trays)
 
 
 def risk(b, triples):
